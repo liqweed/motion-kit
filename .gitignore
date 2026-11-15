@@ -4,3 +4,7 @@ out/
 *.webm
 *.gif
 .DS_Store
+.context/
+.idea/*
+!.idea/icon.svg
+!.idea/icon_dark.svg

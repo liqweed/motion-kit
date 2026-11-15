@@ -1,0 +1,18 @@
+{
+	"extraKnownMarketplaces": {
+		"jig": {
+			"source": { "source": "git", "url": "https://github.com/jig-harness/jig.git", "ref": "stable" }
+		}
+	},
+	"enabledPlugins": { "jig@jig": true },
+	"permissions": {
+		"allow": [
+			"Bash(npm test)",
+			"Bash(npm run gate)",
+			"Bash(npm run check)",
+			"Bash(npm run media)",
+			"Bash(node cli/motion-kit.mjs *)",
+			"Bash(node --test *)"
+		]
+	}
+}

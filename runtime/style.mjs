@@ -113,6 +113,7 @@ export function contrast(a, b) {
  */
 export function checkContrast(style) {
 	const s = normalizeStyle(style);
+	/** @type {[string, string, number][]} */
 	const rules = [
 		["ink", "bg", 4.5],
 		["ink", "surface", 4.5],

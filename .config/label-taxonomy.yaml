@@ -1,0 +1,77 @@
+# motion-kit's label taxonomy: every label an issue may carry. Jig's
+# file-issue skill checks labels against it before filing. Schema: Jig's M9
+# template (modules/M9-tasks-memory/templates/label-taxonomy.yaml).
+# Lint: bun <jig plugin>/skills/file-issue/scripts/check-label-taxonomy.ts .config/label-taxonomy.yaml
+version: 1
+
+# Kept in GitHub's native issue types (Bug, Feature, Task): see .config/jig.yaml.
+types:
+  - id: bug
+    notes: a defect against expected behaviour
+  - id: feature
+    notes: a new capability (scene type, output target, CLI command, skill)
+  - id: task
+    notes: maintenance, docs, tooling or refactor with no behaviour change
+
+statuses:
+  - id: triage
+    notes: filed, not yet accepted
+  - id: backlog
+    notes: accepted, not planned for now
+  - id: todo
+    notes: ready to start
+  - id: in-progress
+    notes: being worked
+  - id: in-review
+    notes: pull request open
+  - id: done
+    notes: terminal — shipped
+  - id: canceled
+    notes: terminal — closed without completing
+  - id: duplicate
+    notes: terminal — a copy of another issue
+
+flags:
+  - id: epic
+    fires: each sub-issue is delivered as its own pull request
+    scope: container
+    apply_when: the work splits into several independently shippable pull requests
+  - id: visual-change
+    fires: reviewer must look at the regenerated media / QC sheet, not only the diff
+    scope: shipping-item
+    apply_when: the change alters rendered output (layout, motion, colours, the logo)
+    do_not_apply_when: only tests, docs or tooling change
+
+groups:
+  - id: size
+    required: true
+    not_required_on: [epic]
+    labels:
+      - id: small
+        notes: under half a day
+      - id: medium
+        notes: up to two days
+      - id: large
+        notes: more than two days; split it
+
+categories:
+  - id: area
+    prefix: "area:"
+    recommended: true
+    max: 3
+    notes: which part of motion-kit the work is in
+    labels:
+      - id: runtime
+        notes: runtime/ — scene contract, motion, svg, player, bake, scene types
+      - id: cli
+        notes: cli/ and lib/ — check, build, export, raster, video, vendor
+      - id: adapters
+        notes: adapters/ — slidev, astro, page
+      - id: skills
+        notes: skills/ — animated-diagram, motion-render, project-logo
+      - id: brand
+        notes: brand/ and logo/icon generation
+      - id: docs
+        notes: README, AGENTS.md, docs/
+      - id: tooling
+        notes: hooks, typecheck, CI, Jig configuration

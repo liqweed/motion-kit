@@ -129,7 +129,7 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 	try {
 		fitted = fit(f, nodes, locale, maxFs);
 	} catch (e) {
-		throw new Error(`sequence "${spec.id}": labels do not fit format ${f.name} at ≥ ${FONT_MIN}px: ${e.message}`);
+		throw new Error(`sequence "${spec.id}": labels do not fit format ${f.name} at ≥ ${FONT_MIN}px: ${e instanceof Error ? e.message : e}`);
 	}
 	const { L } = fitted;
 

@@ -6,7 +6,7 @@
 		{
 			"name": "motion-kit",
 			"source": "./",
-			"description": "animated-diagram + motion-render skills and the motion-kit runtime/CLI",
+			"description": "animated-diagram, motion-render and project-logo skills and the motion-kit runtime/CLI",
 			"version": "0.1.0"
 		}
 	]

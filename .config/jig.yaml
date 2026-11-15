@@ -1,0 +1,19 @@
+# Jig configuration (https://jig-harness.dev). Every field, its default and
+# the skills that read it: CONFIGURATION.md in the installed jig plugin.
+# Check it: bun <plugin>/skills/audit/scripts/config-fit.ts
+gates:
+  # Full local checks before a push: typecheck, versions, tests, scene gate, media freshness.
+  command: npm run gate
+repository:
+  base_branch: main
+review:
+  repo_slug: liqweed/motion-kit
+issue_tracker:
+  adapter: github # GitHub Issues on liqweed/motion-kit
+  # Repo-local taxonomy; also overrides the one set in ~/.jig/jig.yaml.
+  taxonomy: .config/label-taxonomy.yaml
+  file_command: /jig:file-issue
+  facets:
+    type: { store: native } # GitHub issue types: Bug, Feature, Task
+    priority: { store: label } # "priority: urgent|high|medium|low"
+    size: { store: label } # small | medium | large
