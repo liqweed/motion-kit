@@ -1,13 +1,13 @@
 {
 	"name": "motion-kit",
 	"owner": { "name": "Ophir Radnitz" },
-	"metadata": { "description": "motion-kit: animated diagram skills (private)" },
+	"metadata": { "description": "motion-kit: animated diagram skills" },
 	"plugins": [
 		{
 			"name": "motion-kit",
 			"source": "./",
 			"description": "animated-diagram, motion-render and project-logo skills and the motion-kit runtime/CLI",
-			"version": "0.1.0"
+			"version": "0.2.0"
 		}
 	]
 }

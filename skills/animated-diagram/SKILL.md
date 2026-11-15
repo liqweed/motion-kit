@@ -70,6 +70,9 @@ mk video diagram.json -f 9:16 -o reel.mp4 --sheet sheet.png
 mk vendor <repo>/components/motion-kit --adapter slidev   # or astro / page
 ```
 
+Vendoring includes the full MIT `LICENSE`. Keep that file and the SPDX
+headers when redistributing the vendored runtime and adapters.
+
 ## References
 
 | File | Read when |

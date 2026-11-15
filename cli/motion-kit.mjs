@@ -175,6 +175,7 @@ async function main() {
 		case "vendor": {
 			const dir = resolve(need(args[0], "<dir>"));
 			mkdirSync(dir, { recursive: true });
+			cpSync(join(ROOT, "LICENSE"), join(dir, "LICENSE"));
 			cpSync(join(ROOT, "runtime"), join(dir, "runtime"), { recursive: true });
 			const adapter = join(ROOT, "adapters", a.adapter);
 			cpSync(adapter, join(dir, "adapter"), { recursive: true });

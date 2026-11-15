@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Ophir Radnitz
 /**
  * motion-kit · bake: a scene → one zero-JavaScript animated SVG.
  *

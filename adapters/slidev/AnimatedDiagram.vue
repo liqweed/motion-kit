@@ -1,4 +1,7 @@
 <!--
+  SPDX-License-Identifier: MIT
+  Copyright (c) 2026 Ophir Radnitz
+
   motion-kit · Slidev adapter (verified against Slidev 53).
 
   Each slide click advances one build step. The component registers its own

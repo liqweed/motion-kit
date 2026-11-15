@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 Ophir Radnitz
 /**
  * motion-kit · shared drawing parts for scene types.
  *

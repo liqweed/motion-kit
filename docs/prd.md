@@ -27,8 +27,8 @@ always gives the same bytes (`README.md:5-12`, `runtime/scene.mjs:1-18`).
 
 | User | What they do | Notes |
 |---|---|---|
-| **Ophir** (owner) | Briefs diagrams, approves the story and the look, ships them in his own projects (decks, websites, Craft Pages, READMEs, social video) | Private toolkit (`README.md:14`, `package.json:4`) |
-| **Coding agents acting for Ophir** (Claude Code, Craft Agent, Codex) | Write specs or custom scenes, run the gate, render deliverables, vendor the runtime into consumer repos, maintain motion-kit itself | Reached through the plugin skills `animated-diagram` and `motion-render` (`skills/*/SKILL.md`) and `AGENTS.md` |
+| **Authors** (the maintainer and anyone adopting the open-source release) | Brief diagrams, approve the story and the look, ship them in their own projects (decks, websites, Craft Pages, READMEs, social video) | MIT-licensed (`LICENSE`); the maintainer, Ophir, is the first user |
+| **Coding agents acting for an author** (Claude Code, Craft Agent, Codex) | Write specs or custom scenes, run the gate, render deliverables, vendor the runtime into consumer repos, maintain motion-kit itself | Reached through the plugin skills `animated-diagram` and `motion-render` (`skills/*/SKILL.md`) and `AGENTS.md` |
 | **Viewers** (indirect) | Watch, step through, or read the diagram | Includes keyboard, screen-reader, reduced-motion and phone users |
 
 Agents are first-class users: CLI output, error messages and the gate are
@@ -82,7 +82,6 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 - Shipping brand styles or icon sets: motion-kit ships only `neutral`; brands
   live in consumer repos (`README.md:70`, `runtime/parts.mjs:14-18`).
 - Font embedding in SVG (`skills/animated-diagram/references/styles.md:51-55`).
-- Public distribution (npm, public docs site).
 
 ## 5. Output targets and their requirements
 
@@ -129,7 +128,7 @@ claims. Green checks are not approval
 | **Runtime runs in browser and Node**: `runtime/` has no `node:` imports, no DOM at import time, no dependencies | `AGENTS.md:31` |
 | **Vendoring**: consumers copy `runtime/` verbatim and must not edit it; changes go upstream and are re-vendored | `README.md:84-92` |
 | **Inline-able runtime**: modules must use the single-line relative import subset the HTML inliner supports | `lib/bundle.mjs:8-11` |
-| **Private repo** (`liqweed/motion-kit`, `UNLICENSED`) | `package.json:4,7`, `README.md:14` |
+| **Public, MIT-licensed** (`liqweed/motion-kit`); vendored files keep their SPDX header | `LICENSE`, `package.json` |
 | **Node ≥ 22** | `package.json:8-10` |
 | **Optional native/external tools**: `@resvg/resvg-js` (or Chrome) for PNG/video, `ffmpeg` for video; Node-side code must degrade with a clear message when absent | `package.json:20-22`, `AGENTS.md:32`, `lib/raster.mjs:51`, `lib/video.mjs:31` |
 | **Skills move with the code**: a CLI flag or behaviour change updates the matching skill files in the same commit | `AGENTS.md:34` |
@@ -159,8 +158,8 @@ Proposed (not yet tracked — see open questions):
 
 - The canonical clone lives at `~/workspace/motion-kit`; the plugin copy is a
   fallback without `node_modules` (`README.md:81-82`).
-- Consumers are Ophir's own repos (decks, websites); Craft is a primary
-  destination (`skills/animated-diagram/references/targets.md`).
+- Early consumers are the maintainer's own repos (decks, websites); Craft is
+  a primary destination (`skills/animated-diagram/references/targets.md`).
 
 ## 10. Open questions
 
@@ -185,5 +184,8 @@ Proposed (not yet tracked — see open questions):
    gate rules?
 10. **Success measures.** Which of §8's proposed measures are worth tracking,
     and where?
-11. **Public release.** Is open-sourcing ever intended? It would change the
-    licence, the vendoring story and the skill install path.
+11. **Public release (decided: MIT, open source).** Still open: the npm
+    package name (`motion-kit` is taken; `package.json` stays `private` until
+    this is settled), the skills' hard-coded clone path
+    (`~/workspace/motion-kit`), and a public docs site. Tracked in
+    [`roadmap.md`](roadmap.md) (#5, #6, #2).

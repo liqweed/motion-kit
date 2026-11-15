@@ -16,6 +16,14 @@ after(() => rmSync(tmp, { recursive: true, force: true }));
 const run = (...args) => execFileSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
 
 describe("cli", () => {
+	it("vendor includes the full MIT licence with every adapter", () => {
+		const license = readFileSync(new URL("../LICENSE", import.meta.url), "utf8");
+		for (const adapter of ["page", "astro", "slidev"]) {
+			const dir = join(tmp, `vendor-${adapter}`);
+			run("vendor", dir, "--adapter", adapter);
+			assert.equal(readFileSync(join(dir, "LICENSE"), "utf8"), license, adapter);
+		}
+	});
 	it("check passes every example in every format and locale", () => {
 		const out = run("check", `${EX}order-flow.json`, `${EX}smart-home.json`);
 		assert.equal((out.match(/✓/g) ?? []).length, 2 * 6 * 2);

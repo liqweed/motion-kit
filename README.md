@@ -11,7 +11,7 @@ Deterministic animated diagrams. A scene is a **pure function of time**,
 - a zero-JS baked animated SVG (READMEs, notes, chat previews),
 - MP4 / WebM / GIF video in 16:9, 4:3, 1:1 and 9:16.
 
-Private toolkit for Ophir's projects. Consumers vendor it (see below).
+Open source under the [MIT licence](LICENSE). Consumers vendor the runtime (see below).
 
 ## Examples
 
@@ -69,7 +69,7 @@ examples/       order-flow (sequence), smart-home (hub-spoke), custom-pulse (cus
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
 assets/         generated project icon: icon.svg, icon.png, icon-animated.svg
 docs/media/     baked README animations (generated: npm run media)
-docs/           prd.md, spec/technique.md
+docs/           prd.md, roadmap.md, spec/technique.md
 styles/         neutral.json (the only style shipped; brands live in their repos)
 ```
 
@@ -91,9 +91,10 @@ The skills look for this clone at `~/workspace/motion-kit` first (it has
 node cli/motion-kit.mjs vendor <repo>/components/motion-kit --adapter slidev   # or astro / page
 ```
 
-Copies `runtime/` + the adapter and writes `MOTION_KIT_VERSION`. Don't edit
-vendored files; change motion-kit and re-vendor. Vendoring keeps consumer CI
-self-contained (no access to this private repo needed).
+Copies `runtime/`, the adapter, `lib/check.mjs` and `LICENSE`; writes a gate
+script and `MOTION_KIT_VERSION`. Don't edit vendored files; change motion-kit
+and re-vendor. Vendoring keeps consumer CI
+self-contained (no install step, no network).
 
 ## Rules (the gate enforces them)
 
@@ -101,3 +102,14 @@ Deterministic bytes · settled step frames · rounded numbers · token-only colo
 escaped labels · labels fit their budget in every locale · holds the final frame ·
 ≤ ~8–10 s · no clock or randomness in scenes. See
 `skills/animated-diagram/references/technique.md`.
+
+## Licence and credits
+
+MIT, see [LICENSE](LICENSE). Keep the copied `LICENSE` file and the SPDX
+headers when redistributing vendored files.
+
+Ideas borrowed with thanks: the contact-sheet self-check and hover-linking
+from [visual-explainer](https://github.com/nicobailon/visual-explainer), and
+in-SVG pause and reduced-motion handling from Dashmotion. See
+[`skills/animated-diagram/references/ecosystem.md`](skills/animated-diagram/references/ecosystem.md)
+for related tools and when to use them instead.
