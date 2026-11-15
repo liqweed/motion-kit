@@ -13,6 +13,11 @@
  *   { name, font, radius, stroke, light: {token: color}, dark: {token: color} }
  */
 
+/**
+ * A visual style: font, shape constants and one colour per token, per theme.
+ * @typedef {{ name?: string, font: string, radius: number, stroke: number, light: Record<string, string>, dark: Record<string, string> }} Style
+ */
+
 export const TOKENS = [
 	"bg", // canvas behind the diagram (exports, video)
 	"surface", // pending node fill

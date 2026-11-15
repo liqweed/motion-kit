@@ -38,6 +38,7 @@ export function mountPlayer(container, scene, options = {}) {
 	const style = normalizeStyle(options.style);
 	const labels = { play: "Play", pause: "Pause", replay: "Replay", steps: "Steps", ...(options.labels ?? {}) };
 	const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+	/** @type {Document} */
 	const doc = container.ownerDocument;
 
 	if (!styleInjected && options.injectCss !== false) {
@@ -68,6 +69,7 @@ export function mountPlayer(container, scene, options = {}) {
 	controls.setAttribute("aria-label", scene.title);
 	container.appendChild(controls);
 
+	/** @type {HTMLButtonElement | null} */
 	let playBtn = null;
 	if (!reduced) {
 		playBtn = doc.createElement("button");
@@ -87,20 +89,22 @@ export function mountPlayer(container, scene, options = {}) {
 		controls.appendChild(b);
 		return b;
 	});
+	/** @type {HTMLInputElement | null} */
 	let scrub = null;
 	if (options.scrubber) {
-		scrub = doc.createElement("input");
-		scrub.type = "range";
-		scrub.className = "mk-scrub";
-		scrub.min = "0";
-		scrub.max = String(scene.duration);
-		scrub.step = "0.01";
-		scrub.setAttribute("aria-label", options.labels?.scrubber ?? "Timeline");
-		scrub.addEventListener("input", () => {
+		const input = doc.createElement("input");
+		input.type = "range";
+		input.className = "mk-scrub";
+		input.min = "0";
+		input.max = String(scene.duration);
+		input.step = "0.01";
+		input.setAttribute("aria-label", options.labels?.scrubber ?? "Timeline");
+		input.addEventListener("input", () => {
 			pause();
-			seek(Number(scrub.value));
+			seek(Number(input.value));
 		});
-		controls.appendChild(scrub);
+		controls.appendChild(input);
+		scrub = input;
 	}
 	const caption = doc.createElement("p");
 	caption.className = "mk-caption";

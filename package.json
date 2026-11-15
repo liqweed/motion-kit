@@ -43,7 +43,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^22.20.5",
-		"lefthook": "^1.13.6",
-		"typescript": "^5.9.3"
+		"lefthook": "^2.2.2",
+		"typescript": "^7.0.2"
 	}
 }
