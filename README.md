@@ -11,7 +11,7 @@ Deterministic animated diagrams. A scene is a **pure function of time**,
 - a zero-JS baked animated SVG (READMEs, notes, chat previews),
 - MP4 / WebM / GIF video in 16:9, 4:3, 1:1 and 9:16.
 
-Private toolkit for Ophir's projects. Consumers vendor it (see below).
+Open source under the [MIT licence](LICENSE). Consumers vendor the runtime (see below).
 
 ## Examples
 
@@ -93,7 +93,7 @@ node cli/motion-kit.mjs vendor <repo>/components/motion-kit --adapter slidev   #
 
 Copies `runtime/` + the adapter and writes `MOTION_KIT_VERSION`. Don't edit
 vendored files; change motion-kit and re-vendor. Vendoring keeps consumer CI
-self-contained (no access to this private repo needed).
+self-contained (no install step, no network).
 
 ## Rules (the gate enforces them)
 
@@ -101,3 +101,13 @@ Deterministic bytes · settled step frames · rounded numbers · token-only colo
 escaped labels · labels fit their budget in every locale · holds the final frame ·
 ≤ ~8–10 s · no clock or randomness in scenes. See
 `skills/animated-diagram/references/technique.md`.
+
+## Licence and credits
+
+MIT, see [LICENSE](LICENSE). Vendored files carry an SPDX header; keep it.
+
+Ideas borrowed with thanks: the contact-sheet self-check and hover-linking
+from [visual-explainer](https://github.com/nicobailon/visual-explainer), and
+in-SVG pause and reduced-motion handling from Dashmotion. See
+[`skills/animated-diagram/references/ecosystem.md`](skills/animated-diagram/references/ecosystem.md)
+for related tools and when to use them instead.
