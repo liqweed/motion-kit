@@ -113,3 +113,7 @@ from [visual-explainer](https://github.com/nicobailon/visual-explainer), and
 in-SVG pause and reduced-motion handling from Dashmotion. See
 [`skills/animated-diagram/references/ecosystem.md`](skills/animated-diagram/references/ecosystem.md)
 for related tools and when to use them instead.
+
+Pull requests here are reviewed with the help of
+[CodeRabbit](https://coderabbit.ai), which supports open source projects for
+free. Thank you, CodeRabbit, for the support.
