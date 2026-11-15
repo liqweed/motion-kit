@@ -187,4 +187,5 @@ Proposed (not yet tracked — see open questions):
 11. **Public release (decided: MIT, open source).** Still open: the npm
     package name (`motion-kit` is taken; `package.json` stays `private` until
     this is settled), the skills' hard-coded clone path
-    (`~/workspace/motion-kit`), and a public docs site.
+    (`~/workspace/motion-kit`), and a public docs site. Tracked in
+    [`roadmap.md`](roadmap.md) (#5, #6, #2).

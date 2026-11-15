@@ -69,7 +69,7 @@ examples/       order-flow (sequence), smart-home (hub-spoke), custom-pulse (cus
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
 assets/         generated project icon: icon.svg, icon.png, icon-animated.svg
 docs/media/     baked README animations (generated: npm run media)
-docs/           prd.md, spec/technique.md
+docs/           prd.md, roadmap.md, spec/technique.md
 styles/         neutral.json (the only style shipped; brands live in their repos)
 ```
 
