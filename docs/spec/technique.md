@@ -389,9 +389,11 @@ UI strings MAY be localized via `options.labels`.
   and reduced motion show the settled step frame (`:65`).
 - **Astro** (`adapters/astro/AnimatedDiagram.astro`): server-renders the final
   frame and mounts the player; props MUST be serializable (a spec, not a scene).
-- **Vendor** (`cli/motion-kit.mjs:159-171`): copies `runtime/`, one adapter,
-  `lib/check.mjs` and a spec-only gate script; writes `MOTION_KIT_VERSION`.
-  Vendored files MUST NOT be edited in the consumer.
+- **Vendor** (`cli/motion-kit.mjs`, `vendor` command): copies `runtime/`, one
+  adapter, `lib/check.mjs` and the full MIT `LICENSE`; writes a spec-only gate
+  script and `MOTION_KIT_VERSION`. Consumers MUST retain `LICENSE` and the
+  SPDX headers when redistributing vendored files. Vendored files MUST NOT
+  be edited in the consumer.
 
 ## 11. The gate
 
@@ -439,7 +441,7 @@ Recorded, not resolved. Each needs an owner decision.
 | D8 | Dark fallback | A style with no `dark` applies its **light** overrides to dark (`runtime/style.mjs:66`). | "Missing tokens fall back to neutral" (`styles.md:35`). |
 | D9 | Video frame reuse | PNGs are reused only when `t` repeats (lead and hold) (`lib/video.mjs:46`). | "Identical consecutive frames are rasterized once" (`skills/motion-render/references/video.md:9`). |
 | D10 | Capture-hook key | Key is `options.id ?? scene.id`, i.e. format-suffixed (`order-flow-16x9`); the Astro adapter appends a random suffix (`adapters/astro/AnimatedDiagram.astro:51`); the Slidev adapter exposes none. | `window.__motionKit[sceneId]` / `[id]` (`adapters/page/README.md:22`, `interactivity.md:14-15`). |
-| D11 | Vendored gate | `check.mjs` written by `vendor` handles `.json` only, skips the contrast check, and detects locales with `^[a-z]{2}$` (no region, no string-value test) (`cli/motion-kit.mjs:177-207`). | Implied parity with `motion-kit check` (`README.md:90-92`). README also omits that `vendor` copies `lib/check.mjs`. |
+| D11 | Vendored gate | `check.mjs` written by `vendor` handles `.json` only, skips the contrast check, and detects locales with `^[a-z]{2}$` (no region, no string-value test) (`cli/motion-kit.mjs:177-207`). | Implied parity with `motion-kit check` (`README.md:90-92`). |
 | D12 | Auto-fit maximum | Sequence 22 px, hub-spoke 20 px (`runtime/types/hub-spoke.mjs:97`). | "Fixed formats ≤ 22 px" without type distinction (`technique.md:90`); `formats.md:12` is correct. |
 | D13 | Timing budgets | `ENTRANCE_MAX` is exported but unused; stagger and entrance limits are not checked. | Listed as "Hard rules" (`skills/animated-diagram/SKILL.md:50`). |
 | D14 | Manifest reproducibility | `inputHash` covers the source file and style only, not the runtime; a runtime change keeps the hash while frames change (only `version` hints at it) (`lib/export.mjs:66-70`). | "A stale export is easy to spot" (`skills/motion-render/SKILL.md:66-68`). |

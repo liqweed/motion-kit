@@ -91,8 +91,9 @@ The skills look for this clone at `~/workspace/motion-kit` first (it has
 node cli/motion-kit.mjs vendor <repo>/components/motion-kit --adapter slidev   # or astro / page
 ```
 
-Copies `runtime/` + the adapter and writes `MOTION_KIT_VERSION`. Don't edit
-vendored files; change motion-kit and re-vendor. Vendoring keeps consumer CI
+Copies `runtime/`, the adapter, `lib/check.mjs` and `LICENSE`; writes a gate
+script and `MOTION_KIT_VERSION`. Don't edit vendored files; change motion-kit
+and re-vendor. Vendoring keeps consumer CI
 self-contained (no install step, no network).
 
 ## Rules (the gate enforces them)
@@ -104,7 +105,8 @@ escaped labels · labels fit their budget in every locale · holds the final fra
 
 ## Licence and credits
 
-MIT, see [LICENSE](LICENSE). Vendored files carry an SPDX header; keep it.
+MIT, see [LICENSE](LICENSE). Keep the copied `LICENSE` file and the SPDX
+headers when redistributing vendored files.
 
 Ideas borrowed with thanks: the contact-sheet self-check and hover-linking
 from [visual-explainer](https://github.com/nicobailon/visual-explainer), and
