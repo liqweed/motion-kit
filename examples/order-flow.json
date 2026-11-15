@@ -1,0 +1,17 @@
+{
+	"type": "sequence",
+	"id": "order-flow",
+	"title": { "en": "How an order reaches the customer", "nl": "Hoe een bestelling bij de klant komt" },
+	"description": {
+		"en": "Six stages in order: order, payment, pick and pack, ship, deliver and follow up.",
+		"nl": "Zes stappen op volgorde: bestelling, betaling, verzamelen en inpakken, verzenden, bezorgen en opvolgen."
+	},
+	"nodes": [
+		{ "label": { "en": "Order", "nl": "Bestelling" }, "detail": { "en": "The customer places an order.", "nl": "De klant plaatst een bestelling." } },
+		{ "label": { "en": "Payment", "nl": "Betaling" }, "detail": { "en": "Payment is confirmed.", "nl": "De betaling wordt bevestigd." } },
+		{ "label": { "en": "Pick / Pack", "nl": "Verzamelen / Inpakken" }, "detail": { "en": "Items are collected and packed.", "nl": "Artikelen worden verzameld en ingepakt." } },
+		{ "label": { "en": "Ship", "nl": "Verzenden" }, "detail": { "en": "The parcel leaves the warehouse.", "nl": "Het pakket verlaat het magazijn." } },
+		{ "label": { "en": "Deliver", "nl": "Bezorgen" }, "detail": { "en": "The carrier delivers the parcel.", "nl": "De vervoerder bezorgt het pakket." } },
+		{ "label": { "en": "Follow up", "nl": "Opvolgen" }, "detail": { "en": "The customer is asked for feedback.", "nl": "De klant wordt om feedback gevraagd." } }
+	]
+}

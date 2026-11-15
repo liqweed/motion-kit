@@ -1,0 +1,23 @@
+/**
+ * motion-kit · scene type registry.
+ *
+ *   createScene(spec, { format, locale }) → validated scene
+ *
+ * New scene types: add a module exporting (spec, opts) → scene and register it
+ * here. A one-off diagram can skip the registry: write a module whose default
+ * export is (opts) → scene (see examples/custom-*.scene.mjs).
+ */
+import { validateScene } from "../scene.mjs";
+import { hubSpoke } from "./hub-spoke.mjs";
+import { sequence } from "./sequence.mjs";
+
+export const SCENE_TYPES = {
+	sequence,
+	"hub-spoke": hubSpoke,
+};
+
+export function createScene(spec, opts = {}) {
+	const make = SCENE_TYPES[spec.type];
+	if (!make) throw new Error(`unknown scene type "${spec.type}" (known: ${Object.keys(SCENE_TYPES).join(", ")})`);
+	return validateScene(make(spec, opts));
+}

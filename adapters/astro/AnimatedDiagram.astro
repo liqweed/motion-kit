@@ -1,0 +1,53 @@
+---
+/**
+ * motion-kit · Astro adapter (reference).
+ *
+ * Server-renders the FINAL frame (no-JS visitors, crawlers and reduced-motion
+ * users get the complete diagram), then the client script mounts the live
+ * player, which replays once when the diagram scrolls into view.
+ *
+ *   import AnimatedDiagram from "../motion-kit/adapter/AnimatedDiagram.astro";
+ *   import spec from "../diagrams/order-flow.json";
+ *   <AnimatedDiagram spec={spec} format="wide" locale="nl" class="hidden lg:block" />
+ *   <AnimatedDiagram spec={spec} format="tall" locale="nl" class="lg:hidden" />
+ *
+ * Mount a wide and a tall instance and switch with CSS: display:none also
+ * removes the hidden one from the accessibility tree and its autoplay observer.
+ * Pass only serializable props (a spec, not a scene object).
+ */
+import { renderSvg } from "../runtime/scene.mjs";
+import { createScene } from "../runtime/types/index.mjs";
+
+interface Props {
+	spec: Record<string, unknown>;
+	format?: string;
+	locale?: string;
+	class?: string;
+	scrubber?: boolean;
+	labels?: Record<string, string>;
+}
+const { spec, format = "16:9", locale = "en", class: className, scrubber = false, labels } = Astro.props;
+const scene = createScene(spec, { format, locale });
+const fallback = renderSvg(scene, scene.duration, { live: true, idPrefix: `${scene.id}-ssr` });
+---
+
+<div
+	class:list={["mk-astro", className]}
+	data-mk-spec={JSON.stringify(spec)}
+	data-mk-opts={JSON.stringify({ format, locale, scrubber, labels })}
+	set:html={fallback}
+/>
+
+<script>
+	import { mountPlayer } from "../runtime/player.mjs";
+	import { createScene } from "../runtime/types/index.mjs";
+
+	for (const el of document.querySelectorAll<HTMLElement>("[data-mk-spec]")) {
+		if (el.dataset.mkMounted) continue;
+		el.dataset.mkMounted = "1";
+		const spec = JSON.parse(el.dataset.mkSpec ?? "{}");
+		const opts = JSON.parse(el.dataset.mkOpts ?? "{}");
+		const scene = createScene(spec, { format: opts.format, locale: opts.locale });
+		mountPlayer(el, scene, { scrubber: opts.scrubber, labels: opts.labels, id: `${scene.id}-${Math.random().toString(36).slice(2, 7)}` });
+	}
+</script>

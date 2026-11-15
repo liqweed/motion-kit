@@ -1,0 +1,17 @@
+{
+	"type": "hub-spoke",
+	"id": "smart-home",
+	"title": { "en": "One hub for every device in the house", "nl": "Eén hub voor elk apparaat in huis" },
+	"description": {
+		"en": "A central hub talks to five kinds of devices, one link at a time.",
+		"nl": "Een centrale hub praat met vijf soorten apparaten, één koppeling tegelijk."
+	},
+	"hub": { "label": { "en": "Home hub", "nl": "Thuishub" }, "detail": { "en": "Automations run here, locally.", "nl": "Automatiseringen draaien hier, lokaal." } },
+	"spokes": [
+		{ "label": { "en": "Lights", "nl": "Verlichting" }, "detail": { "en": "Scenes follow the time of day.", "nl": "Scènes volgen het tijdstip." } },
+		{ "label": { "en": "Door locks", "nl": "Deursloten" }, "detail": { "en": "Locks report state and battery.", "nl": "Sloten melden status en batterij." } },
+		{ "label": { "en": "Heating", "nl": "Verwarming" }, "detail": { "en": "Rooms heat when someone is home.", "nl": "Kamers warmen op als er iemand thuis is." } },
+		{ "label": { "en": "Smoke alarms", "nl": "Rookmelders" }, "detail": { "en": "An alarm reaches every phone.", "nl": "Een alarm bereikt elke telefoon." } },
+		{ "label": { "en": "Phones", "nl": "Telefoons" }, "detail": { "en": "Presence comes from the phones.", "nl": "Aanwezigheid komt van de telefoons." } }
+	]
+}

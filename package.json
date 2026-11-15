@@ -1,0 +1,21 @@
+{
+	"name": "motion-kit",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Deterministic animated diagrams: scenes as pure functions of time, for live pages, slides, baked SVG and video.",
+	"type": "module",
+	"license": "UNLICENSED",
+	"engines": {
+		"node": ">=22"
+	},
+	"bin": {
+		"motion-kit": "cli/motion-kit.mjs"
+	},
+	"scripts": {
+		"test": "node --test test/*.test.mjs",
+		"check": "node cli/motion-kit.mjs check examples/order-flow.json examples/smart-home.json"
+	},
+	"optionalDependencies": {
+		"@resvg/resvg-js": "^2.6.2"
+	}
+}
