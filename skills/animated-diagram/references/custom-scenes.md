@@ -37,3 +37,20 @@ Rules:
   default export a function; the HTML builder supports only that subset.
 - If the same shape is needed twice, promote it to a scene type in
   `runtime/types/` with a spec and tests.
+
+## Scenes outside this repository: `kit`
+
+The CLI calls `make({ format, locale, kit })`, where `kit` is the whole
+runtime in one flat namespace (`lib/load.mjs` `KIT`). A scene file kept in
+another repository can destructure what it needs instead of importing:
+
+```js
+export default function make({ format = "1:1", kit }) {
+	const { tok, el, num, progress, easeOut } = kit;
+	…
+}
+```
+
+Every Node-side command (check, export, bake, icon, video) supports this.
+`motion-kit build` bundles the module for the browser and needs relative
+imports; vendor the runtime for that.

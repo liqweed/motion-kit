@@ -4,7 +4,10 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
+import { rasterizer } from "../lib/raster.mjs";
 import { hasFfmpeg, probe } from "../lib/video.mjs";
+
+const hasRaster = Boolean(await rasterizer());
 
 const CLI = new URL("../cli/motion-kit.mjs", import.meta.url).pathname;
 const EX = new URL("../examples/", import.meta.url).pathname;
@@ -39,6 +42,23 @@ describe("cli", () => {
 		const f = join(tmp, "b.svg");
 		run("bake", `${EX}smart-home.json`, "-o", f, "--fps", "10");
 		assert.ok(!readFileSync(f, "utf8").includes("<script"));
+	});
+	it("icon writes the project icon set from a square scene, reproducibly", { skip: !hasRaster && "no rasterizer" }, () => {
+		const logo = new URL("../brand/logo.scene.mjs", import.meta.url).pathname;
+		const a = join(tmp, "icon-a");
+		const b = join(tmp, "icon-b");
+		run("icon", logo, "-o", a, "--size", "128");
+		run("icon", logo, "-o", b, "--size", "128");
+		for (const f of ["assets/icon.svg", "assets/icon.png", "assets/icon-animated.svg", ".idea/icon.svg", ".idea/icon_dark.svg"]) {
+			assert.ok(existsSync(join(a, f)), f);
+			assert.deepEqual(readFileSync(join(a, f)), readFileSync(join(b, f)), `${f} is not deterministic`);
+		}
+		const png = readFileSync(join(a, "assets/icon.png"));
+		assert.equal(png.readUInt32BE(16), 128); // IHDR width
+		assert.ok(!readFileSync(join(a, ".idea/icon_dark.svg"), "utf8").includes("var(--"));
+	});
+	it("icon refuses a non-square scene", () => {
+		assert.throws(() => execFileSync(process.execPath, [CLI, "icon", `${EX}order-flow.json`, "-f", "16:9", "-o", join(tmp, "nope")], { stdio: "pipe" }));
 	});
 	it("video renders an MP4 with the expected size and duration", { skip: !hasFfmpeg() && "ffmpeg not installed" }, () => {
 		const f = join(tmp, "v.mp4");
