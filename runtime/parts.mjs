@@ -49,7 +49,7 @@ function glyph(node, cx, cy, size, color) {
 
 /**
  * Circular node with pending and active layers.
- * @param {object} o { cx, cy, r, enter, active, node, strokeWidth }
+ * @param {{ cx: number, cy: number, r: number, enter: number, active: number, node: string, strokeWidth?: number }} o
  */
 export function circleNode({ cx, cy, r, enter, active, node, strokeWidth = 2 }) {
 	if (enter <= 0) return "";
@@ -72,7 +72,7 @@ export function circleNode({ cx, cy, r, enter, active, node, strokeWidth = 2 }) 
 
 /**
  * Rounded box node with a wrapped label inside.
- * @param {object} o { x, y, w, h, lines, fontSize, enter, active, radius, strokeWidth, weight }
+ * @param {{ x: number, y: number, w: number, h: number, lines: string[], fontSize: number, enter: number, active: number, radius?: number, strokeWidth?: number, weight?: number }} o
  */
 export function boxNode({ x, y, w, h, lines, fontSize, enter, active, radius = 10, strokeWidth = 2, weight = 500 }) {
 	if (enter <= 0) return "";

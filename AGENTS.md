@@ -27,7 +27,8 @@ npm run media          # regenerate docs/media/*.svg, assets/icon*, .idea/icon*;
 node cli/motion-kit.mjs --help
 ```
 
-Node ≥ 22. No build step, no transpiler, no bundler: TypeScript is only a
+Node ≥ 22 for users; develop on Node 26, the current LTS (`.nvmrc`), and keep
+the code to what Node 22 supports (`@types/node` stays on 22). No build step, no transpiler, no bundler: TypeScript is only a
 checker over JSDoc. Git hooks (lefthook, installed by `npm install`):
 pre-commit runs typecheck / scene gate / media freshness / version sync on
 matching staged files, commit-msg enforces Conventional Commits, pre-push
