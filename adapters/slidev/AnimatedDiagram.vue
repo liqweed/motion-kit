@@ -1,38 +1,42 @@
 <!--
-  motion-kit · Slidev adapter.
+  motion-kit · Slidev adapter (verified against Slidev 53).
 
-  Each slide click advances one build step. Moving forward by one click animates
-  from the previous step's time to the next; going back or jumping seeks with no
-  animation. In overview / print / export (and with prefers-reduced-motion) it
-  always shows the settled step frame, so `slidev export --with-clicks` gets one
-  clean frame per click.
+  Each slide click advances one build step. The component registers its own
+  clicks with the slide (the same API Slidev's ShikiMagicMove uses), so no
+  `clicks:` frontmatter is needed and it composes with v-click elements.
 
-  Usage in a slide (only documented Slidev globals are used, passed as props):
+  - Step 1 shows on arrival (its entrance plays once); clicks 1…N−1 advance.
+  - Forward by one click: animates from the previous step's time to the next.
+    Back or jump: seeks with no animation.
+  - Overview, presenter next-preview, print/PDF/PNG export (`isPrintMode`) and
+    prefers-reduced-motion: always the settled step frame, so
+    `slidev export --with-clicks` writes one clean frame per click.
+  - Light/dark follows Slidev's dark mode unless `theme` is set.
 
-    ---
-    clicks: 6            # number of steps − 1 (step 1 shows on arrival)
-    ---
+  Usage in a slide:
+
     <script setup>
     import spec from './diagrams/order-flow.json'
     </script>
 
-    <AnimatedDiagram :spec="spec" :clicks="$clicks" :context="$renderContext"
-                     format="16:9" locale="en" />
+    <AnimatedDiagram :spec="spec" format="16:9" locale="en" />
 
   Props:
     spec      scene spec (JSON) for a registered scene type, or
-    scene     a ready scene object (custom scene modules)
+    scene     a ready scene object (custom scene module output)
     format    "16:9" | "4:3" | "1:1" | "9:16" | "wide" | "tall"   (default "16:9")
     locale    string (default "en")
-    clicks    $clicks — current click count on this slide
-    context   $renderContext — "slide" | "presenter" | "overview" | "previewNext" | ...
-    offset    clicks used by other elements before the diagram starts (default 0)
+    at        Slidev click position of the first advance (default "+1")
     intro     play the entrance up to step 1 when the slide opens (default true)
-    theme     "light" | "dark" | undefined (auto: html.dark class)
+    theme     "light" | "dark" (default: follow Slidev dark mode)
     styleSpec style object (tokens); default neutral
+    maxHeight CSS length; default "380px" fits under a slide title on Slidev's
+              980×552 canvas. Use "100%" (with a full-height parent) for
+              full-bleed diagram slides.
 -->
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useDarkMode, useNav, useSlideContext } from "@slidev/client";
+import { computed, onMounted, onUnmounted, ref, unref, watch } from "vue";
 import { renderSvg } from "../runtime/scene.mjs";
 import { cssVars, normalizeStyle } from "../runtime/style.mjs";
 import { createScene } from "../runtime/types/index.mjs";
@@ -42,32 +46,41 @@ const props = defineProps({
 	scene: { type: Object, default: null },
 	format: { type: String, default: "16:9" },
 	locale: { type: String, default: "en" },
-	clicks: { type: Number, default: 0 },
-	context: { type: String, default: "slide" },
-	offset: { type: Number, default: 0 },
+	at: { type: [String, Number], default: "+1" },
 	intro: { type: Boolean, default: true },
 	theme: { type: String, default: undefined },
 	styleSpec: { type: Object, default: null },
+	maxHeight: { type: String, default: "380px" },
 });
+
+const { $clicksContext: clicks, $renderContext } = useSlideContext();
+const { isPrintMode } = useNav();
+const { isDark } = useDarkMode();
 
 const scene = computed(() => props.scene ?? createScene(props.spec, { format: props.format, locale: props.locale }));
 const style = computed(() => normalizeStyle(props.styleSpec ?? "neutral"));
-const live = computed(() => props.context === "slide" || props.context === "presenter");
+const n = scene.value.steps.length;
+const id = `mk-${scene.value.id}-${Math.random().toString(36).slice(2, 8)}`;
 const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+const animated = computed(() => ["slide", "presenter"].includes(unref($renderContext)) && !isPrintMode.value && !reduced);
 
-const stepIndex = computed(() => Math.min(Math.max(props.clicks - props.offset, 0), scene.value.steps.length - 1));
-const t = ref(live.value && props.intro && !reduced ? 0 : scene.value.steps[stepIndex.value].at);
-const dark = ref(false);
+// Register N−1 clicks (step 1 is shown on arrival).
+const info = clicks && n > 1 ? clicks.calculateSince(props.at, n - 1) : null;
+const stepIndex = computed(() => {
+	if (!info || !clicks) return n - 1;
+	return Math.min(Math.max(clicks.current - info.start + 1, 0), n - 1);
+});
+
+const t = ref(scene.value.steps[stepIndex.value].at);
 let raf = 0;
 
 function animate(from, to) {
 	cancelAnimationFrame(raf);
-	if (!live.value || reduced || to <= from) {
+	if (!animated.value || to <= from) {
 		t.value = to;
 		return;
 	}
 	const start = performance.now();
-	const span = to - from;
 	const tick = (now) => {
 		const v = Math.min(from + (now - start) / 1000, to);
 		t.value = v;
@@ -75,7 +88,6 @@ function animate(from, to) {
 	};
 	t.value = from;
 	raf = requestAnimationFrame(tick);
-	return span;
 }
 
 watch(stepIndex, (next, prev) => {
@@ -88,17 +100,21 @@ watch(stepIndex, (next, prev) => {
 });
 
 onMounted(() => {
-	dark.value = props.theme ? props.theme === "dark" : document.documentElement.classList.contains("dark");
-	if (live.value && props.intro && !reduced) animate(0, scene.value.steps[stepIndex.value].at);
+	if (info) clicks.register(id, info);
+	if (animated.value && props.intro && stepIndex.value === 0) animate(0, scene.value.steps[0].at);
 });
-onBeforeUnmount(() => cancelAnimationFrame(raf));
+onUnmounted(() => {
+	cancelAnimationFrame(raf);
+	clicks?.unregister(id);
+});
 
-const markup = computed(() => renderSvg(scene.value, t.value, { style: style.value, live: true, idPrefix: `${scene.value.id}-${props.clicks}` }));
-const vars = computed(() => cssVars(style.value, dark.value ? "dark" : "light"));
+const dark = computed(() => (props.theme ? props.theme === "dark" : isDark.value));
+const markup = computed(() => renderSvg(scene.value, t.value, { style: style.value, live: true, idPrefix: id }));
+const vars = computed(() => `${cssVars(style.value, dark.value ? "dark" : "light")};--mk-max-h:${props.maxHeight}`);
 </script>
 
 <template>
-	<figure class="mk-slidev" :style="vars">
+	<figure class="mk-slidev" :style="vars" :data-mk-step="stepIndex + 1">
 		<div class="mk-slidev-stage" v-html="markup" />
 	</figure>
 </template>
@@ -112,6 +128,7 @@ const vars = computed(() => cssVars(style.value, dark.value ? "dark" : "light"))
 	display: block;
 	width: 100%;
 	height: auto;
-	max-height: 100%;
+	max-height: var(--mk-max-h, 380px);
+	margin: 0 auto;
 }
 </style>

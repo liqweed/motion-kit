@@ -2,7 +2,7 @@
 
 | App | Use | Notes |
 |---|---|---|
-| **Slidev** | the Slidev adapter (live, one step per click) | `vendor <deck>/components/motion-kit --adapter slidev`; `clicks: <steps − 1>` in frontmatter; `slidev export --with-clicks` writes one settled frame per click |
+| **Slidev** | the Slidev adapter (live, one step per click) | `vendor <deck>/components/motion-kit --adapter slidev`; `<AnimatedDiagram :spec="spec" />` registers its own clicks; `slidev export --with-clicks` writes one settled frame per click (verified, Slidev 53) |
 | **Marp** | `--png --scale 2` | `![bg contain](slides/03-step.png)`, one slide per step |
 | **PowerPoint 365** | SVG (editable, sharp) or PNG | Same position and size on each slide; transition *Morph* or *None* |
 | **Keynote** | SVG or PNG | Magic Move works when frames share a size and position |

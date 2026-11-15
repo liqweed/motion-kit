@@ -4,7 +4,7 @@
 |---|---|---|---|
 | **Craft Page** (revisit / share) | yes, inline only; no network (`connect-src 'none'`) | interactive player | `build -o x.html` → `create_page` with the file content (read `~/.craft-agent/docs/pages.md` first) |
 | **Craft in-chat preview** | **no** (`html-preview` iframe blocks scripts) | baked SVG, or step PNGs | `bake -o x.svg` → `image-preview`; or `export --png` → `image-preview` items |
-| **Slidev** (stagewright, docomply-presentations) | yes | one step per click | `vendor <deck>/components/motion-kit --adapter slidev` → `<AnimatedDiagram :spec :clicks="$clicks" :context="$renderContext" />`, frontmatter `clicks: steps−1` |
+| **Slidev** (stagewright, docomply-presentations) | yes | one step per click (component registers its own clicks; composes with `v-click`) | `vendor <deck>/components/motion-kit --adapter slidev` → `<AnimatedDiagram :spec="spec" />`; `maxHeight` (default 380px fits under a title) |
 | **Marp / PowerPoint / Keynote** | no | one slide per step, same position; transition None/Dissolve/Morph | `export --png --scale 2` (Marp, Google Slides) or the SVGs (PowerPoint 365, Keynote) |
 | **Website** (Astro, React, static) | yes | server-rendered final frame + player | `vendor <repo>/src/motion-kit --adapter astro`; wide + tall instances switched with CSS |
 | **README / Obsidian / email / docs** | no | baked SVG (animated) or a GIF | `bake` (CSS animation inside SVG: works in browsers and GitHub `<img>`); `video -o x.gif` for email |

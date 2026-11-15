@@ -162,6 +162,9 @@ async function main() {
 			cpSync(join(ROOT, "runtime"), join(dir, "runtime"), { recursive: true });
 			const adapter = join(ROOT, "adapters", a.adapter);
 			cpSync(adapter, join(dir, "adapter"), { recursive: true });
+			mkdirSync(join(dir, "lib"), { recursive: true });
+			cpSync(join(ROOT, "lib", "check.mjs"), join(dir, "lib", "check.mjs"));
+			writeFileSync(join(dir, "check.mjs"), VENDOR_CHECK);
 			writeFileSync(join(dir, "MOTION_KIT_VERSION"), `motion-kit ${VERSION}\nadapter ${a.adapter}\nvendored from liqweed/motion-kit; do not edit here, re-vendor instead.\n`);
 			console.log(`vendored runtime + ${a.adapter} adapter (motion-kit ${VERSION}) into ${dir}`);
 			return;
@@ -170,6 +173,38 @@ async function main() {
 			fail(`unknown command "${cmd}" (try --help)`);
 	}
 }
+
+const VENDOR_CHECK = `#!/usr/bin/env node
+// motion-kit gate for vendored copies: node check.mjs <spec.json...> [--format F]
+// Checks every listed spec in every format (or --format) and every locale it contains.
+import { readFileSync } from "node:fs";
+import { checkScene } from "./lib/check.mjs";
+import { FORMATS } from "./runtime/scene.mjs";
+import { createScene } from "./runtime/types/index.mjs";
+
+const args = process.argv.slice(2);
+const fi = args.indexOf("--format");
+const formats = fi >= 0 ? [args.splice(fi, 2)[1]] : Object.keys(FORMATS);
+let bad = 0;
+for (const file of args) {
+	const spec = JSON.parse(readFileSync(file, "utf8"));
+	const locales = new Set();
+	JSON.stringify(spec, (k, v) => {
+		if (v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length && Object.keys(v).every((x) => /^[a-z]{2}$/.test(x))) Object.keys(v).forEach((l) => locales.add(l));
+		return v;
+	});
+	for (const format of formats) {
+		for (const locale of locales.size ? locales : ["en"]) {
+			try {
+				const r = checkScene(createScene(spec, { format, locale }));
+				if (r.ok) console.log(\`✓ \${file} · \${format} · \${locale}\`);
+				else { bad++; console.error(\`✗ \${file} · \${format} · \${locale}\\n  - \${r.problems.join("\\n  - ")}\`); }
+			} catch (e) { bad++; console.error(\`✗ \${file} · \${format} · \${locale}: \${e.message}\`); }
+		}
+	}
+}
+process.exit(bad ? 1 : 0);
+`;
 
 function detectLocales(spec) {
 	const found = new Set();
