@@ -16,7 +16,7 @@ export function wrapLabel(label, maxChars, maxLines = 2) {
 			if (/^[\/–—&+|]$/.test(w) && acc.length) acc[acc.length - 1] += ` ${w}`;
 			else acc.push(w);
 			return acc;
-		}, [])
+		}, /** @type {string[]} */ ([]))
 		.flatMap((word) => word.split(/(?<=\/)(?=[^\s])/).map((part, i) => ({ part, space: i === 0 })));
 	const lines = [];
 	let cur = "";

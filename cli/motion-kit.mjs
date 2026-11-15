@@ -7,6 +7,7 @@
  *   motion-kit export <scene> --out dir      [--format F] [--locale L] [--style S] [--theme light|dark] [--png] [--scale 2] [--qc] [--background]
  *   motion-kit bake   <scene> --out x.svg    [--fps 15] [--theme ...] [--style S]
  *   motion-kit video  <scene> --out x.mp4|.gif|.webm [--fps 30] [--scale 2] [--hold 1.5] [--sheet sheet.png]
+ *   motion-kit icon   <scene> --out <repo>  [--size 512] [--style S] [--no-png]   project icon set (assets/, .idea/)
  *   motion-kit vendor <dir> [--adapter page|slidev|astro]
  *   motion-kit formats | types
  *
@@ -22,6 +23,7 @@ import { checkContrast } from "../runtime/style.mjs";
 import { SCENE_TYPES } from "../runtime/types/index.mjs";
 import { checkScene } from "../lib/check.mjs";
 import { buildHtml } from "../lib/build.mjs";
+import { writeIconSet } from "../lib/icon.mjs";
 import { exportSteps } from "../lib/export.mjs";
 import { loadScene, loadStyle } from "../lib/load.mjs";
 import { rasterizer } from "../lib/raster.mjs";
@@ -46,6 +48,8 @@ const { values: a, positionals } = parseArgs({
 		hold: { type: "string", default: "1.5" },
 		sheet: { type: "string" },
 		adapter: { type: "string", default: "page" },
+		size: { type: "string", default: "512" },
+		"no-png": { type: "boolean", default: false },
 		"no-scrubber": { type: "boolean", default: false },
 		"no-heading": { type: "boolean", default: false },
 		help: { type: "boolean", short: "h" },
@@ -99,7 +103,7 @@ async function main() {
 							}
 						} catch (e) {
 							bad++;
-							console.error(`✗ ${file} · ${format} · ${locale}: ${e.message}`);
+							console.error(`✗ ${file} · ${format} · ${locale}: ${e instanceof Error ? e.message : e}`);
 						}
 					}
 				}
@@ -154,6 +158,18 @@ async function main() {
 			const p = probe(out);
 			console.log(`wrote ${out}: ${p.width}×${p.height}, ${p.duration.toFixed(2)} s, ${p.fps} fps (${r.frames} frames)`);
 			if (a.sheet) console.log(`contact sheet: ${videoContactSheet(out, a.sheet)}`);
+			return;
+		}
+		case "icon": {
+			const { scene } = await loadScene(need(args[0], "<scene>"), { ...opts, format: a.format ?? "1:1" });
+			const r = checkScene(scene);
+			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
+			const png = !a["no-png"];
+			if (png && !(await rasterizer())) fail("icon PNG needs @resvg/resvg-js or Chrome (or pass --no-png)");
+			const root = resolve(need(a.out, "--out"));
+			const files = await writeIconSet(scene, { root, style, size: Number(a.size), png });
+			console.log(`wrote to ${root}:\n  ${files.join("\n  ")}`);
+			if (files.includes(".idea/icon.svg")) console.log("note: if .idea/ is git-ignored, add  !.idea/icon*.svg  after it to commit the IDE icon");
 			return;
 		}
 		case "vendor": {

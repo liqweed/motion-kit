@@ -113,7 +113,7 @@ export function hubSpoke(spec, { format = "16:9", locale = "en" } = {}) {
 			L = cand;
 			break;
 		} catch (e) {
-			why = e.message;
+			why = e instanceof Error ? e.message : String(e);
 		}
 	}
 	if (!L) throw new Error(`hub-spoke "${spec.id}": ${n} spokes do not fit format ${f.name} (${why}); use fewer spokes, shorter labels or a larger format`);

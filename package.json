@@ -12,10 +12,21 @@
 		"motion-kit": "cli/motion-kit.mjs"
 	},
 	"scripts": {
+		"prepare": "lefthook install || true",
 		"test": "node --test test/*.test.mjs",
-		"check": "node cli/motion-kit.mjs check examples/order-flow.json examples/smart-home.json"
+		"typecheck": "tsc -p .",
+		"check": "node cli/motion-kit.mjs check examples/order-flow.json examples/smart-home.json examples/custom-pulse.scene.mjs brand/logo.scene.mjs",
+		"media": "scripts/render-media.sh",
+		"media:check": "scripts/render-media.sh --check",
+		"versions": "node scripts/check-versions.mjs",
+		"gate": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check"
 	},
 	"optionalDependencies": {
 		"@resvg/resvg-js": "^2.6.2"
+	},
+	"devDependencies": {
+		"@types/node": "^22.20.5",
+		"lefthook": "^1.13.6",
+		"typescript": "^5.9.3"
 	}
 }
