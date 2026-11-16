@@ -1,0 +1,70 @@
+---
+import Header from "../../components/Header.astro";
+import Base from "../../layouts/Base.astro";
+import { DOCS_NAV, REPO } from "../../scripts/catalog.mjs";
+---
+
+<Base title="Link the words to the steps · motion-kit docs" description="Pattern: terms in your text point at steps of the diagram, by hover, focus and tap, with keyboard access.">
+<Header page="docs" />
+<div class="docs">
+	<nav class="docs-nav" aria-label="Docs">
+		{DOCS_NAV.map((g) => (
+			<div><h2>{g.title}</h2><ul>{g.items.map((i) => <li><a href={i.href} aria-current={i.current ? "page" : undefined}>{i.label}</a></li>)}</ul></div>
+		))}
+	</nav>
+	<article class="article" id="main">
+		<p class="crumbs">Patterns / Hover and focus linking</p>
+		<h1>Link the words to the steps</h1>
+		<p class="lede">Terms in your text point at parts of the diagram. Hovering, focusing or tapping a term jumps the diagram to that step; the active step marks the term back. It works by keyboard and on touch, because every term is a button.</p>
+
+		<section aria-labelledby="try-h"><h2 id="try-h">Try it</h2>
+			<div class="demo">
+				<p id="demo-text"></p>
+				<div style="border-top:1px solid var(--hair);padding-top:12px"><div class="player-box" id="demo-stage"></div></div>
+			</div>
+		</section>
+
+		<section aria-labelledby="build-h"><h2 id="build-h">Build it</h2>
+			<p class="lede" style="font-size:16px">Mount the player as usual, keep its controller, and mark terms with <code>data-mk-step</code>. Use buttons, not spans, so the terms are reachable without a mouse.</p>
+			<div class="codecard"><div class="file">page.html</div><pre tabindex="0"><code set:html={`&lt;p&gt;The &lt;button data-mk-step="0"&gt;home hub&lt;/button&gt; switches the
+   &lt;button data-mk-step="1"&gt;lights&lt;/button&gt; …&lt;/p&gt;
+&lt;div id="home"&gt;&lt;!-- server-rendered final frame --&gt;&lt;/div&gt;
+&lt;script type="module"&gt;
+  import { mountPlayer } from "./motion-kit/runtime/player.mjs";
+  const player = mountPlayer(home, scene);
+  for (const term of document.querySelectorAll("[data-mk-step]")) {
+    const go = () =&gt; player.seekStep(Number(term.dataset.mkStep));
+    term.addEventListener("pointerenter", go);
+    term.addEventListener("focus", go);
+    term.addEventListener("click", go);
+  }
+&lt;/script&gt;`} /></pre></div>
+			<ul>
+				<li><code>seekStep(i)</code> jumps to a settled frame without animating, so the diagram never shows a half-drawn state.</li>
+				<li>Never hover-only: touch has no hover, so the same handler runs on focus and click.</li>
+				<li>Marking the term back from the diagram needs the active step. This page polls <code>controller.time</code> against the scene’s steps: <b>needs: player onStep event</b> (<a href={`${REPO}/issues/9`}>#9</a>).</li>
+				<li>Reduced motion changes nothing here: jumps are already instant.</li>
+			</ul>
+		</section>
+
+		<section id="explore" aria-labelledby="exp-h"><h2 id="exp-h">Then: make it explorable</h2>
+			<p class="lede" style="font-size:16px">A control can change the spec itself. The parameter is input, not state: the page re-creates the scene and seeks the same step, so every frame is still a pure function of t.</p>
+			<div class="demo">
+				<label class="slider"><span style="font-weight:600">Integrations</span><input id="spokes" type="range" min="2" max="7" step="1" value="4"><span class="mono" id="spokes-text" style="color:var(--muted)"></span></label>
+				<div class="player-box" id="explore-stage"></div>
+				<div class="codecard"><pre tabindex="0"><code set:html={`slider.oninput = () =&gt; {
+  const step = stepIndexAt(scene, player.time);   // keep the reader’s place
+  const spec = { ...base, spokes: base.spokes.slice(0, slider.value) };
+  scene = createScene(spec, { format });
+  player = mountPlayer(el, scene, { autoplay: "none" });
+  player.seekStep(Math.min(step, scene.steps.length - 1));
+};`} /></pre></div>
+				<p class="needs-note">Reading the current step needs a getter: <b>needs: controller.step getter</b>.</p>
+			</div>
+		</section>
+
+		<nav class="pager" aria-label="Pager"><a href={`${REPO}/blob/main/skills/animated-diagram/references/interactivity.md`}>← Step buttons and caption</a><a href="/#scroll">Scroll-driven steps →</a></nav>
+	</article>
+</div>
+</Base>
+<script>import "../../scripts/docs.mjs";</script>

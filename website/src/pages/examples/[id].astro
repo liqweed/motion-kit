@@ -1,0 +1,55 @@
+---
+import Header from "../../components/Header.astro";
+import Base from "../../layouts/Base.astro";
+import { GROUPS, LIVE, PLANNED, REPO, findExample } from "../../scripts/catalog.mjs";
+
+export function getStaticPaths() {
+	return [...LIVE, ...PLANNED].map((e) => ({ params: { id: e.id } }));
+}
+
+const { id } = Astro.params;
+const entry = findExample(id ?? "");
+if (!entry) throw new Error(`no example "${id}"`);
+const group = GROUPS.find((g) => g.key === entry.group)?.label ?? "";
+const live = entry.built ? LIVE.find((e) => e.id === entry.id) : undefined;
+const file = live ? live.file : `diagrams/${entry.id}.scene.mjs`;
+const planned = entry.built ? undefined : PLANNED.find((e) => e.id === entry.id);
+const description = live
+	? `${entry.title}: a live ${entry.type} scene in every format and locale, with step frames, spec, export commands and gate results.`
+	: `${entry.title}: a storyboard for the ${entry.type} scene type, which is not built yet.`;
+---
+
+<Base title={`${entry.title} · motion-kit`} description={description}>
+	<Header page="gallery" />
+	<main class="page" id="main">
+		<p class="crumbs"><a href="/gallery/">Gallery</a> / {group}</p>
+		<div style="display:flex;flex-direction:column;gap:10px">
+			<h1>{entry.title}</h1>
+			<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:13px var(--mono)">
+				<span style="color:var(--muted)">{file}</span>
+				<span class="badge">{entry.type}</span>
+				{planned && <span class="badge needs">needs: {planned.type}</span>}
+			</div>
+		</div>
+		{live ? (
+			<>
+				<div id="ex-app" data-id={entry.id} />
+				<p class="nojs-note lede">JavaScript is off, so the player and the tabs are unavailable. The scene is <code>{live.file}</code> in the <a href={REPO}>repository</a>.</p>
+			</>
+		) : planned && (
+			<>
+				<div class="storyboard" style="aspect-ratio:auto;padding:40px 24px">
+					<b>type: {planned.type}</b>
+					<p style="max-width:560px">{planned.story}</p>
+					<p>Not built yet, so there is nothing to run, export or gate.</p>
+				</div>
+				<p class="lede">
+					Follow <a href={`${REPO}/issues/${planned.issue}`}>issue #{planned.issue}</a> for the scene type, or read its storyboard in
+					<a href={`${REPO}/blob/main/skills/animated-diagram/references/scene-types.md`}>scene-types.md</a>. Until then a one-off diagram can be a
+					<a href={`${REPO}/blob/main/skills/animated-diagram/references/custom-scenes.md`}>custom scene</a>.
+				</p>
+			</>
+		)}
+	</main>
+</Base>
+{live && <script>import "../../scripts/example.mjs";</script>}

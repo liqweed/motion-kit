@@ -1,0 +1,19 @@
+---
+import Header from "../../components/Header.astro";
+import Base from "../../layouts/Base.astro";
+---
+
+<Base title="Gallery · motion-kit" description="Live animated diagrams, grouped by what you are trying to explain. Step through each one, compare two, and open the spec.">
+<Header page="gallery" />
+<main class="page" id="main">
+	<div style="display:flex;flex-direction:column;gap:12px;max-width:760px">
+		<h1>Gallery</h1>
+		<p class="lede">Grouped by what you are trying to explain. Every card is a live scene: press play or step through it. Cards marked <b>needs</b> are storyboards of scene types that are not built yet; they have no player because there is nothing to run.</p>
+	</div>
+	<div class="panel filters" id="filters"></div>
+	<section class="compare" id="compare" aria-label="Compare" hidden></section>
+	<div id="groups" style="display:flex;flex-direction:column;gap:32px"></div>
+	<p class="lede" id="empty" hidden>Nothing matches these filters.</p>
+</main>
+</Base>
+<script>import "../../scripts/gallery.mjs";</script>

@@ -1,0 +1,17 @@
+{
+	"type": "sequence",
+	"id": "release-pipeline",
+	"title": { "en": "From commit to published media", "nl": "Van commit tot gepubliceerde media" },
+	"description": {
+		"en": "Five stages: commit, test, gate, bake and publish. Unchanged inputs give byte-identical files.",
+		"nl": "Vijf stappen: commit, test, gate, bakken en publiceren. Ongewijzigde invoer geeft identieke bestanden."
+	},
+	"nodes": [
+		{ "label": { "en": "Commit", "nl": "Commit" }, "detail": { "en": "Someone changes a spec, a label or a custom scene.", "nl": "Iemand wijzigt een spec, een label of een eigen scène." } },
+		{ "label": { "en": "Test", "nl": "Test" }, "detail": { "en": "Unit tests run first, including browser-versus-Node byte equality.", "nl": "Eerst draaien de unittests, ook de bytevergelijking tussen browser en Node." } },
+		{ "label": { "en": "Gate", "nl": "Poort" }, "detail": { "en": "Every example is built in every format and locale and sampled 121 times.", "nl": "Elk voorbeeld wordt in elk formaat en elke taal gebouwd en 121 keer bemonsterd." } },
+		{ "label": { "en": "Bake", "nl": "Bakken" }, "detail": { "en": "README animations and the logo are regenerated, never edited by hand.", "nl": "README-animaties en het logo worden opnieuw gegenereerd, nooit met de hand bewerkt." } },
+		{ "label": { "en": "Publish", "nl": "Publiceren" }, "detail": { "en": "A diff in the media folder means something really changed.", "nl": "Een verschil in de mediamap betekent dat er echt iets veranderd is." } }
+	],
+	"glyphs": "numbers"
+}

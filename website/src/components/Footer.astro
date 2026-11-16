@@ -1,0 +1,22 @@
+---
+import pkg from "../../../package.json";
+import make from "../../../brand/logo.scene.mjs";
+import { renderSvg } from "../../../runtime/scene.mjs";
+import { REPO } from "../scripts/catalog.mjs";
+import { KIT } from "../scripts/kit.mjs";
+
+// The mark is the repository's own logo scene, drawn at build time on its final frame.
+const logo = make({ kit: KIT });
+const mark = renderSvg(logo, logo.duration, { standalone: true, theme: "dark" });
+---
+
+<footer class="site-footer stage-dark">
+	<div class="wrap">
+		<div class="mark" aria-hidden="true" set:html={mark} />
+		<div class="blurb">
+			<strong>Brief it once. It holds everywhere.</strong>
+			<p>The standard easing curve between two keyframes, drawn by <code>brand/logo.scene.mjs</code>. It passes the same gate as every diagram here.</p>
+		</div>
+		<div class="meta"><a href={REPO}>liqweed/motion-kit</a><span>MIT licence · v{pkg.version}</span></div>
+	</div>
+</footer>

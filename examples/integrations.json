@@ -1,0 +1,20 @@
+{
+	"type": "hub-spoke",
+	"id": "integrations",
+	"title": { "en": "One platform, many integrations", "nl": "Eén platform, veel koppelingen" },
+	"description": {
+		"en": "A platform connects to seven tools, one link at a time.",
+		"nl": "Een platform koppelt met zeven tools, één koppeling tegelijk."
+	},
+	"hub": { "label": { "en": "Platform", "nl": "Platform" }, "detail": { "en": "One place that every tool plugs into.", "nl": "Eén plek waar elke tool op aansluit." } },
+	"spokes": [
+		{ "label": { "en": "Slack", "nl": "Slack" }, "detail": { "en": "Alerts arrive where the team already talks.", "nl": "Meldingen komen aan waar het team al praat." } },
+		{ "label": { "en": "GitHub", "nl": "GitHub" }, "detail": { "en": "Pull requests start and report builds.", "nl": "Pull requests starten en melden builds." } },
+		{ "label": { "en": "Jira", "nl": "Jira" }, "detail": { "en": "Tickets update themselves.", "nl": "Tickets werken zichzelf bij." } },
+		{ "label": { "en": "Email", "nl": "E-mail" }, "detail": { "en": "Digests go to people who are not in the tool.", "nl": "Samenvattingen gaan naar mensen die de tool niet gebruiken." } },
+		{ "label": { "en": "Calendar", "nl": "Agenda" }, "detail": { "en": "Deadlines appear as events.", "nl": "Deadlines verschijnen als afspraken." } },
+		{ "label": { "en": "Drive", "nl": "Drive" }, "detail": { "en": "Files stay in one shared place.", "nl": "Bestanden blijven op één gedeelde plek." } },
+		{ "label": { "en": "Webhooks", "nl": "Webhooks" }, "detail": { "en": "Anything else can listen in.", "nl": "Al het andere kan meeluisteren." } }
+	],
+	"direction": "out"
+}

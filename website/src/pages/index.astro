@@ -1,0 +1,168 @@
+---
+import heroFallback from "../../../docs/media/order-flow-dark.svg?url";
+import CommandBlock from "../components/CommandBlock.astro";
+import Header from "../components/Header.astro";
+import Base from "../layouts/Base.astro";
+import { BRIEFS, INSTALLS, NEIGHBOURS, PROOFS } from "../scripts/catalog.mjs";
+const brief = BRIEFS[0];
+---
+
+<Base title="motion-kit: brief it once, ship it everywhere" description="Deterministic animated diagrams. One scene feeds a live page, slides, a README and video; your agent storyboards, writes and checks it.">
+<div class="hero stage-dark">
+<Header page="home" />
+<section class="hero-inner" aria-labelledby="hero-h">
+	<div class="hero-top">
+		<h1 id="hero-h">Brief it in a sentence.<em>Ship it to every medium.</em></h1>
+		<div class="hero-side">
+			<p>Your agent storyboards the brief, writes one scene, runs the gate and renders it for your web page, slides, README and video. Every output is the same frame at the same <code>t</code>.</p>
+			<CommandBlock cmd="claude plugin marketplace add liqweed/motion-kit" label="Copy install command" variant="hero" />
+		</div>
+	</div>
+	<div class="hero-grid">
+		<div class="dark-panel session" aria-label="An illustrative agent session">
+			<div class="session-head"><span>claude · ~/my-docs</span><span>animated-diagram</span></div>
+			<div class="session-body">
+				<div id="brief-chips"></div>
+				<p class="prompt" id="brief-prompt">{brief.prompt}</p>
+				<ul id="brief-lines">
+					<li><b>✓</b><span>Storyboard: {brief.steps} steps, one sentence each. Approved by you.</span></li>
+					<li><b>✓</b><span>Wrote a {brief.type} spec<code>{brief.file}</code></span></li>
+					<li><b>✓</b><span>Gate passes: 6 formats × 2 locales.<code>motion-kit check {brief.file}</code></span></li>
+					<li><b>✓</b><span>Rendered: live player, slide frames, README SVG, 9:16 reel.</span></li>
+					<li class="wait"><b>◆</b><span>Waiting for your sign-off on the look.</span></li>
+				</ul>
+			</div>
+			<p class="fine">Illustrative session. The diagrams beside it are the real scenes; the agent’s wording is ours.</p>
+		</div>
+		<div class="dark-panel rail" aria-label="One scene, four targets">
+			<div class="player-box" id="hero-stage"><p class="player-fallback nojs-note">JavaScript is off, so the diagrams show their final frame.</p>
+				<noscript><img src={heroFallback} alt="The order flow diagram: six steps from Order to Follow up." width="960" style="width:100%;height:auto"></noscript></div>
+			<div class="rail-row">
+				<figure><div class="shot" id="shot-slide" role="img" aria-label="Slide preview"></div><figcaption><b>Slide</b>16:9 · settled step frame</figcaption></figure>
+				<figure><div class="shot" id="shot-readme" role="img" aria-label="README preview"></div><figcaption><b>README</b>baked SVG · zero JS</figcaption></figure>
+				<figure><div class="shot" id="shot-reel" role="img" aria-label="Reel preview"></div><figcaption><b>Reel</b>9:16 · MP4</figcaption></figure>
+			</div>
+			<p class="readout" id="readout">frame(t) · one scene, four targets</p>
+		</div>
+	</div>
+	<div class="proof">{PROOFS.map((p) => <div><b>{p.h}</b>{p.p}</div>)}</div>
+</section>
+</div>
+
+<main id="main">
+<section class="section" aria-labelledby="agent-h">
+	<div class="wrap">
+		<div class="head">
+			<div><p class="kicker"><span class="dm" aria-hidden="true"></span>01 <span>With your agent</span></p>
+			<h2 class="h2" id="agent-h">You approve twice: the story, then the look.</h2></div>
+			<p>Three skills ship in the plugin: <code>animated-diagram</code>, <code>motion-render</code> and <code>project-logo</code>. Everything between your two approvals is mechanical, and the gate checks it. Point at a line, or tab through, to see that stage.</p>
+		</div>
+		<div class="split">
+			<div class="transcript" id="transcript"></div>
+			<div class="sticky"><div class="player-box" id="agent-stage"></div></div>
+		</div>
+	</div>
+</section>
+
+<section class="section alt" aria-labelledby="gate-h">
+	<div class="wrap">
+		<div class="head">
+			<div><p class="kicker"><span class="dm" aria-hidden="true"></span>02 <span>Why you can trust the output</span></p>
+			<h2 class="h2" id="gate-h">A broken diagram never renders. The agent gets the reason instead.</h2></div>
+			<p><code>motion-kit check</code> builds every scene in every format and locale and samples it 121 times. Failures name the cause and the fix, so the agent can repair the scene. Pick a mistake.</p>
+		</div>
+		<div class="defects">
+			<div id="defect-list" class="defect-list"></div>
+			<div class="term" id="defect-term" aria-live="polite"></div>
+		</div>
+		<div class="not-checked">
+			<div><h3>What the gate does not check</h3><p class="lede">It checks structure, not looks. The spec lists where the docs promise more than the code; these are the ones you would notice.</p></div>
+			<ul>
+				<li>How it looks. A human signs off on the storyboard, timing, phone size and dark mode.</li>
+				<li><code>bake</code> and <code>video</code> render without running the gate (D2).</li>
+				<li>Custom <code>.mjs</code> scenes are checked in English only (D3); a missing translation falls back silently (D4).</li>
+				<li>The duration limit is 12 s, though the guidance says about 8 s (D1); stagger and entrance timings are not checked (D13).</li>
+				<li><a href="https://github.com/liqweed/motion-kit/blob/main/docs/spec/technique.md">All recorded discrepancies</a></li>
+			</ul>
+		</div>
+	</div>
+</section>
+
+<section class="section" aria-labelledby="style-h">
+	<div class="wrap">
+		<div class="head">
+			<div><p class="kicker"><span class="dm" aria-hidden="true"></span>03 <span>Your brand</span></p>
+			<h2 class="h2" id="style-h">Same spec. Your colours and type.</h2></div>
+			<p>A scene names roles, never looks: a node, a connector, the one thing to follow. A style fills eight colour tokens for light and dark and sets a font. The agent checks contrast and shows you a frame first. Describe one, “navy and teal”, and it writes the file.</p>
+		</div>
+		<div id="style-tabs" class="style-tabs"></div>
+		<div class="style-grid">
+			<div><div class="panel player-box" id="style-stage"></div>
+				<p class="needs-note" style="margin-top:12px">A style sets colours and a font today. <b>needs: style skins</b> (node, connector, emphasis, pending texture, shadow, backdrop) would let one spec change its drawing, not just its palette.</p></div>
+			<div style="display:flex;flex-direction:column;gap:16px">
+				<div class="codecard dark-card"><div class="file" id="style-file"></div><pre tabindex="0"><code id="style-json"></code></pre></div>
+				<div class="table"><div class="cap">Contrast check on these values (gate rule G12)</div>
+					<table><thead><tr><th>Pair</th><th>Needs</th><th>Light</th><th>Dark</th></tr></thead><tbody id="contrast-rows"></tbody></table></div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section class="section alt" id="scroll" aria-labelledby="scroll-h">
+	<div class="wrap">
+		<div class="head">
+			<div><p class="kicker"><span class="dm" aria-hidden="true"></span>04 <span>Patterns for your pages</span></p>
+			<h2 class="h2" id="scroll-h">Scroll moves the story, one settled step at a time.</h2></div>
+			<p>Reaching a paragraph jumps the diagram to its step. Nothing scrubs with the wheel, nothing drifts. Ask your agent for this layout, or <a href="/docs/">copy the pattern</a>.</p>
+		</div>
+		<div class="story" id="story">
+			<div class="stage-col"><div class="player-box" id="story-stage"></div></div>
+			<nav class="story-rail" id="story-rail" aria-label="Story steps"></nav>
+			<div class="story-paras" id="story-paras"></div>
+		</div>
+	</div>
+</section>
+
+<section class="section" aria-labelledby="gal-h">
+	<div class="wrap">
+		<div class="head" style="justify-content:space-between">
+			<div><p class="kicker"><span class="dm" aria-hidden="true"></span>05 <span>Gallery</span></p>
+			<h2 class="h2" id="gal-h">Diagrams you can step through.</h2></div>
+			<a class="btn-sm" href="/gallery/" style="min-height:44px;padding:0 18px;font-size:15px">Open the gallery →</a>
+		</div>
+		<p class="lede" id="gal-lede"></p>
+		<div class="cards" id="teaser"></div>
+	</div>
+</section>
+
+<section class="section alt" aria-labelledby="eco-h">
+	<div class="wrap">
+		<div class="head"><div><p class="kicker"><span class="dm" aria-hidden="true"></span>06 <span>Neighbours</span></p>
+			<h2 class="h2" id="eco-h">When another tool is the better choice</h2>
+			<p class="lede">motion-kit makes explainer diagrams that must appear in many media. For footage, audio, rich page motion or maths, use these. Licences checked November 2026.</p></div></div>
+		<div class="xtable"><div role="table" aria-label="When another tool is the better choice">
+				<div role="row"><span role="columnheader">Tool</span><span role="columnheader">Use it when</span><span role="columnheader">Alongside motion-kit</span></div>
+				{NEIGHBOURS.map((n) => <div role="row"><span role="rowheader">{n.tool}<small>{n.lic}</small></span><span role="cell">{n.when}</span><span role="cell">{n.fit}</span></div>)}
+			</div></div>
+	</div>
+</section>
+
+<section class="section" id="install" aria-labelledby="install-h">
+	<div class="wrap">
+		<div class="head"><div><p class="kicker"><span class="dm" aria-hidden="true"></span>07 <span>Install</span></p>
+			<h2 class="h2" id="install-h">Give your agent the skills</h2>
+			<p class="lede">Node ≥ 22. PNG and video need <code>@resvg/resvg-js</code> (or Chrome) and <code>ffmpeg</code>. There is no npm package yet.</p></div></div>
+		<div class="installs">
+			{INSTALLS.map((x, i) => (
+				<div class:list={["install", { primary: x.primary }]}>
+					<div class="t"><span>{`0${i + 1}`}</span><h3>{x.title}</h3></div>
+					<p>{x.text}</p>
+					<CommandBlock cmd={x.cmd} label={`Copy: ${x.title}`} variant="dark" />
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+</main>
+</Base>
+<script>import "../scripts/landing.mjs";</script>

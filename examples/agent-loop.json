@@ -1,0 +1,18 @@
+{
+	"type": "sequence",
+	"id": "agent-loop",
+	"title": { "en": "An agent goes from brief to checked diagram", "nl": "Een agent gaat van opdracht naar gecontroleerd diagram" },
+	"description": {
+		"en": "Six steps: you brief, the agent storyboards, writes a spec, runs the gate, renders and you sign off.",
+		"nl": "Zes stappen: jij geeft de opdracht, de agent maakt een storyboard, schrijft een spec, draait de poort, rendert en jij tekent af."
+	},
+	"nodes": [
+		{ "label": { "en": "Brief", "nl": "Opdracht" }, "detail": { "en": "You explain what the diagram must say, in plain language.", "nl": "Jij legt in gewone taal uit wat het diagram moet zeggen." } },
+		{ "label": { "en": "Storyboard", "nl": "Storyboard" }, "detail": { "en": "The agent proposes the steps; you approve the story before anything is drawn.", "nl": "De agent stelt de stappen voor; jij keurt het verhaal goed voordat er iets getekend wordt." } },
+		{ "label": { "en": "Spec", "nl": "Spec" }, "detail": { "en": "A spec is written: data, not animation code.", "nl": "Er wordt een spec geschreven: data, geen animatiecode." } },
+		{ "label": { "en": "Gate", "nl": "Poort" }, "detail": { "en": "The gate runs for every format and locale; the agent fixes what it reports.", "nl": "De poort draait voor elk formaat en elke taal; de agent herstelt wat gemeld wordt." } },
+		{ "label": { "en": "Render", "nl": "Renderen" }, "detail": { "en": "Step frames, a review sheet and a baked SVG are rendered.", "nl": "Stapframes, een controleblad en een gebakken SVG worden gerenderd." } },
+		{ "label": { "en": "Sign-off", "nl": "Akkoord" }, "detail": { "en": "You review light, dark and phone width, and sign off.", "nl": "Jij bekijkt licht, donker en telefoonbreedte, en tekent af." } }
+	],
+	"glyphs": "numbers"
+}

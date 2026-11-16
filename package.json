@@ -32,11 +32,14 @@
 		"prepare": "lefthook install || true",
 		"test": "node --test test/*.test.mjs",
 		"typecheck": "tsc -p .",
-		"check": "node cli/motion-kit.mjs check examples/order-flow.json examples/smart-home.json examples/custom-pulse.scene.mjs brand/logo.scene.mjs",
+		"check": "node cli/motion-kit.mjs check examples/order-flow.json examples/smart-home.json examples/release-pipeline.json examples/agent-loop.json examples/integrations.json examples/custom-pulse.scene.mjs brand/logo.scene.mjs",
 		"media": "scripts/render-media.sh",
 		"media:check": "scripts/render-media.sh --check",
+		"site": "npm run -w website build",
+		"site:dev": "npm run -w website dev",
+		"site:deploy": "npm run -w website deploy",
 		"versions": "node scripts/check-versions.mjs",
-		"gate": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check"
+		"gate": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check && npm run -s site"
 	},
 	"optionalDependencies": {
 		"@resvg/resvg-js": "^2.6.2"
@@ -45,5 +48,8 @@
 		"@types/node": "^22.20.5",
 		"lefthook": "^2.2.2",
 		"typescript": "^7.0.2"
-	}
+	},
+	"workspaces": [
+		"website"
+	]
 }

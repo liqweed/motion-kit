@@ -23,6 +23,7 @@ npm run gate           # typecheck + versions + tests + scene gate + media fresh
 npm run typecheck      # tsc --checkJs over JSDoc types (strict, noImplicitAny off); no emit
 npm test               # node:test, test/*.test.mjs
 npm run check          # the scene gate over examples/ and brand/, every format × locale
+npm run site:dev       # Astro dev server for the website (npm run site builds; site:deploy ships to Cloudflare)
 npm run media          # regenerate docs/media/*.svg, assets/icon*, .idea/icon*; commit the result
 node cli/motion-kit.mjs --help
 ```
@@ -42,6 +43,7 @@ runs `npm run gate`. Don't bypass them with `--no-verify`; fix the cause.
 | `lib/`, `cli/` | Node only | May use `node:*` and optional deps; must degrade with a clear message when `@resvg/resvg-js` or `ffmpeg` is missing. |
 | `adapters/` | consumer repos | Copied by `motion-kit vendor`. Keep them thin wrappers over `runtime/`. |
 | `skills/` | agents in other repos | Plugin skills. A CLI flag or behaviour change must update the matching `SKILL.md`/`references/*.md` in the same commit. |
+| `website/` | browser + Node (build) | The motion-kit.dev site: Astro (static output) + Vite, deployed to Cloudflare as static assets (`wrangler.jsonc`). An npm workspace, so the root `npm install` covers it. Pages are `.astro` and prerendered; interactivity is plain ES modules in `src/scripts/` importing `runtime/`, `examples/` and `brand/` from the repo root (Vite globs, no copies). `src/scripts/catalog.mjs` is DOM-free data checked by `test/site.test.mjs`. Show only built scenes live; unbuilt scene types stay "needs" cards. |
 | `examples/`, `brand/` | gate + docs | Every scene here must pass `npm run check`. `brand/logo.scene.mjs` is the logo source and the project-logo skill's template; it takes the runtime from `kit` instead of importing it. |
 | `docs/media/`, `assets/icon*`, `.idea/icon*.svg` | generated | Never hand-edit; run `npm run media`. `assets/icon.png` is what Conductor shows; `.idea/icon*.svg` is the JetBrains project icon. |
 
