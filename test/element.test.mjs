@@ -33,6 +33,8 @@ function fixture(fetch = async () => { throw new Error("unexpected request"); })
 			this.hidden = false;
 			this.isConnected = true;
 			this.classList = { add: (value) => { this.className += ` ${value}`; } };
+			const props = new Map();
+			this.style = { setProperty: (key, value) => props.set(key, value), getPropertyValue: (key) => props.get(key) ?? "" };
 		}
 		set innerHTML(value) {
 			this._html = value;
@@ -62,7 +64,11 @@ function fixture(fetch = async () => { throw new Error("unexpected request"); })
 			return null;
 		}
 	}
-	doc = { createElement: (tag) => new Element(tag), head: new Element("head") };
+	doc = {
+		createElement: (tag) => new Element(tag),
+		head: new Element("head"),
+		querySelector: (selector) => doc.head.childNodes.find((el) => selector === "style[data-mk-player-css]" && el.tagName === "style" && el.getAttribute("data-mk-player-css") !== null) ?? null,
+	};
 	const registered = new Map();
 	const observers = [];
 	const frames = new Map();
@@ -110,7 +116,7 @@ describe("custom element adapter", () => {
 		assert.equal(element.controller.scene.format, "tall");
 		assert.equal(element.controller.scene.locale, "nl");
 		assert.equal(element.getAttribute("style"), "max-width:360px");
-		assert.ok(element._player.getAttribute("style").includes("--mk-accent:#00ff00"));
+		assert.equal(element._player.style.getPropertyValue("--mk-accent"), "#00ff00");
 		assert.equal(fallback.parentNode.hidden, true);
 		assert.equal(script.parentNode, element);
 	});

@@ -9,17 +9,35 @@
  *     id, width, height,          // viewBox
  *     duration,                   // seconds until the final state
  *     title, description,         // accessible name + description
- *     steps: [{ at, label, detail? }],   // build steps; last = finished diagram
- *     frame(t) → string           // inner SVG markup at time t
+ *     steps: [{ at, label, detail?, id? }],   // build steps; last = finished diagram
+ *     frame(t, { idPrefix }) → string         // inner SVG markup at time t
  *   }
  *
  * frame(t) may depend on nothing but t and the scene's own constants: no Date,
  * no Math.random(), no performance.now(), no state from earlier frames. That is
  * what lets a player jump anywhere, an exporter write exactly the frame a slide
  * needs, and a video renderer sample frame f at t = f / fps.
+ *
+ * Every render passes an `idPrefix` unique to that instance on the page. A
+ * scene that defines ids (clip paths, gradients, masks, markers, filters) MUST
+ * build them from it (`${idPrefix}-clip`), so two instances never share an id.
  */
 import { esc, num } from "./svg.mjs";
 import { normalizeStyle, cssVars, resolveTokens } from "./style.mjs";
+
+/**
+ * One build step. `at` is a settled time; `id` is an optional stable name that
+ * page scripts can use instead of the step's index.
+ * @typedef {{ at: number, label: string, detail?: string, id?: string }} Step
+ */
+/**
+ * What `renderSvg` passes to `frame` besides the time.
+ * @typedef {{ idPrefix: string }} FrameContext
+ */
+/**
+ * An animated diagram as a pure function of time (see the module comment).
+ * @typedef {{ id: string, width: number, height: number, duration: number, title: string, description: string, steps: Step[], frame: (t: number, ctx: FrameContext) => string, stepLabelsInFrame?: boolean, type?: string, format?: string, locale?: string }} Scene
+ */
 
 /** Formats: name → viewBox. Layouts are computed per format, never cropped. */
 export const FORMATS = {
@@ -41,19 +59,70 @@ export function localize(value, locale = "en") {
 	return first;
 }
 
+/**
+ * A valid, CSS-safe id token from any string: letters, digits, "_" and "-",
+ * starting with a letter. Ids that already are one come back unchanged.
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function safeId(value) {
+	const s = String(value).replace(/[^A-Za-z0-9_-]+/g, "-");
+	return /^[A-Za-z]/.test(s) ? s : `mk-${s}`;
+}
+
+/**
+ * Throw unless `scene` meets the contract; returns it unchanged.
+ * @template {Scene} S
+ * @param {S} scene
+ * @returns {S}
+ */
 export function validateScene(scene) {
 	for (const k of ["id", "width", "height", "duration", "title", "description", "steps", "frame"]) {
 		if (scene[k] === undefined || scene[k] === "") throw new Error(`scene ${scene.id ?? "?"} is missing "${k}"`);
 	}
 	if (!scene.steps.length) throw new Error(`scene ${scene.id}: needs at least one step`);
 	let prev = -Infinity;
+	const ids = new Set();
 	for (const s of scene.steps) {
 		if (!(s.at > prev)) throw new Error(`scene ${scene.id}: steps must be strictly increasing in time`);
 		if (s.at > scene.duration + 1e-9) throw new Error(`scene ${scene.id}: step "${s.label}" is after the duration`);
 		if (!s.label) throw new Error(`scene ${scene.id}: every step needs a label`);
+		if (s.id !== undefined) {
+			if (typeof s.id !== "string" || !s.id) throw new Error(`scene ${scene.id}: step "${s.label}" has an id that is not a non-empty string`);
+			if (ids.has(s.id)) throw new Error(`scene ${scene.id}: two steps share the id "${s.id}"`);
+			ids.add(s.id);
+		}
 		prev = s.at;
 	}
 	return scene;
+}
+
+/**
+ * `step` with `id` added when one is given (scene types pass a spec's ids on).
+ * @template {Step} S
+ * @param {S} step
+ * @param {unknown} id
+ * @returns {S}
+ */
+export function withId(step, id) {
+	return id == null ? step : { ...step, id: /** @type {string} */ (id) };
+}
+
+/**
+ * The index of a step given by index or by id. Throws RangeError for an
+ * index outside the steps, or an id no step has.
+ * @param {{ steps: Step[] }} scene
+ * @param {number | string} ref
+ * @returns {number}
+ */
+export function stepIndex(scene, ref) {
+	if (typeof ref === "string") {
+		const i = scene.steps.findIndex((s) => s.id === ref);
+		if (i < 0) throw new RangeError(`Unknown step id: ${ref}`);
+		return i;
+	}
+	if (!Number.isInteger(ref) || ref < 0 || ref >= scene.steps.length) throw new RangeError(`Invalid step index: ${ref}`);
+	return ref;
 }
 
 /**
@@ -65,12 +134,18 @@ export function validateScene(scene) {
  *   style       style object or "neutral"
  *   background  paint the style's bg colour behind the diagram (video, PNG for slides)
  *   scale       width/height multiplier for standalone output
- *   idPrefix    unique prefix for <title>/<desc> ids when several diagrams share a page
+ *   idPrefix    prefix for every id in the output: <title>/<desc>, and the scene's
+ *               own ids through frame(t, { idPrefix }). Unique per instance on a
+ *               page; made a safe id token (safeId). Default: scene.id
+ * @param {Scene} scene
+ * @param {number} t
+ * @param {{ standalone?: boolean, theme?: string, style?: any, background?: boolean, scale?: number, idPrefix?: string, live?: boolean }} [options]
+ * @returns {string}
  */
 export function renderSvg(scene, t, options = {}) {
 	const style = normalizeStyle(options.style);
 	const time = Math.min(Math.max(t, 0), scene.duration);
-	const id = esc(options.idPrefix ?? scene.id);
+	const id = safeId(options.idPrefix ?? scene.id);
 	const scale = options.scale ?? 1;
 	const size = options.standalone ? ` width="${num(scene.width * scale)}" height="${num(scene.height * scale)}"` : "";
 	const vars = options.standalone ? "" : ` style="${cssVars(style, options.theme ?? "light")}"`;
@@ -81,7 +156,7 @@ export function renderSvg(scene, t, options = {}) {
 		`<title id="${id}-title">${esc(scene.title)}</title>` +
 		`<desc id="${id}-desc">${esc(scene.description)}</desc>` +
 		bg +
-		scene.frame(time) +
+		scene.frame(time, { idPrefix: id }) +
 		`</svg>`;
 	return options.standalone ? resolveTokens(markup, style, options.theme ?? "light") : markup;
 }

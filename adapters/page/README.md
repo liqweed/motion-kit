@@ -14,8 +14,9 @@ motion-kit build diagram.json --out diagram.html [--format wide] [--locale nl] [
   `motion-kit bake` (zero-JS animated SVG) or step PNGs via `image-preview`.
 - **Static hosting / file://:** works as is.
 
-The final frame is pre-rendered into the markup, so the diagram is complete
-before JS runs. The player replays once on scroll-into-view, shows pause/play,
+The player's first state (final frame, step list, colours) is pre-rendered
+into the markup, so the diagram is complete before JS runs and nothing moves
+when the player mounts. The player replays once on scroll-into-view, shows pause/play,
 step buttons, a scrubber and captions, and respects `prefers-reduced-motion`
 and `prefers-color-scheme`.
 

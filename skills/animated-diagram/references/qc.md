@@ -10,8 +10,8 @@ Model screenshots are evidence, not approval. **A human signs off on the look.**
 2. **Timing:** QC frames 0.2 s before/after each step: overlapping text, abrupt
    jumps, elements vanishing, half-drawn lines, stray dots. Regular sampling
    misses broken transitions; look *around* the transitions.
-3. **Phone size:** the 360 px row in the sheet; the `tall`/`9:16` layout; no
-   text under 14 px at 1×.
+3. **Phone size:** the 360 px row in the sheet (the scene's `tall` layout); the
+   `9:16` layout; no text under 14 px at 1×.
 4. **Brand and facts:** tokens only, approved style, approved copy, no invented
    numbers or superlatives, every locale checked.
 5. **Final file:**

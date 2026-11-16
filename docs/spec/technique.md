@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 ---
 
 # motion-kit technique — normative specification
@@ -35,18 +35,27 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `duration` | number, s | MUST | Time of the final state. |
 | `title` | string | MUST | Accessible name (`<title>`) [throws if empty]. |
 | `description` | string | MUST | Accessible description (`<desc>`) [throws if empty]. |
-| `steps` | `{at, label, detail?}[]` | MUST | ≥ 1 step; `at` strictly increasing; `at ≤ duration` (+1e-9); every `label` non-empty [throws] (`runtime/scene.mjs:46-53`). The last step is the finished diagram. |
-| `frame(t)` | `(number) → string` | MUST | Inner SVG markup at `t` (§2). |
+| `steps` | `{at, label, detail?, id?}[]` | MUST | ≥ 1 step; `at` strictly increasing; `at ≤ duration` (+1e-9); every `label` non-empty; an `id`, if present, is a non-empty string unique within the scene [throws] (`validateScene`). The last step is the finished diagram. Page scripts address steps by `id` (§10.2); scene types copy a spec node's, hub's or spoke's `id`. |
+| `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
   `createScene(spec, {format, locale})` (`runtime/types/index.mjs:19-23`) — or a
-  custom module whose default export is `(opts) → scene`
-  (`lib/load.mjs:29-32`). Both paths run `validateScene`.
-- A custom module MUST import only from `runtime/` with single-line relative
-  `import { … } from "./x.mjs";` statements and use only the export forms the
-  inliner supports, or `build` throws (`lib/bundle.mjs:8-11,33,59`).
+  custom module whose default export is `(opts) → scene`, called by
+  `sceneFromModule` (`runtime/kit.mjs`) with
+  `opts = { ...options, format, locale, kit }`. `options` are the caller's
+  serializable scene options, passed unchanged; option names `format`,
+  `locale` and `kit` throw. `kit` is every runtime export (`KIT`). Both paths
+  run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
+  adapter call `sceneFromModule`, so one module with the same options, format
+  and locale gives the same scene everywhere. A `build` page calls the factory
+  with the same object, its `kit` being the bundled runtime, after the CLI has
+  built the scene once through `sceneFromModule`.
+- A custom module MUST take the runtime from `kit`, or import only from
+  `runtime/` with single-line relative `import { … } from "./x.mjs";`
+  statements and use only the export forms the inliner supports, or `build`
+  throws (`lib/bundle.mjs:8-11,33,59`).
 - `detail` SHOULD hold sentences; labels stay short (§7). `detail` feeds the
   player caption and screen-reader list (§10.2).
 
@@ -299,34 +308,38 @@ Every target goes through this one function. It MUST emit `<svg>` with
 | `theme` | `light`/`dark` for resolution or inline vars. |
 | `live` | Omits inline vars; the container supplies them. |
 | `background` | Paints a full-size `bg` rect behind the diagram. |
-| `idPrefix` | MUST be unique per page when several diagrams share it. |
+| `idPrefix` | Prefix for every id in the output: `<title>`/`<desc>`, and the scene's own through `frame(t, { idPrefix })`. Made a safe id token (`safeId`: letters, digits, `_`, `-`). MUST be unique per page when several diagrams share it. |
 
 ### 10.2 Live player (`runtime/player.mjs`)
 
 | Requirement | Source |
 |---|---|
 | MUST touch the DOM only when mounted; scenes stay pure, the player owns the clock (`requestAnimationFrame`, wall time). | `runtime/player.mjs` (`mountPlayer`, `tick`), `AGENTS.md` |
-| Initial state MUST be the final frame; a server/no-JS fallback SHOULD put the final frame in the container. | `runtime/player.mjs` (initial-state block), `lib/build.mjs:25`, `adapters/astro/AnimatedDiagram.astro:31` |
-| Autoplay `visible` (default): plays once from 0 when ≥ 40 % in view, then holds; `none` disables. MUST NOT loop. | `runtime/player.mjs` (`autoplay`, `autoplayPending`) |
-| Play/pause MUST always be present when motion can play (WCAG 2.2.2); label shows Play/Pause/Replay. | `runtime/player.mjs` (`playBtn`, `draw`) |
+| Initial state MUST be the final frame. A server/no-JS fallback SHOULD be `playerMarkup(scene, { id, … })` inside a `.mk-player` container, with `PLAYER_CSS` in a `style[data-mk-player-css]` and the tokens from `themeCss(selector, style, theme)`: the markup the player builds, with the controls `inert`. The step list and the colours then exist without JavaScript, and mounting moves nothing. A plain final-frame SVG MAY be used instead. | `runtime/player.mjs` (`view`, `playerMarkup`, `themeCss`), `lib/build.mjs`, `adapters/astro/AnimatedDiagram.astro`, `test/player.test.mjs` |
+| Autoplay `visible` (default): plays once from 0 when ≥ 40 % of the diagram, or ≥ 40 % of the viewport's height, is in view (decided from the intersection, not `isIntersecting` alone), then holds; `none` disables. MUST NOT loop. | `runtime/player.mjs` (`shown`, `THRESHOLDS`) |
+| While a playing diagram does not intersect the viewport (scrolled away, `display: none`), its clock MUST stop and no frame be drawn; when it intersects again, playback resumes from the same time. Visibility is observed until `destroy()`. | `runtime/player.mjs` (`onVisibility`, `run`) |
+| Play/pause MUST always be present when motion can play (WCAG 2.2.2); label shows Play/Pause/Replay. | `runtime/player.mjs` (`playLabel`, `draw`) |
+| Every control (buttons, scrubber) MUST be at least 44 × 44 px. The caption and the play button MUST keep the size of their longest content, so playback does not shift the layout. | `PLAYER_CSS` (`.mk-btn`, `.mk-scrub`, `.mk-caption`, `.mk-play`) |
 | One `<button>` per step, labelled `N. label`; activating it jumps by default. `animateSteps: true` opts buttons and keyboard navigation into `playToStep`. `aria-current="step"` marks the active step. | `runtime/player.mjs` |
 | Optional range scrubber (`aria-label`, default "Timeline"); input pauses and seeks. | `runtime/player.mjs` (`options.scrubber`) |
 | Caption shows the active step's `detail` and is `aria-hidden`; a visually hidden ordered list of all steps (`label: detail`) MUST be present for screen readers. | `runtime/player.mjs` (`caption`, `sr`) |
-| Keyboard on the focusable stage: ←/→ step, Home/End first/last, Space play/pause. | `runtime/player.mjs` (`stage.tabIndex`, `keydown` handler) |
-| Visible focus style for every control. | `runtime/player.mjs` (`.mk-btn:focus-visible` rule) |
+| Keyboard on the focusable stage, a `role="group"` named by the scene title and described by a visually hidden hint (`labels.keys`): ←/→ step, Home/End first/last, Space play/pause. Every element with `tabindex="0"` has a role. | `runtime/player.mjs` (`view`, `keydown` handler) |
+| Visible focus style for the stage and every control. | `PLAYER_CSS` (`:focus-visible` rule) |
 | `prefers-reduced-motion: reduce`: final frame, no autoplay, no play button, Space ignored. | `runtime/player.mjs` (`reduced`) |
-| Theme: `options.theme`, else follows `prefers-color-scheme` live. | `runtime/player.mjs` (`applyTheme`, `themeQuery`) |
-| `playToStep(i)` MUST play forward from the current time, clamp to the target step's exact `at` and hold. Backward, same-time and reduced-motion calls MUST jump. Indices are zero-based; invalid indices throw `RangeError`. Retargeting replaces the target; `play()` continues to duration; `seek(t)` cancels playback. | `runtime/player.mjs`, `test/player.test.mjs` |
+| Theme: `options.theme`, else follows `prefers-color-scheme` live. Tokens MUST be set one custom property at a time, keeping the container's other inline CSS. | `runtime/player.mjs` (`applyTheme`, `themeQuery`) |
+| The player stylesheet MUST be in the document whenever a player mounts: it is added to `<head>` unless a `style[data-mk-player-css]` is present, so a page swap that removed it cannot leave players unstyled. `injectCss: false` opts out. | `runtime/player.mjs` (`ensureStyle`), `test/player.test.mjs` |
+| Ids: each player renders with its own prefix, `options.id`, else `scene.id` plus a per-page counter, so two players of one scene share no ids. | `runtime/player.mjs` (`prefix`) |
+| `playToStep(ref)` MUST play forward from the current time, clamp to the target step's exact `at` and hold. Backward, same-time and reduced-motion calls MUST jump. `seekStep(ref)` jumps. `ref` is a zero-based index or a step `id`; an invalid index or unknown id throws `RangeError` (`stepIndex`). Retargeting replaces the target; `play()` continues to duration; `seek(t)` cancels playback. | `runtime/player.mjs`, `runtime/scene.mjs`, `test/player.test.mjs` |
 | `destroy()` MUST cancel the animation frame, disconnect visibility observation, remove theme listening and remove this controller's capture entry. | `runtime/player.mjs`, `test/player.test.mjs` |
 | **Capture hook**: the controller `{seek, play, pause, seekStep, playToStep, destroy, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `runtime/player.mjs` |
 
-UI strings MAY be localized via `options.labels`: a flat `{ play, pause, replay, steps, scrubber }` object, or a dictionary keyed by locale (`{ en: {…}, nl: {…} }`) resolved with `options.locale`, then its language subtag, then `en`, then the first entry. Missing keys keep the English defaults (`resolveLabels`, `runtime/player.mjs`).
+UI strings MAY be localized via `options.labels`: a flat `{ play, pause, replay, steps, scrubber, keys }` object (`steps` names the controls group, `keys` is the stage's keyboard hint), or a dictionary keyed by locale (`{ en: {…}, nl: {…} }`) resolved with `options.locale`, then its language subtag, then `en`, then the first entry. Missing keys keep the English defaults (`resolveLabels`, `runtime/player.mjs`).
 
 Keyboard step changes (←/→/Home/End) MUST be announced through a visually hidden `role="status"` polite live region (`N. label: detail`); autoplay, pointer and scrubber use stay silent.
 
 `mountPlayer` MUST release any player already mounted on the same container (`destroy()`), so remounting never leaks clocks, observers or capture entries. The build output passes `locale` through, so label dictionaries resolve there too; the Slidev adapter announces each click's step through the same kind of live region.
 
-The Astro adapter mounts each diagram once, tears the players down on `astro:before-swap` and mounts the new page's diagrams on `astro:page-load`.
+The Astro adapter mounts each diagram once, tears the players down on `astro:before-swap` and mounts the new page's diagrams on `astro:page-load`. Its root element exposes the controller as `.controller` from mount, and dispatches `motion-ready` (bubbling, `detail.controller`) or `motion-error` (`detail.error`) once the page's own scripts and their `DOMContentLoaded` and `astro:page-load` handlers have run, so a script placed after the diagram can still listen. Its `id` prop sets the element id, the capture-hook key and the id prefix; it MUST be a safe id token, used once per page, or the build fails.
 
 ### 10.2.1 Custom element (`adapters/element/motion-diagram.mjs`)
 
@@ -349,8 +362,10 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
 - MUST be one document with the runtime inlined by `lib/bundle.mjs`, no
   external scripts, stylesheets or fetches (`test/cli.test.mjs:31-37`), so it
   works under `connect-src 'none'` and from `file://`.
-- MUST pre-render the final frame (`lib/build.mjs:25`) and set `<html lang>`
-  to the scene locale (`:31-33`).
+- MUST pre-render the player's first state (`playerMarkup`, `PLAYER_CSS`,
+  `themeCss`) and set `<html lang>` to the scene locale (`lib/build.mjs`).
+- A custom module is built with the caller's `--options` and `kit`: every
+  runtime module is a bundle entry, so the `MotionKit` global is the kit.
 - The CLI MUST refuse a scene that fails the gate (`cli/motion-kit.mjs:112-113`)
   and bundled code containing `</script>` (`:115`).
 - The inlined runtime MUST render the same bytes as Node
@@ -367,6 +382,8 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   animation delayed `0.3 s + start`; the last slice holds (`mk-hold`, fill
   forwards) (`:35-47`). Plays once; MUST hold the final frame.
 - Under `prefers-reduced-motion: reduce` only the final slice is visible (`:39`).
+- Slices share one document: a slice whose markup defines ids is rendered with
+  its own prefix (`<idPrefix>-<n>`, base `mk-bake` or `options.idPrefix`).
 - One theme per file; for theme-following embeds publish a light and dark file
   (`README.md:21-29`, `scripts/render-media.sh`).
 - Size grows with fps × duration; README use SHOULD lower fps to 10–12.
@@ -383,11 +400,15 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   makes the canvas opaque (transparent by default).
 - `--qc`: frames at `max(0, at − 0.2)` and `at + 0.2` (not after the last step)
   under `qc/` (`lib/export.mjs:58-65`).
-- `index.html` contact sheet: steps, QC row, a 360 px phone row and the human
-  review checklist (`lib/export.mjs:93-108`).
+- `index.html` contact sheet: steps, QC row, a phone row and the human review
+  checklist (`lib/export.mjs`, `contactSheet`). The phone row MUST show the
+  scene built for the `tall` format, in the same locale, options, style and
+  theme, at 360 px (`qc/phone.svg`, manifest `kind: "phone"`); when the tall
+  layout cannot be built, it shows the exported frame and says why.
 - `manifest.json` MUST contain no timestamps: tool, version, scene, type,
-  format, locale, size, duration, style, theme, a 16-hex input hash
-  (source file + style), source commit, render settings, file list
+  format, locale, scene options, size, duration, style, theme, a 16-hex input
+  hash (source file + style + scene options), source commit, render settings,
+  file list
   (`lib/export.mjs:66-88`). Two exports of the same inputs MUST be equal
   (`test/cli.test.mjs:20-30`).
 
@@ -411,21 +432,34 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   itself (`:67-72`); forward by one click animates from the previous step's
   `at` to the next, any other move seeks (`:93-100`); print/export, overview
   and reduced motion show the settled step frame (`:65`).
-- **Astro** (`adapters/astro/AnimatedDiagram.astro`): server-renders the final
-  frame and mounts the player; props MUST be serializable (a spec, not a scene).
+- **Astro** (`adapters/astro/AnimatedDiagram.astro`): server-renders the
+  player's first state (§10.2) and mounts the player. It takes a `spec`, or a
+  custom module by path (`module`, a `/src/…/*.scene.mjs|js` file found with
+  `import.meta.glob`, loaded on demand in the browser) with its `options`;
+  `theme` (`light`/`dark`, else the system), `style` (token data), `id`,
+  `scrubber`, `labels`, `class`. Props MUST be serializable (a spec or a module
+  path, not a scene). The player stylesheet is emitted once per page; each
+  instance carries its tokens and a page-unique id (`mk-<scene.id>-<n>` unless
+  `id` is given). It fails the build for a missing module, options with a spec,
+  or an invalid theme.
 - **Vendor** (`cli/motion-kit.mjs`, `vendor` command): copies `runtime/`, one
-  adapter, `lib/check.mjs` and the full MIT `LICENSE`; writes a spec-only gate
-  script and `MOTION_KIT_VERSION`. Consumers MUST retain `LICENSE` and the
+  adapter, `lib/check.mjs`, `lib/gate.mjs`, `lib/load.mjs` and the full MIT
+  `LICENSE`; writes `check.mjs`, which runs the same gate as `motion-kit
+  check` (§11) with `--format`, `--locale`, `--style` and `--options`, and
+  `MOTION_KIT_VERSION`. Consumers MUST retain `LICENSE` and the
   SPDX headers when redistributing vendored files. Vendored files MUST NOT
   be edited in the consumer.
 
 ## 11. The gate
 
-`checkScene(scene)` (`lib/check.mjs:33-84`) samples 121 evenly spaced times
-(`SAMPLES = 120`, `:9`) and stops collecting after 13 problems (`:51`).
-`motion-kit check` runs it for every file × format (all six unless `--format`)
-× locale (§7) and adds the style contrast check; it exits 1 on any failure or
-construction error (`cli/motion-kit.mjs:81-108`). `npm run gate` = unit tests +
+`checkScene(scene)` (`lib/check.mjs`) samples 121 evenly spaced times
+(`SAMPLES = 120`) and stops collecting after 13 problems.
+`motion-kit check` and the vendored `check.mjs` both run `checkFiles`
+(`lib/gate.mjs`): every file × format (all six unless `--format`, repeatable)
+× locale (`--locale`, repeatable; else every locale a spec's strings carry, and
+`en` for a module, §7), with `--options` for modules, plus the style contrast
+check. A file that cannot be read, parsed or built fails on its own and the
+remaining files are still checked; the exit code is 1 on any failure. `npm run gate` = unit tests +
 `check` over `examples/` and `brand/` (`package.json:15-18`).
 
 | ID | Rule | Code | Rationale |
@@ -433,7 +467,7 @@ construction error (`cli/motion-kit.mjs:81-108`). `npm run gate` = unit tests +
 | G1 | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs:41-42` | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
 | G2 | Each sampled frame MUST be well-formed (balanced tags, no stray `<`, entities only `amp lt gt quot #39 #n`). | `:12-31,43-44` | Escaping failures and broken markup break every target. |
 | G3 | No number with ≥ 5 decimals in the full SVG. | `:45-46` | Rounding (T4). |
-| G4 | No `#hex`, `rgb(a)(`, `hsl(a)(` in `frame()` output. | `:47-49` | Token-only colours: themes and brand styles must work everywhere. |
+| G4 | No `#hex`, `rgb(a)(`, `hsl(a)(` in `frame()` output; id references (`url(#…)`, `href="#…"`) are not colours. | `:47-49` | Token-only colours: themes and brand styles must work everywhere. |
 | G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
 | G6 | `render(at − 0.001) === render(at)` for every step. | `:55-58` | Settled step frames (§8). |
 | G7 | First frame ≠ last frame. | `:61-63` | Something must animate. |
@@ -441,8 +475,9 @@ construction error (`cli/motion-kit.mjs:81-108`). `npm run gate` = unit tests +
 | G9 | `duration ≤ 12` s. | `:68` | Explainer budget (see §12 D1). |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
 | G11 | `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`. | `:80-81` | T1. Textual heuristic: helpers defined outside `frame` are not scanned. |
-| G12 | Style passes WCAG contrast in both themes. | `cli/motion-kit.mjs:83-85`, `runtime/style.mjs:114-134` | Legibility in light and dark. |
-| G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `cli/motion-kit.mjs:92-103` | Reject, don't invent: a broken picture never renders. |
+| G12 | Style passes WCAG contrast in both themes. | `lib/gate.mjs`, `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark. |
+| G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
+| G14 | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
 
 The gate checks structure, not looks. Visual review (before/after frames,
 phone size, real-time playback, dark mode) is required by
@@ -464,8 +499,7 @@ Recorded, not resolved. Each needs an owner decision.
 | D7 | Style `radius` / `stroke` | Normalized (`runtime/style.mjs:63-64`) but never read; parts default to radius 10, stroke 2 (`runtime/parts.mjs:52,75`). | Documented as style fields (`styles.md:28-29`). |
 | D8 | Dark fallback | A style with no `dark` applies its **light** overrides to dark (`runtime/style.mjs:66`). | "Missing tokens fall back to neutral" (`styles.md:35`). |
 | D9 | Video frame reuse | PNGs are reused only when `t` repeats (lead and hold) (`lib/video.mjs:46`). | "Identical consecutive frames are rasterized once" (`skills/motion-render/references/video.md:9`). |
-| D10 | Capture-hook key | Key is `options.id ?? scene.id`, i.e. format-suffixed (`order-flow-16x9`); the Astro adapter appends a random suffix (`adapters/astro/AnimatedDiagram.astro:51`); the Slidev adapter exposes none. | `window.__motionKit[sceneId]` / `[id]` (`adapters/page/README.md:22`, `interactivity.md:14-15`). |
-| D11 | Vendored gate | `check.mjs` written by `vendor` handles `.json` only, skips the contrast check, and detects locales with `^[a-z]{2}$` (no region, no string-value test) (`cli/motion-kit.mjs:177-207`). | Implied parity with `motion-kit check` (`README.md:90-92`). |
+| D10 | Capture-hook key | Key is `options.id ?? scene.id`, i.e. format-suffixed (`order-flow-16x9`); the Astro adapter uses its `id` prop or `mk-<scene.id>-<n>`; the Slidev adapter exposes none. | `window.__motionKit[sceneId]` / `[id]` (`adapters/page/README.md:22`, `interactivity.md`). |
 | D12 | Auto-fit maximum | Sequence 22 px, hub-spoke 20 px (`runtime/types/hub-spoke.mjs:97`). | "Fixed formats ≤ 22 px" without type distinction (`technique.md:90`); `formats.md:12` is correct. |
 | D13 | Timing budgets | `ENTRANCE_MAX` is exported but unused; stagger and entrance limits are not checked. | Listed as "Hard rules" (`skills/animated-diagram/SKILL.md:50`). |
-| D14 | Manifest reproducibility | `inputHash` covers the source file and style only, not the runtime; a runtime change keeps the hash while frames change (only `version` hints at it) (`lib/export.mjs:66-70`). | "A stale export is easy to spot" (`skills/motion-render/SKILL.md:66-68`). |
+| D14 | Manifest reproducibility | `inputHash` covers the source file, style and scene options, not the runtime; a runtime change keeps the hash while frames change (only `version` hints at it) (`lib/export.mjs:66-70`). | "A stale export is easy to spot" (`skills/motion-render/SKILL.md:66-68`). |
