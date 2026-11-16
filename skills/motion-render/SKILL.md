@@ -53,6 +53,17 @@ mk build spec.json -o out/page.html -f wide         # Craft Page / standalone in
 mk bake  spec.json -o out/diagram.svg -f wide --fps 12   # zero-JS animated SVG
 ```
 
+For plain HTML or a framework-independent live embed, use
+`mk vendor public/motion-kit --adapter element`, then load
+`./motion-kit/adapter/motion-diagram.mjs` with `type="module"` and place
+`<motion-diagram src="./spec.json" format="wide">` around a final-frame SVG
+or image fallback. Copy the spec to `public/spec.json` and serve over HTTP.
+Inline JSON (`spec` attribute or child
+`script[type="application/json"]`), `locale`, `theme` and JSON `style-spec`
+are supported; the normal `style` attribute stays CSS. The element exposes
+`controller` after `motion-ready`, preserves the fallback during loading or
+errors, and cleans up on disconnect. Full usage: `adapters/element/README.md`.
+
 ## Delivery package
 
 ```

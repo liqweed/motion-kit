@@ -305,20 +305,38 @@ Every target goes through this one function. It MUST emit `<svg>` with
 
 | Requirement | Source |
 |---|---|
-| MUST touch the DOM only when mounted; scenes stay pure, the player owns the clock (`requestAnimationFrame`, wall time). | `runtime/player.mjs:15,135-149`, `AGENTS.md:31` |
-| Initial state MUST be the final frame; a server/no-JS fallback SHOULD put the final frame in the container. | `:172`, `lib/build.mjs:25`, `adapters/astro/AnimatedDiagram.astro:31` |
-| Autoplay `visible` (default): plays once from 0 when ≥ 40 % in view, then holds; `none` disables. MUST NOT loop. | `:173-191` |
-| Play/pause MUST always be present when motion can play (WCAG 2.2.2); label shows Play/Pause/Replay. | `:69-75,129` |
-| One `<button>` per step, labelled `N. label`; activating it pauses and jumps (no animation); `aria-current="step"` marks the active step. | `:76-87,126` |
-| Optional range scrubber (`aria-label`, default "Timeline"); input pauses and seeks. | `:88-102` |
-| Caption shows the active step's `detail` and is `aria-hidden`; a visually hidden ordered list of all steps (`label: detail`) MUST be present for screen readers. | `:103-115` |
-| Keyboard on the focusable stage: ←/→ step, Home/End first/last, Space play/pause. | `:59,156-165` |
-| Visible focus style for every control. | `:26` |
-| `prefers-reduced-motion: reduce`: final frame, no autoplay, no play button, Space ignored. | `:38,70,142,162,174` |
-| Theme: `options.theme`, else follows `prefers-color-scheme` live. | `:50-54,192-194` |
-| **Capture hook**: the controller `{seek, play, pause, seekStep, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `:196-200` |
+| MUST touch the DOM only when mounted; scenes stay pure, the player owns the clock (`requestAnimationFrame`, wall time). | `runtime/player.mjs` (`mountPlayer`, `tick`), `AGENTS.md` |
+| Initial state MUST be the final frame; a server/no-JS fallback SHOULD put the final frame in the container. | `runtime/player.mjs` (initial-state block), `lib/build.mjs:25`, `adapters/astro/AnimatedDiagram.astro:31` |
+| Autoplay `visible` (default): plays once from 0 when ≥ 40 % in view, then holds; `none` disables. MUST NOT loop. | `runtime/player.mjs` (`autoplay`, `autoplayPending`) |
+| Play/pause MUST always be present when motion can play (WCAG 2.2.2); label shows Play/Pause/Replay. | `runtime/player.mjs` (`playBtn`, `draw`) |
+| One `<button>` per step, labelled `N. label`; activating it jumps by default. `animateSteps: true` opts buttons and keyboard navigation into `playToStep`. `aria-current="step"` marks the active step. | `runtime/player.mjs` |
+| Optional range scrubber (`aria-label`, default "Timeline"); input pauses and seeks. | `runtime/player.mjs` (`options.scrubber`) |
+| Caption shows the active step's `detail` and is `aria-hidden`; a visually hidden ordered list of all steps (`label: detail`) MUST be present for screen readers. | `runtime/player.mjs` (`caption`, `sr`) |
+| Keyboard on the focusable stage: ←/→ step, Home/End first/last, Space play/pause. | `runtime/player.mjs` (`stage.tabIndex`, `keydown` handler) |
+| Visible focus style for every control. | `runtime/player.mjs` (`.mk-btn:focus-visible` rule) |
+| `prefers-reduced-motion: reduce`: final frame, no autoplay, no play button, Space ignored. | `runtime/player.mjs` (`reduced`) |
+| Theme: `options.theme`, else follows `prefers-color-scheme` live. | `runtime/player.mjs` (`applyTheme`, `themeQuery`) |
+| `playToStep(i)` MUST play forward from the current time, clamp to the target step's exact `at` and hold. Backward, same-time and reduced-motion calls MUST jump. Indices are zero-based; invalid indices throw `RangeError`. Retargeting replaces the target; `play()` continues to duration; `seek(t)` cancels playback. | `runtime/player.mjs`, `test/player.test.mjs` |
+| `destroy()` MUST cancel the animation frame, disconnect visibility observation, remove theme listening and remove this controller's capture entry. | `runtime/player.mjs`, `test/player.test.mjs` |
+| **Capture hook**: the controller `{seek, play, pause, seekStep, playToStep, destroy, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `runtime/player.mjs` |
 
 UI strings MAY be localized via `options.labels`.
+
+### 10.2.1 Custom element (`adapters/element/motion-diagram.mjs`)
+
+- Vendoring with `--adapter element` MUST copy an unbuilt module importing the
+  adjacent vendored runtime. Importing it in a browser defines `<motion-diagram>`.
+- The spec MUST come from the `spec` JSON attribute, a child
+  `script[type="application/json"]`, or a `src` URL, in that order. URLs resolve
+  against the document base URI. `format` and `locale` select the scene;
+  `theme` and JSON `style-spec` configure the player; HTML `style` remains CSS.
+- Supplied final-frame child markup MUST remain visible without JavaScript,
+  while loading and on errors. Only a successful mount hides the fallback.
+- `controller` MUST expose the mounted player, or be null when unmounted.
+  `motion-ready` carries `detail.controller`; `motion-error` carries `detail.error`.
+- Observed attribute changes MUST remount. Disconnection MUST abort loading,
+  destroy the player and restore the fallback; reconnection mounts afresh.
+  Superseded asynchronous loads MUST NOT mount or publish errors.
 
 ### 10.3 Self-contained HTML (`motion-kit build`, `lib/build.mjs`)
 

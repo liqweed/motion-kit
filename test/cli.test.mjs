@@ -18,11 +18,19 @@ const run = (...args) => execFileSync(process.execPath, [CLI, ...args], { encodi
 describe("cli", () => {
 	it("vendor includes the full MIT licence with every adapter", () => {
 		const license = readFileSync(new URL("../LICENSE", import.meta.url), "utf8");
-		for (const adapter of ["page", "astro", "slidev"]) {
+		for (const adapter of ["page", "astro", "slidev", "element"]) {
 			const dir = join(tmp, `vendor-${adapter}`);
 			run("vendor", dir, "--adapter", adapter);
 			assert.equal(readFileSync(join(dir, "LICENSE"), "utf8"), license, adapter);
 		}
+	});
+	it("vendor element copies the unbuilt module and its runtime dependencies", () => {
+		const dir = join(tmp, "element");
+		run("vendor", dir, "--adapter", "element");
+		assert.ok(existsSync(join(dir, "adapter/motion-diagram.mjs")));
+		assert.ok(existsSync(join(dir, "runtime/player.mjs")));
+		assert.ok(existsSync(join(dir, "runtime/types/index.mjs")));
+		assert.match(readFileSync(join(dir, "MOTION_KIT_VERSION"), "utf8"), /adapter element/);
 	});
 	it("check passes every example in every format and locale", () => {
 		const out = run("check", `${EX}order-flow.json`, `${EX}smart-home.json`);

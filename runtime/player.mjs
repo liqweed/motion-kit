@@ -9,7 +9,7 @@
  *   replaces it on mount.
  * - Plays once when ~40 % visible, then holds the final frame.
  * - Always shows pause/play (WCAG 2.2.2), one button per step (jumps, no
- *   animation), an optional scrubber, and the active step's detail as caption.
+ *   animation unless animateSteps is enabled), an optional scrubber, and captions.
  * - prefers-reduced-motion: final frame immediately, no autoplay, no play button.
  * - Keyboard: ←/→ previous/next step, Space play/pause, Home/End.
  * - Capture hook: controller.seek(t), and window.__motionKit[id] for renderers.
@@ -32,8 +32,15 @@ const CSS = `
 .mk-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 `;
 
-let styleInjected = false;
+const styledDocuments = new WeakSet();
 
+/**
+ * Mount a scene with controls and a clock owned by this player.
+ * @param {HTMLElement} container
+ * @param {{ id: string, title: string, description: string, width: number, height: number, duration: number, steps: { at: number, label: string, detail?: string }[], frame: (t: number) => string }} scene
+ * @param {{ style?: Parameters<typeof normalizeStyle>[0], labels?: Record<string, string>, theme?: string, id?: string, injectCss?: boolean, scrubber?: boolean, captions?: boolean, autoplay?: string, animateSteps?: boolean }} [options]
+ * @returns The player controller; call destroy() before removing or replacing it.
+ */
 export function mountPlayer(container, scene, options = {}) {
 	const style = normalizeStyle(options.style);
 	const labels = { play: "Play", pause: "Pause", replay: "Replay", steps: "Steps", ...(options.labels ?? {}) };
@@ -41,11 +48,11 @@ export function mountPlayer(container, scene, options = {}) {
 	/** @type {Document} */
 	const doc = container.ownerDocument;
 
-	if (!styleInjected && options.injectCss !== false) {
+	if (!styledDocuments.has(doc) && options.injectCss !== false) {
 		const s = doc.createElement("style");
 		s.textContent = CSS;
 		doc.head.appendChild(s);
-		styleInjected = true;
+		styledDocuments.add(doc);
 	}
 
 	const id = options.id ?? scene.id;
@@ -82,10 +89,7 @@ export function mountPlayer(container, scene, options = {}) {
 		b.type = "button";
 		b.className = "mk-btn";
 		b.textContent = `${i + 1}. ${s.label}`;
-		b.addEventListener("click", () => {
-			pause();
-			seek(s.at);
-		});
+		b.addEventListener("click", () => selectStep(i));
 		controls.appendChild(b);
 		return b;
 	});
@@ -125,6 +129,11 @@ export function mountPlayer(container, scene, options = {}) {
 	let raf = 0;
 	let wallStart = 0;
 	let tStart = 0;
+	let stopAt = scene.duration;
+	let autoplayPending = false;
+	let destroyed = false;
+	/** @type {IntersectionObserver | undefined} */
+	let visibilityObserver;
 
 	function draw() {
 		stage.innerHTML = renderSvg(scene, t, { style, idPrefix: id, live: true });
@@ -135,18 +144,28 @@ export function mountPlayer(container, scene, options = {}) {
 		if (playBtn) playBtn.textContent = playing ? labels.pause : t >= scene.duration ? labels.replay : labels.play;
 	}
 	function seek(time) {
+		if (destroyed) return;
+		playing = false;
+		cancelAnimationFrame(raf);
 		t = Math.min(Math.max(time, 0), scene.duration);
 		draw();
 	}
 	function tick(now) {
-		t = Math.min(tStart + (now - wallStart) / 1000, scene.duration);
-		if (t >= scene.duration) playing = false;
+		if (destroyed || !playing) return;
+		t = Math.min(tStart + (now - wallStart) / 1000, stopAt);
+		if (t >= stopAt) playing = false;
 		draw();
 		if (playing) raf = requestAnimationFrame(tick);
 	}
 	function play() {
-		if (reduced) return;
+		if (reduced || destroyed) return;
 		if (t >= scene.duration) t = 0;
+		start(scene.duration);
+	}
+	function start(target) {
+		autoplayPending = false;
+		visibilityObserver?.disconnect();
+		stopAt = target;
 		playing = true;
 		tStart = t;
 		wallStart = performance.now();
@@ -156,22 +175,40 @@ export function mountPlayer(container, scene, options = {}) {
 	function pause() {
 		playing = false;
 		cancelAnimationFrame(raf);
-		draw();
+		if (!destroyed) draw();
 	}
 	playBtn?.addEventListener("click", () => (playing ? pause() : play()));
 	stage.addEventListener("keydown", (e) => {
 		const idx = stepIndexAt(scene, t);
-		if (e.key === "ArrowRight") seekStep(Math.min(idx + 1, scene.steps.length - 1));
-		else if (e.key === "ArrowLeft") seekStep(Math.max(idx - 1, 0));
-		else if (e.key === "Home") seekStep(0);
-		else if (e.key === "End") seekStep(scene.steps.length - 1);
+		if (e.key === "ArrowRight") selectStep(Math.min(idx + 1, scene.steps.length - 1));
+		else if (e.key === "ArrowLeft") selectStep(Math.max(idx - 1, 0));
+		else if (e.key === "Home") selectStep(0);
+		else if (e.key === "End") selectStep(scene.steps.length - 1);
 		else if (e.key === " " && !reduced) playing ? pause() : play();
 		else return;
 		e.preventDefault();
 	});
 	function seekStep(i) {
-		pause();
-		seek(scene.steps[i].at);
+		autoplayPending = false;
+		visibilityObserver?.disconnect();
+		seek(stepTime(i));
+	}
+	/** @param {number} i */
+	function stepTime(i) {
+		if (!Number.isInteger(i) || i < 0 || i >= scene.steps.length) throw new RangeError(`Invalid step index: ${i}`);
+		return scene.steps[i].at;
+	}
+	/** Play forward to an exact settled step; backward/reduced-motion calls jump. @param {number} i */
+	function playToStep(i) {
+		const target = stepTime(i);
+		autoplayPending = false;
+		visibilityObserver?.disconnect();
+		if (destroyed) return;
+		if (reduced || target <= t) seek(target);
+		else start(target);
+	}
+	function selectStep(i) {
+		options.animateSteps ? playToStep(i) : seekStep(i);
 	}
 
 	// Initial state: final frame (also what reduced motion and no-autoplay keep).
@@ -179,27 +216,38 @@ export function mountPlayer(container, scene, options = {}) {
 	const autoplay = options.autoplay ?? "visible";
 	if (!reduced && autoplay !== "none") {
 		if (autoplay === "visible" && typeof IntersectionObserver === "function") {
-			const io = new IntersectionObserver(
+			autoplayPending = true;
+			visibilityObserver = new IntersectionObserver(
 				(entries) => {
-					if (entries.some((e) => e.isIntersecting)) {
-						io.disconnect();
+					if (autoplayPending && entries.some((e) => e.isIntersecting)) {
+						autoplayPending = false;
+						visibilityObserver?.disconnect();
+						if (destroyed) return;
 						seek(0);
 						play();
 					}
 				},
 				{ threshold: 0.4 },
 			);
-			io.observe(container);
+			visibilityObserver.observe(container);
 		} else {
 			seek(0);
 			play();
 		}
 	}
-	if (typeof matchMedia === "function" && !options.theme) {
-		matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
-	}
+	const themeQuery = typeof matchMedia === "function" && !options.theme ? matchMedia("(prefers-color-scheme: dark)") : null;
+	themeQuery?.addEventListener?.("change", applyTheme);
 
-	const controller = { seek, play, pause, seekStep, get time() { return t; }, scene };
+	function destroy() {
+		if (destroyed) return;
+		destroyed = true;
+		playing = false;
+		cancelAnimationFrame(raf);
+		visibilityObserver?.disconnect();
+		themeQuery?.removeEventListener?.("change", applyTheme);
+		if (g.__motionKit[id] === controller) delete g.__motionKit[id];
+	}
+	const controller = { seek, play, pause, seekStep, playToStep, destroy, get time() { return t; }, scene };
 	const g = globalThis;
 	g.__motionKit = g.__motionKit ?? {};
 	g.__motionKit[id] = controller;

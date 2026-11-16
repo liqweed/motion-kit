@@ -8,7 +8,7 @@
  *   motion-kit bake   <scene> --out x.svg    [--fps 15] [--theme ...] [--style S]
  *   motion-kit video  <scene> --out x.mp4|.gif|.webm [--fps 30] [--scale 2] [--hold 1.5] [--sheet sheet.png]
  *   motion-kit icon   <scene> --out <repo>  [--size 512] [--style S] [--no-png]   project icon set (assets/, .idea/)
- *   motion-kit vendor <dir> [--adapter page|slidev|astro]
+ *   motion-kit vendor <dir> [--adapter page|slidev|astro|element]
  *   motion-kit formats | types
  *
  * <scene> is a spec (.json, any registered type) or a custom module (.mjs).
