@@ -4,8 +4,8 @@
 
 - Starts on the **final frame** (also the no-JS / server-rendered fallback).
 - Replays once when ~40 % visible, then holds.
-- Controls: play/pause (always present, WCAG 2.2.2), one button per step (jumps,
-  no animation), optional scrubber, caption with the active step's `detail`.
+- Controls: play/pause (always present, WCAG 2.2.2), one button per step (jumps
+  by default), optional scrubber, caption with the active step's `detail`.
 - Keyboard on the diagram: ← / → step, Home / End, Space play/pause.
 - `prefers-reduced-motion`: final frame, no autoplay, no play button.
 - `prefers-color-scheme`: light/dark tokens switch live.
@@ -13,6 +13,17 @@
   list of all steps with details; the visible caption is `aria-hidden`.
 - Capture hook: `window.__motionKit[id].seek(t)` (for Playwright/HyperFrames-
   style renderers).
+
+The controller's step indices are zero-based. `controller.seekStep(i)` jumps;
+`controller.playToStep(i)` plays forward from the current time and stops at the
+step's exact settled time. Backward and same-step calls jump, and reduced
+motion always jumps. A new call replaces the previous target; `pause()` holds
+the current frame, `seek(t)` cancels playback, and `play()` continues to the end.
+Invalid indices throw `RangeError`.
+
+Pass `{ animateSteps: true }` to `mountPlayer(container, scene, options)` to
+enable this behavior for the step buttons and arrow/Home/End keys. The default
+keeps instant navigation.
 
 ## Patterns worth adding per diagram (in the page around the player)
 

@@ -309,14 +309,15 @@ Every target goes through this one function. It MUST emit `<svg>` with
 | Initial state MUST be the final frame; a server/no-JS fallback SHOULD put the final frame in the container. | `:172`, `lib/build.mjs:25`, `adapters/astro/AnimatedDiagram.astro:31` |
 | Autoplay `visible` (default): plays once from 0 when ≥ 40 % in view, then holds; `none` disables. MUST NOT loop. | `:173-191` |
 | Play/pause MUST always be present when motion can play (WCAG 2.2.2); label shows Play/Pause/Replay. | `:69-75,129` |
-| One `<button>` per step, labelled `N. label`; activating it pauses and jumps (no animation); `aria-current="step"` marks the active step. | `:76-87,126` |
+| One `<button>` per step, labelled `N. label`; activating it jumps by default. `animateSteps: true` opts buttons and keyboard navigation into `playToStep`. `aria-current="step"` marks the active step. | `runtime/player.mjs` |
 | Optional range scrubber (`aria-label`, default "Timeline"); input pauses and seeks. | `:88-102` |
 | Caption shows the active step's `detail` and is `aria-hidden`; a visually hidden ordered list of all steps (`label: detail`) MUST be present for screen readers. | `:103-115` |
 | Keyboard on the focusable stage: ←/→ step, Home/End first/last, Space play/pause. | `:59,156-165` |
 | Visible focus style for every control. | `:26` |
 | `prefers-reduced-motion: reduce`: final frame, no autoplay, no play button, Space ignored. | `:38,70,142,162,174` |
 | Theme: `options.theme`, else follows `prefers-color-scheme` live. | `:50-54,192-194` |
-| **Capture hook**: the controller `{seek, play, pause, seekStep, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `:196-200` |
+| `playToStep(i)` MUST play forward from the current time, clamp to the target step's exact `at` and hold. Backward, same-time and reduced-motion calls MUST jump. Indices are zero-based; invalid indices throw `RangeError`. Retargeting replaces the target; `play()` continues to duration; `seek(t)` cancels playback. | `runtime/player.mjs`, `test/player.test.mjs` |
+| **Capture hook**: the controller `{seek, play, pause, seekStep, playToStep, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `runtime/player.mjs` |
 
 UI strings MAY be localized via `options.labels`.
 
