@@ -63,7 +63,7 @@ runtime/        dependency-free ES modules (browser + Node)
   bake.mjs      zero-JS animated SVG
   player.mjs    live player (controls, a11y, reduced motion, capture hook)
 lib/            Node-side: check (gate), export, build (HTML inliner), raster, video, icon
-adapters/       slidev (Vue), astro, page (README)
+adapters/       slidev (Vue), astro, element (custom element), page (README)
 skills/         animated-diagram, motion-render, project-logo (Claude Code / Craft skills)
 examples/       order-flow (sequence), smart-home (hub-spoke), custom-pulse (custom module)
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
@@ -88,13 +88,34 @@ The skills look for this clone at `~/workspace/motion-kit` first (it has
 ## Use in another repo (vendor)
 
 ```bash
-node cli/motion-kit.mjs vendor <repo>/components/motion-kit --adapter slidev   # or astro / page
+node cli/motion-kit.mjs vendor <repo>/components/motion-kit --adapter slidev   # or astro / page / element
 ```
 
 Copies `runtime/`, the adapter, `lib/check.mjs` and `LICENSE`; writes a gate
 script and `MOTION_KIT_VERSION`. Don't edit vendored files; change motion-kit
 and re-vendor. Vendoring keeps consumer CI
 self-contained (no install step, no network).
+
+### Plain HTML and framework-independent custom element
+
+```bash
+node cli/motion-kit.mjs vendor public/motion-kit --adapter element
+cp diagram.json public/diagram.json
+```
+
+```html
+<motion-diagram src="./diagram.json" format="wide" locale="en">
+  <img src="./diagram-final.svg" alt="The complete diagram and its explanation">
+</motion-diagram>
+<script type="module" src="./motion-kit/adapter/motion-diagram.mjs"></script>
+```
+
+Serve the files over HTTP; no build step is needed. The supplied final-frame
+fallback stays visible without JavaScript, while loading and on errors. Specs
+can also be inline JSON. `theme` and JSON `style-spec` attributes configure
+the appearance, and `element.controller` exposes the live player after the
+`motion-ready` event. See [the element adapter](adapters/element/README.md)
+for inline specs, styles, lifecycle and error handling.
 
 ## Rules (the gate enforces them)
 

@@ -23,7 +23,9 @@ Invalid indices throw `RangeError`.
 
 Pass `{ animateSteps: true }` to `mountPlayer(container, scene, options)` to
 enable this behavior for the step buttons and arrow/Home/End keys. The default
-keeps instant navigation.
+keeps instant navigation. Call `controller.destroy()` before removing or
+replacing a player: it cancels playback, visibility observation, theme listening
+and its capture-hook entry.
 
 ## Patterns worth adding per diagram (in the page around the player)
 

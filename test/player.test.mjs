@@ -149,3 +149,17 @@ it("explicit step navigation ignores an already queued autoplay notification", (
 	assert.equal(env.player.time, 1);
 	assert.equal(env.frames.size, 0);
 });
+
+it("explicit step navigation disables pending autoplay and destroy cleans external resources", () => {
+	const env = setup({ autoplay: "visible" });
+	env.player.seekStep(0);
+	assert.equal(env.disconnected, true);
+	env.player.playToStep(2);
+	assert.equal(env.themeListeners.size, 1);
+	env.player.destroy();
+	env.player.destroy();
+	env.show();
+	assert.equal(env.frames.size, 0);
+	assert.equal(env.themeListeners.size, 0);
+	assert.equal(env.context.__motionKit[scene.id], undefined);
+});

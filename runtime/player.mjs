@@ -32,14 +32,14 @@ const CSS = `
 .mk-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 `;
 
-let styleInjected = false;
+const styledDocuments = new WeakSet();
 
 /**
  * Mount a scene with controls and a clock owned by this player.
  * @param {HTMLElement} container
  * @param {{ id: string, title: string, description: string, width: number, height: number, duration: number, steps: { at: number, label: string, detail?: string }[], frame: (t: number) => string }} scene
  * @param {{ style?: Parameters<typeof normalizeStyle>[0], labels?: Record<string, string>, theme?: string, id?: string, injectCss?: boolean, scrubber?: boolean, captions?: boolean, autoplay?: string, animateSteps?: boolean }} [options]
- * @returns The player controller.
+ * @returns The player controller; call destroy() before removing or replacing it.
  */
 export function mountPlayer(container, scene, options = {}) {
 	const style = normalizeStyle(options.style);
@@ -48,11 +48,11 @@ export function mountPlayer(container, scene, options = {}) {
 	/** @type {Document} */
 	const doc = container.ownerDocument;
 
-	if (!styleInjected && options.injectCss !== false) {
+	if (!styledDocuments.has(doc) && options.injectCss !== false) {
 		const s = doc.createElement("style");
 		s.textContent = CSS;
 		doc.head.appendChild(s);
-		styleInjected = true;
+		styledDocuments.add(doc);
 	}
 
 	const id = options.id ?? scene.id;
@@ -131,6 +131,7 @@ export function mountPlayer(container, scene, options = {}) {
 	let tStart = 0;
 	let stopAt = scene.duration;
 	let autoplayPending = false;
+	let destroyed = false;
 	/** @type {IntersectionObserver | undefined} */
 	let visibilityObserver;
 
@@ -143,20 +144,21 @@ export function mountPlayer(container, scene, options = {}) {
 		if (playBtn) playBtn.textContent = playing ? labels.pause : t >= scene.duration ? labels.replay : labels.play;
 	}
 	function seek(time) {
+		if (destroyed) return;
 		playing = false;
 		cancelAnimationFrame(raf);
 		t = Math.min(Math.max(time, 0), scene.duration);
 		draw();
 	}
 	function tick(now) {
-		if (!playing) return;
+		if (destroyed || !playing) return;
 		t = Math.min(tStart + (now - wallStart) / 1000, stopAt);
 		if (t >= stopAt) playing = false;
 		draw();
 		if (playing) raf = requestAnimationFrame(tick);
 	}
 	function play() {
-		if (reduced) return;
+		if (reduced || destroyed) return;
 		if (t >= scene.duration) t = 0;
 		start(scene.duration);
 	}
@@ -173,7 +175,7 @@ export function mountPlayer(container, scene, options = {}) {
 	function pause() {
 		playing = false;
 		cancelAnimationFrame(raf);
-		draw();
+		if (!destroyed) draw();
 	}
 	playBtn?.addEventListener("click", () => (playing ? pause() : play()));
 	stage.addEventListener("keydown", (e) => {
@@ -201,6 +203,7 @@ export function mountPlayer(container, scene, options = {}) {
 		const target = stepTime(i);
 		autoplayPending = false;
 		visibilityObserver?.disconnect();
+		if (destroyed) return;
 		if (reduced || target <= t) seek(target);
 		else start(target);
 	}
@@ -219,6 +222,7 @@ export function mountPlayer(container, scene, options = {}) {
 					if (autoplayPending && entries.some((e) => e.isIntersecting)) {
 						autoplayPending = false;
 						visibilityObserver?.disconnect();
+						if (destroyed) return;
 						seek(0);
 						play();
 					}
@@ -231,11 +235,19 @@ export function mountPlayer(container, scene, options = {}) {
 			play();
 		}
 	}
-	if (typeof matchMedia === "function" && !options.theme) {
-		matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme);
-	}
+	const themeQuery = typeof matchMedia === "function" && !options.theme ? matchMedia("(prefers-color-scheme: dark)") : null;
+	themeQuery?.addEventListener?.("change", applyTheme);
 
-	const controller = { seek, play, pause, seekStep, playToStep, get time() { return t; }, scene };
+	function destroy() {
+		if (destroyed) return;
+		destroyed = true;
+		playing = false;
+		cancelAnimationFrame(raf);
+		visibilityObserver?.disconnect();
+		themeQuery?.removeEventListener?.("change", applyTheme);
+		if (g.__motionKit[id] === controller) delete g.__motionKit[id];
+	}
+	const controller = { seek, play, pause, seekStep, playToStep, destroy, get time() { return t; }, scene };
 	const g = globalThis;
 	g.__motionKit = g.__motionKit ?? {};
 	g.__motionKit[id] = controller;

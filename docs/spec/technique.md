@@ -317,9 +317,26 @@ Every target goes through this one function. It MUST emit `<svg>` with
 | `prefers-reduced-motion: reduce`: final frame, no autoplay, no play button, Space ignored. | `:38,70,142,162,174` |
 | Theme: `options.theme`, else follows `prefers-color-scheme` live. | `:50-54,192-194` |
 | `playToStep(i)` MUST play forward from the current time, clamp to the target step's exact `at` and hold. Backward, same-time and reduced-motion calls MUST jump. Indices are zero-based; invalid indices throw `RangeError`. Retargeting replaces the target; `play()` continues to duration; `seek(t)` cancels playback. | `runtime/player.mjs`, `test/player.test.mjs` |
-| **Capture hook**: the controller `{seek, play, pause, seekStep, playToStep, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `runtime/player.mjs` |
+| `destroy()` MUST cancel the animation frame, disconnect visibility observation, remove theme listening and remove this controller's capture entry. | `runtime/player.mjs`, `test/player.test.mjs` |
+| **Capture hook**: the controller `{seek, play, pause, seekStep, playToStep, destroy, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `runtime/player.mjs` |
 
 UI strings MAY be localized via `options.labels`.
+
+### 10.2.1 Custom element (`adapters/element/motion-diagram.mjs`)
+
+- Vendoring with `--adapter element` MUST copy an unbuilt module importing the
+  adjacent vendored runtime. Importing it in a browser defines `<motion-diagram>`.
+- The spec MUST come from the `spec` JSON attribute, a child
+  `script[type="application/json"]`, or a `src` URL, in that order. URLs resolve
+  against the document base URI. `format` and `locale` select the scene;
+  `theme` and JSON `style-spec` configure the player; HTML `style` remains CSS.
+- Supplied final-frame child markup MUST remain visible without JavaScript,
+  while loading and on errors. Only a successful mount hides the fallback.
+- `controller` MUST expose the mounted player, or be null when unmounted.
+  `motion-ready` carries `detail.controller`; `motion-error` carries `detail.error`.
+- Observed attribute changes MUST remount. Disconnection MUST abort loading,
+  destroy the player and restore the fallback; reconnection mounts afresh.
+  Superseded asynchronous loads MUST NOT mount or publish errors.
 
 ### 10.3 Self-contained HTML (`motion-kit build`, `lib/build.mjs`)
 
