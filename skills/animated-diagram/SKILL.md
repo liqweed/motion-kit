@@ -69,7 +69,7 @@ mk export diagram.json -o out/ --png --qc              # slides + review sheet
 mk bake diagram.json -o diagram.svg -f wide            # zero-JS animated SVG
 mk video diagram.json -f 9:16 -o reel.mp4 --sheet sheet.png
 mk vendor <repo>/components/motion-kit --adapter slidev   # or astro / page / element
-node <repo>/src/motion-kit/check.mjs flow.scene.mjs -l en -l nl --style brand.json --options labels.mjs  # the vendored gate, same checks
+node <repo>/components/motion-kit/check.mjs flow.scene.mjs -l en -l nl --style brand.json --options labels.mjs  # the vendored gate, same checks
 ```
 
 Vendoring includes the full MIT `LICENSE`. Keep that file and the SPDX

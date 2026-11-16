@@ -21,14 +21,25 @@
  * from `motion-kit build` calls the factory the same way, with the bundled
  * runtime as `kit`, after the CLI built it here once.
  */
-import * as motion from "./motion.mjs";
-import * as scene from "./scene.mjs";
-import * as style from "./style.mjs";
-import * as svg from "./svg.mjs";
-import * as wrap from "./wrap.mjs";
+import { ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 } from "./motion.mjs";
+import { FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId } from "./scene.mjs";
+import { NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok } from "./style.mjs";
+import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, translate, trimSegment } from "./svg.mjs";
+import { estimateWidth, wrapLabel } from "./wrap.mjs";
 
-/** The runtime, flat, handed to custom scene modules as `opts.kit`. */
-export const KIT = Object.freeze({ ...motion, ...svg, ...style, ...scene, ...wrap });
+/**
+ * The runtime, flat, handed to custom scene modules as `opts.kit`: the exports
+ * of motion, scene, style, svg and wrap (not the scene types or the player).
+ * Named imports, because lib/bundle.mjs inlines only that form; a new export
+ * in one of those modules is added here (test/runtime.test.mjs checks).
+ */
+export const KIT = Object.freeze({
+	...{ ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 },
+	...{ FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId },
+	...{ NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok },
+	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, translate, trimSegment },
+	...{ estimateWidth, wrapLabel },
+});
 
 const RESERVED = ["format", "locale", "kit"];
 
@@ -44,5 +55,5 @@ export function sceneFromModule(make, { format = "16:9", locale = "en", options 
 	for (const key of RESERVED) {
 		if (options && Object.hasOwn(options, key)) throw new Error(`scene options must not set "${key}": it is passed separately`);
 	}
-	return scene.validateScene(make({ ...options, format, locale, kit: KIT }));
+	return validateScene(make({ ...options, format, locale, kit: KIT }));
 }

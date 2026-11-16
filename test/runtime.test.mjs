@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import vm from "node:vm";
 import { checkScene, wellFormed } from "../lib/check.mjs";
@@ -7,6 +7,12 @@ import { bundle } from "../lib/bundle.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { easeIn, easeOut, easeStandard, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
+import { claimId, claimStylesheet, newPageState } from "../runtime/page.mjs";
+import * as motionMod from "../runtime/motion.mjs";
+import * as sceneMod from "../runtime/scene.mjs";
+import * as styleMod from "../runtime/style.mjs";
+import * as svgMod from "../runtime/svg.mjs";
+import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
 import { checkContrast, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
 import { cubic, drawOn, esc, num, polyline } from "../runtime/svg.mjs";
@@ -232,6 +238,19 @@ describe("bake", () => {
 });
 
 describe("bundle", () => {
+	it("keeps a runtime-only global that a later entry cannot shadow", () => {
+		const root = new URL("../runtime/", import.meta.url).pathname;
+		const custom = new URL("./fixtures-shadow.mjs", import.meta.url).pathname;
+		writeFileSync(custom, "export const progress = 1;\n");
+		try {
+			const ctx = vm.createContext({});
+			vm.runInContext(bundle([`${root}motion.mjs`, custom], { runtimeName: "MotionKitRuntime", runtimeCount: 1 }), ctx);
+			assert.equal(ctx.MotionKit.progress, 1);
+			assert.equal(typeof ctx.MotionKitRuntime.progress, "function");
+		} finally {
+			rmSync(custom, { force: true });
+		}
+	});
 	it("inlines the runtime into one script that renders the same bytes as Node", () => {
 		const root = new URL("../runtime/", import.meta.url).pathname;
 		const code = bundle([`${root}types/index.mjs`, `${root}scene.mjs`, `${root}bake.mjs`]);
@@ -244,5 +263,29 @@ describe("bundle", () => {
 		for (const t of [0, 0.7, 2.2, ref.duration]) {
 			assert.equal(ctx.MotionKit.renderSvg(scene, t), renderSvg(ref, t));
 		}
+	});
+});
+
+describe("KIT", () => {
+	it("holds every export of the motion, scene, style, svg and wrap modules", () => {
+		for (const mod of [motionMod, sceneMod, styleMod, svgMod, wrapMod]) {
+			for (const name of Object.keys(mod)) assert.ok(name in KIT, `KIT lacks ${name}`);
+		}
+	});
+});
+
+describe("page state", () => {
+	it("claims generated and requested ids, once each", () => {
+		const page = newPageState();
+		assert.equal(claimId(page, undefined, "flow"), "mk-flow-1");
+		assert.equal(claimId(page, undefined, "flow"), "mk-flow-2");
+		assert.equal(claimId(page, "mine", "flow"), "mine");
+		assert.throws(() => claimId(page, "mine", "flow"), /already used/);
+		assert.throws(() => claimId(page, "1bad", "flow"), /must be letters/);
+	});
+	it("hands out the stylesheet once", () => {
+		const page = newPageState();
+		assert.equal(claimStylesheet(page), true);
+		assert.equal(claimStylesheet(page), false);
 	});
 });

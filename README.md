@@ -113,6 +113,10 @@ node cli/motion-kit.mjs vendor <site>/src/motion-kit --adapter astro
 ---
 import AnimatedDiagram from "../motion-kit/adapter/AnimatedDiagram.astro";
 import spec from "../diagrams/order-flow.json";
+import brandStyle from "../brand/motion-style.json"; // token data, as `--style` reads it
+import { dictionary } from "../i18n"; // your site's own text, keyed by locale
+const lang = Astro.currentLocale ?? "en";
+const t = dictionary[lang];
 ---
 <AnimatedDiagram spec={spec} format="wide" locale="nl" class="hidden lg:block" />
 <AnimatedDiagram spec={spec} format="tall" locale="nl" class="lg:hidden" />

@@ -56,7 +56,7 @@
  */
 import { sceneFromModule } from "../runtime/kit.mjs";
 import { PLAYER_CSS, playerMarkup, themeCss } from "../runtime/player.mjs";
-import { safeId } from "../runtime/scene.mjs";
+import { claimId, claimStylesheet, newPageState } from "../runtime/page.mjs";
 import { createScene } from "../runtime/types/index.mjs";
 
 interface Props {
@@ -93,14 +93,16 @@ else {
 	scene = sceneFromModule(mod.default, { format, locale, options });
 }
 
-// Per page: a counter and the ids in use, and whether the player stylesheet is out yet.
-const page = ((Astro.locals as Record<string, any>).__motionKit ??= { count: 0, ids: new Set<string>(), css: false });
-if (idProp != null && safeId(idProp) !== idProp) fail(`id "${idProp}" must be letters, digits, "_" and "-", starting with a letter`);
-const id = idProp ?? safeId(`mk-${scene.id}-${++page.count}`);
-if (page.ids.has(id)) fail(`id "${id}" is already used on this page; give each instance (the wide and the tall one too) its own`);
-page.ids.add(id);
-const css = page.css ? "" : `<style data-mk-player-css>${PLAYER_CSS}</style>`;
-page.css = true;
+// Per page: the ids in use and whether the player stylesheet is out yet.
+const page = ((Astro.locals as Record<string, any>).__motionKit ??= newPageState());
+const id = (() => {
+	try {
+		return claimId(page, idProp, scene.id);
+	} catch (error) {
+		return fail((error as Error).message);
+	}
+})();
+const css = claimStylesheet(page) ? `<style data-mk-player-css>${PLAYER_CSS}</style>` : "";
 const tokens = `<style>${themeCss(`#${id}`, style, theme)}</style>`;
 const markup = playerMarkup(scene, { id, style, theme, labels, locale, scrubber });
 const config = JSON.stringify({ spec, module: modulePath, options, format, locale, theme, style, scrubber, labels });
