@@ -27,8 +27,9 @@ const lazy = new IntersectionObserver(
 export function liveCard(entry, { format, locale = "en", style = "studio", surface = false, pin }) {
 	const box = h("div", { class: "player-box" });
 	const pinBtn = pin
-		? h("button", { type: "button", class: "btn-sm", "aria-pressed": String(pin.pressed()), onClick: () => {
+		? h("button", { type: "button", class: "btn-sm", "data-pin": entry.id, "aria-pressed": String(pin.pressed()), onClick: () => {
 				pin.toggle();
+				/** @type {HTMLElement | null} */ (document.querySelector(`[data-pin="${entry.id}"]`))?.focus(); // render() rebuilt the card; keep keyboard focus on its control
 			} }, pin.pressed() ? "Pinned to compare" : "Compare")
 		: null;
 	const card = h(

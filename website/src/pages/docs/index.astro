@@ -57,7 +57,8 @@ import { DOCS_NAV, REPO } from "../../scripts/catalog.mjs";
   const spec = { ...base, spokes: base.spokes.slice(0, slider.value) };
   scene = createScene(spec, { format });
   player = mountPlayer(el, scene, { autoplay: "none" });
-  player.seekStep(Math.min(step, scene.steps.length - 1));
+  if (step < 0) player.seek(0);                   // before the first step
+  else player.seekStep(Math.min(step, scene.steps.length - 1));
 };`} /></pre></div>
 				<p class="needs-note">Reading the current step needs a getter: <b>needs: controller.step getter</b>.</p>
 			</div>

@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { SCENE_TYPES, createScene } from "../runtime/types/index.mjs";
 import { checkContrast } from "../runtime/style.mjs";
 import { DEFECTS, DOCS_NAV, FORMAT_NAMES, GROUPS, LIVE, LOCALES, PLANNED, BRIEFS, STORY, STYLES, TRANSCRIPT, findExample } from "../website/src/scripts/catalog.mjs";
 
-const ROOT = new URL("../", import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 describe("site catalog", () => {
 	it("every live example exists and builds in every format and locale it claims", async () => {

@@ -57,7 +57,7 @@ function renderCompare() {
 			.catch((err) => failNote(stage, err));
 	}
 	box.replaceChildren(
-		h("div", { style: "display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between" }, h("h2", { style: "font-size:18px;font-weight:650" }, "Compare"), h("button", { type: "button", class: "btn-sm", onClick: () => { state.pins = []; render(); } }, "Clear")),
+		h("div", { style: "display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between" }, h("h2", { style: "font-size:18px;font-weight:650" }, "Compare"), h("button", { type: "button", class: "btn-sm", onClick: () => { state.pins = []; render(); $("#filters button")?.focus(); } }, "Clear")),
 		grid,
 	);
 }

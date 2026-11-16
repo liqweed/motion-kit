@@ -7,7 +7,7 @@
 import { createScene } from "../../../runtime/types/index.mjs";
 import { stepIndexAt } from "../../../runtime/scene.mjs";
 import { LIVE } from "./catalog.mjs";
-import { $, initPage, failNote, fetchText, h, loadScene, mount, onStep, styleFor, themeOpt } from "./site.mjs";
+import { $, initPage, prefersDark, failNote, fetchText, h, loadScene, mount, onStep, styleFor, themeOpt } from "./site.mjs";
 
 initPage();
 const phone = matchMedia("(max-width: 640px)").matches;
@@ -47,19 +47,27 @@ const fmt = phone ? "tall" : "wide";
 		const base = JSON.parse(await fetchText("examples/integrations.json"));
 		/** @type {any} */
 		let current = null;
-		const build = (n, keepStep) => {
+		const build = (n, keepStep, rebuilding) => {
 			const spec = { ...base, spokes: base.spokes.slice(0, n) };
 			const sc = createScene(spec, { format: fmt });
-			const { controller } = mount(stage, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "none" });
-			if (keepStep >= 0) controller.seekStep(Math.min(keepStep, sc.steps.length - 1));
+			// Release the previous player: the player has no dispose, so drop its
+			// capture-hook registration. An explicit theme means it adds no
+			// media-query listener that would pin the detached DOM.
+			current?.pause();
+			for (const k of Object.keys(globalThis.__motionKit ?? {})) if (k.startsWith(`${sc.id}-`)) delete globalThis.__motionKit[k];
+			const { controller } = mount(stage, sc, { style: styleFor("studio"), theme: themeOpt() ?? (prefersDark() ? "dark" : "light"), autoplay: "none" });
+			if (rebuilding) {
+				if (keepStep >= 0) controller.seekStep(Math.min(keepStep, sc.steps.length - 1));
+				else controller.seek(0); // still before the first step
+			}
 			current = controller;
 			$("#spokes-text").textContent = `${n} spokes`;
 			slider.setAttribute("aria-valuetext", `${n} spokes`);
 		};
-		build(Number(slider.value), -1);
+		build(Number(slider.value), -1, false);
 		slider.addEventListener("input", () => {
 			const step = current ? stepIndexAt(current.scene, current.time) : -1; // keep the reader’s place
-			build(Number(slider.value), step);
+			build(Number(slider.value), step, true);
 		});
 	} catch (err) {
 		failNote(stage, err);

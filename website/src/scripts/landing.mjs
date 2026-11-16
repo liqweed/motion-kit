@@ -81,7 +81,7 @@ async function renderHero(briefId) {
 			cancelAnimationFrame(raf);
 		});
 	} catch (err) {
-		failNote($("#hero-stage"), err);
+		if (token === heroToken) failNote($("#hero-stage"), err); // an obsolete request must not overwrite a newer brief
 	}
 }
 

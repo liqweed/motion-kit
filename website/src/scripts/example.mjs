@@ -56,7 +56,7 @@ const main = app;
 
 	/* tabs */
 	const TABS = [["frames", "Step frames"], ["spec", "Spec"], ["export", "Export"], ["gate", "Gate"]];
-	const panel = h("div", { class: "tabpanel", role: "tabpanel" });
+	const panel = h("div", { class: "tabpanel", role: "tabpanel", tabindex: "0" });
 	const list = h("div", { class: "tablist", role: "tablist", "aria-label": "Example details" });
 	const tabButtons = TABS.map(([key, label]) => {
 		const b = h("button", { type: "button", role: "tab", id: `tab-${key}`, onClick: () => { state.tab = key; renderTab(); } }, label);
@@ -114,8 +114,8 @@ const main = app;
 		const rows = [
 			["Web page (Astro island)", "JS", "node cli/motion-kit.mjs vendor <repo>/src/motion-kit --adapter astro"],
 			["Self-contained HTML", "JS, inline", `node cli/motion-kit.mjs build ${e.file} -o out/${e.id}.html -f ${f} -l ${state.locale}`],
-			["Slides (PowerPoint, Keynote, Google)", "no JS", `node cli/motion-kit.mjs export ${e.file} -o out/slides --png --qc`],
-			["README, docs, Obsidian", "no JS", `node cli/motion-kit.mjs bake ${e.file} -o out/${e.id}.svg -f ${f}`],
+			["Slides (PowerPoint, Keynote, Google)", "no JS", `node cli/motion-kit.mjs export ${e.file} -o out/slides -f ${f} -l ${state.locale} --png --qc`],
+			["README, docs, Obsidian", "no JS", `node cli/motion-kit.mjs bake ${e.file} -o out/${e.id}.svg -f ${f} -l ${state.locale}`],
 			["Slidev deck", "JS", "node cli/motion-kit.mjs vendor <deck>/components/motion-kit --adapter slidev"],
 			["Video", "ffmpeg", `node cli/motion-kit.mjs video ${e.file} -f 9:16 -o out/${e.id}.mp4 --sheet out/sheet.png`],
 		];
