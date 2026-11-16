@@ -1,7 +1,6 @@
 {
-	"name": "motion-kit",
+	"name": "@liqweed/motion-kit",
 	"version": "0.2.0",
-	"private": true,
 	"description": "Deterministic animated diagrams: scenes as pure functions of time, for live pages, slides, baked SVG and video.",
 	"keywords": [
 		"animation",
@@ -22,6 +21,22 @@
 	"author": "Ophir Radnitz",
 	"type": "module",
 	"license": "MIT",
+	"files": [
+		"cli/",
+		"lib/",
+		"runtime/",
+		"adapters/",
+		"styles/",
+		"examples/",
+		"brand/",
+		"skills/",
+		".claude-plugin/",
+		"docs/spec/"
+	],
+	"publishConfig": {
+		"access": "public",
+		"provenance": true
+	},
 	"engines": {
 		"node": ">=22"
 	},
