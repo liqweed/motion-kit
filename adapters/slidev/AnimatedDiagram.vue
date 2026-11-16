@@ -102,6 +102,12 @@ watch(stepIndex, (next, prev) => {
 	}
 });
 
+// A replaced scene keeps the same step index but may time that step differently.
+watch(scene, (next) => {
+	cancelAnimationFrame(raf);
+	t.value = next.steps[Math.min(stepIndex.value, next.steps.length - 1)].at;
+});
+
 onMounted(() => {
 	if (info) clicks.register(id, info);
 	if (animated.value && props.intro && stepIndex.value === 0) animate(0, scene.value.steps[0].at);
