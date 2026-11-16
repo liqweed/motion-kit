@@ -2,7 +2,7 @@
 
 ```bash
 node cli/motion-kit.mjs vendor public/motion-kit --adapter element
-node cli/motion-kit.mjs export diagram.json -o public/frames
+node cli/motion-kit.mjs export diagram.json -o public/frames -f wide
 cp diagram.json public/diagram.json
 ```
 

@@ -102,6 +102,7 @@ self-contained (no install step, no network).
 ```bash
 node cli/motion-kit.mjs vendor public/motion-kit --adapter element
 cp diagram.json public/diagram.json
+cp diagram-final.svg public/diagram-final.svg   # the final-frame fallback image
 ```
 
 ```html

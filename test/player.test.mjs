@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
+import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { bundle } from "../lib/bundle.mjs";
 import { renderSvg } from "../runtime/scene.mjs";
 
-const source = bundle([new URL("../runtime/player.mjs", import.meta.url).pathname]);
+const source = bundle([fileURLToPath(new URL("../runtime/player.mjs", import.meta.url))]);
 const scene = {
 	id: "test-player", title: "Test player", description: "Three steps", width: 100, height: 100,
 	duration: 3, steps: [{ at: 0, label: "One" }, { at: 1, label: "Two" }, { at: 2, label: "Three" }],
