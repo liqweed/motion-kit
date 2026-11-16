@@ -187,3 +187,13 @@ it("resolves flat and per-locale label dictionaries", async () => {
 	assert.equal(resolveLabels(dict, "de").play, "Play");
 	assert.equal(resolveLabels({ nl: { play: "Speel" } }, "de").play, "Speel");
 });
+
+it("mounting twice on one container destroys the first player", () => {
+	const { player, container, context, frames } = setup();
+	const second = context.MotionKit.mountPlayer(container, scene, { id: "second", autoplay: "none" });
+	assert.equal(context.__motionKit["test-player"], undefined);
+	assert.equal(context.__motionKit.second, second);
+	player.seek(1);
+	assert.equal(player.time, 3);
+	assert.equal(frames.size, 0);
+});

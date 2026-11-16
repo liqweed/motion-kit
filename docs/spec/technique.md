@@ -324,6 +324,8 @@ UI strings MAY be localized via `options.labels`: a flat `{ play, pause, replay,
 
 Keyboard step changes (←/→/Home/End) MUST be announced through a visually hidden `role="status"` polite live region (`N. label: detail`); autoplay, pointer and scrubber use stay silent.
 
+`mountPlayer` MUST release any player already mounted on the same container (`destroy()`), so remounting never leaks clocks, observers or capture entries. The build output passes `locale` through, so label dictionaries resolve there too; the Slidev adapter announces each click's step through the same kind of live region.
+
 The Astro adapter mounts each diagram once, tears the players down on `astro:before-swap` and mounts the new page's diagrams on `astro:page-load`.
 
 ### 10.2.1 Custom element (`adapters/element/motion-diagram.mjs`)

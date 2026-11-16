@@ -34,6 +34,9 @@ const CSS = `
 
 const styledDocuments = new WeakSet();
 
+/** @type {WeakMap<HTMLElement, { destroy: () => void }>} */
+const mounted = new WeakMap();
+
 /**
  * UI strings from `labels`: either a flat `{ play, pause, … }` object or a
  * dictionary keyed by locale (`{ en: {…}, nl: {…} }`). A dictionary resolves
@@ -72,6 +75,8 @@ export function mountPlayer(container, scene, options = {}) {
 		styledDocuments.add(doc);
 	}
 
+	// One player per container: mounting again releases the previous one.
+	mounted.get(container)?.destroy();
 	const id = options.id ?? scene.id;
 	container.classList.add("mk-player");
 	const applyTheme = () => {
@@ -276,6 +281,7 @@ export function mountPlayer(container, scene, options = {}) {
 	function destroy() {
 		if (destroyed) return;
 		destroyed = true;
+		if (mounted.get(container) === controller) mounted.delete(container);
 		playing = false;
 		cancelAnimationFrame(raf);
 		visibilityObserver?.disconnect();
@@ -286,5 +292,6 @@ export function mountPlayer(container, scene, options = {}) {
 	const g = globalThis;
 	g.__motionKit = g.__motionKit ?? {};
 	g.__motionKit[id] = controller;
+	mounted.set(container, controller);
 	return controller;
 }
