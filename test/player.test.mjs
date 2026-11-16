@@ -164,3 +164,26 @@ it("explicit step navigation disables pending autoplay and destroy cleans extern
 	assert.equal(env.themeListeners.size, 0);
 	assert.equal(env.context.__motionKit[scene.id], undefined);
 });
+
+it("announces keyboard step changes in a polite live region, and nothing else", () => {
+	const { player, container } = setup();
+	const live = container.children.find((c) => c.className === "mk-sr mk-live");
+	assert.ok(live);
+	player.seekStep(0);
+	assert.equal(live.textContent, "");
+	container.children[0].fire("keydown", { key: "ArrowRight", preventDefault() {} });
+	assert.equal(live.textContent, "2. Two");
+	container.children[0].fire("keydown", { key: "End", preventDefault() {} });
+	assert.equal(live.textContent, "3. Three");
+});
+
+it("resolves flat and per-locale label dictionaries", async () => {
+	const { resolveLabels } = await import("../runtime/player.mjs");
+	assert.deepEqual(resolveLabels(undefined), {});
+	assert.deepEqual(resolveLabels({ play: "Speel" }, "nl"), { play: "Speel" });
+	const dict = { en: { play: "Play" }, nl: { play: "Speel" } };
+	assert.equal(resolveLabels(dict, "nl").play, "Speel");
+	assert.equal(resolveLabels(dict, "nl-BE").play, "Speel");
+	assert.equal(resolveLabels(dict, "de").play, "Play");
+	assert.equal(resolveLabels({ nl: { play: "Speel" } }, "de").play, "Speel");
+});

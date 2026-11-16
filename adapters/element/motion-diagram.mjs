@@ -15,7 +15,7 @@ let nextId = 0;
 
 export class MotionDiagram extends HTMLElement {
 	static get observedAttributes() {
-		return ["spec", "src", "format", "locale", "theme", "style-spec"];
+		return ["spec", "src", "format", "locale", "theme", "style-spec", "labels"];
 	}
 
 	constructor() {
@@ -100,12 +100,13 @@ export class MotionDiagram extends HTMLElement {
 			if (!this.isConnected || revision !== this._revision) return;
 			const theme = this.getAttribute("theme");
 			if (theme && theme !== "light" && theme !== "dark") throw new Error('motion-diagram: theme must be "light" or "dark"');
-			const scene = createScene(spec, { format: this.getAttribute("format") ?? "16:9", locale: this.getAttribute("locale") ?? "en" });
+			const locale = this.getAttribute("locale") ?? "en";
+			const scene = createScene(spec, { format: this.getAttribute("format") ?? "16:9", locale });
 			const style = JSON.parse(this.getAttribute("style-spec") ?? "null");
 			player = this.ownerDocument.createElement("div");
 			// Mount inside a child so player CSS cannot overwrite the host's CSS.
 			this.appendChild(player);
-			this.controller = mountPlayer(player, scene, { id: this._id, style, theme: theme || undefined });
+			this.controller = mountPlayer(player, scene, { id: this._id, style, theme: theme || undefined, locale, labels: JSON.parse(this.getAttribute("labels") ?? "null") ?? undefined });
 			this._player = player;
 			this._fallback.hidden = true;
 			this.dispatchEvent(new CustomEvent("motion-ready", { detail: { controller: this.controller } }));

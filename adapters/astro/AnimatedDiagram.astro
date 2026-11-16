@@ -26,7 +26,8 @@ interface Props {
 	locale?: string;
 	class?: string;
 	scrubber?: boolean;
-	labels?: Record<string, string>;
+	/** Flat `{ play, pause, … }`, or a dictionary keyed by locale (`{ en: {…}, nl: {…} }`). */
+	labels?: Record<string, string | Record<string, string>>;
 }
 const { spec, format = "16:9", locale = "en", class: className, scrubber = false, labels } = Astro.props;
 const scene = createScene(spec, { format, locale });
@@ -44,12 +45,26 @@ const fallback = renderSvg(scene, scene.duration, { live: true, idPrefix: `${sce
 	import { mountPlayer } from "../runtime/player.mjs";
 	import { createScene } from "../runtime/types/index.mjs";
 
-	for (const el of document.querySelectorAll<HTMLElement>("[data-mk-spec]")) {
-		if (el.dataset.mkMounted) continue;
-		el.dataset.mkMounted = "1";
-		const spec = JSON.parse(el.dataset.mkSpec ?? "{}");
-		const opts = JSON.parse(el.dataset.mkOpts ?? "{}");
-		const scene = createScene(spec, { format: opts.format, locale: opts.locale });
-		mountPlayer(el, scene, { scrubber: opts.scrubber, labels: opts.labels, id: `${scene.id}-${Math.random().toString(36).slice(2, 7)}` });
+	type Controller = ReturnType<typeof mountPlayer>;
+	const mounted = new Map<HTMLElement, Controller>();
+
+	function mountAll() {
+		for (const el of document.querySelectorAll<HTMLElement>("[data-mk-spec]")) {
+			if (mounted.has(el)) continue;
+			const spec = JSON.parse(el.dataset.mkSpec ?? "{}");
+			const opts = JSON.parse(el.dataset.mkOpts ?? "{}");
+			const scene = createScene(spec, { format: opts.format, locale: opts.locale });
+			mounted.set(el, mountPlayer(el, scene, { scrubber: opts.scrubber, labels: opts.labels, locale: opts.locale, id: `${scene.id}-${Math.random().toString(36).slice(2, 7)}` }));
+		}
 	}
+	function teardown() {
+		for (const controller of mounted.values()) controller.destroy();
+		mounted.clear();
+	}
+
+	mountAll();
+	// Astro view transitions swap the DOM without reloading the page: release
+	// the old players, then mount the new page's diagrams.
+	document.addEventListener("astro:before-swap", teardown);
+	document.addEventListener("astro:page-load", mountAll);
 </script>
