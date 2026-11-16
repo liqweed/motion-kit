@@ -18,10 +18,9 @@ issue_tracker:
     priority: { store: label } # "priority: urgent|high|medium|low"
     size: { store: label } # small | medium | large
 ci:
-  # The jig changelog workflow's `check` job runs on pull requests and is
-  # skipped on pushes, which counts as passed; there is no other CI workflow
-  # yet. Add its jobs here when one reports on main.
-  required_checks: [check]
+  # The `gate` job of .github/workflows/ci.yml, which runs on pushes to main;
+  # the changelog workflow tags a release once it passed on the releasing commit.
+  required_checks: [gate]
 changelog:
   file: CHANGELOG.md
   format: keep-a-changelog
