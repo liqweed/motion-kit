@@ -17,3 +17,19 @@ issue_tracker:
     type: { store: native } # GitHub issue types: Bug, Feature, Task
     priority: { store: label } # "priority: urgent|high|medium|low"
     size: { store: label } # small | medium | large
+ci:
+  # The jig changelog workflow's `check` job runs on pull requests and is
+  # skipped on pushes, which counts as passed; there is no other CI workflow
+  # yet. Add its jobs here when one reports on main.
+  required_checks: [check]
+changelog:
+  file: CHANGELOG.md
+  format: keep-a-changelog
+  release_paths: [cli/, lib/, runtime/, adapters/, styles/, skills/, examples/, brand/, .claude-plugin/]
+  version:
+    files:
+      - { path: package.json, key: version }
+  # The plugin manifests and the lock file repeat the version.
+  after_version: node scripts/sync-version.mjs
+  release:
+    push: pull-request
