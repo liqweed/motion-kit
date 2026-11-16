@@ -112,8 +112,10 @@ onUnmounted(() => {
 });
 
 const announcement = computed(() => {
-	const s = scene.value.steps[stepIndex.value];
-	return `${stepIndex.value + 1}. ${s.detail ? `${s.label}: ${s.detail}` : s.label}`;
+	const steps = scene.value.steps;
+	const i = Math.min(stepIndex.value, steps.length - 1);
+	const s = steps[i];
+	return `${i + 1}. ${s.detail ? `${s.label}: ${s.detail}` : s.label}`;
 });
 const dark = computed(() => (props.theme ? props.theme === "dark" : isDark.value));
 const markup = computed(() => renderSvg(scene.value, t.value, { style: style.value, live: true, idPrefix: id }));

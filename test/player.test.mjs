@@ -177,6 +177,27 @@ it("announces keyboard step changes in a polite live region, and nothing else", 
 	assert.equal(live.textContent, "3. Three");
 });
 
+it("re-announces a repeated step by clearing the live region first, and cancels on destroy", () => {
+	const { player, container, frames } = setup();
+	const live = container.children.find((c) => c.className === "mk-sr mk-live");
+	const keydown = (key) => container.children[0].fire("keydown", { key, preventDefault() {} });
+	keydown("End");
+	assert.equal(live.textContent, "3. Three");
+	keydown("End");
+	assert.equal(live.textContent, "");
+	assert.equal(frames.size, 1);
+	for (const cb of [...frames.values()]) cb(0);
+	frames.clear();
+	assert.equal(live.textContent, "3. Three");
+	keydown("End");
+	keydown("Home");
+	assert.equal(live.textContent, "1. One");
+	assert.equal(frames.size, 0);
+	keydown("Home");
+	player.destroy();
+	assert.equal(frames.size, 0);
+});
+
 it("resolves flat and per-locale label dictionaries", async () => {
 	const { resolveLabels } = await import("../runtime/player.mjs");
 	assert.deepEqual(resolveLabels(undefined), {});

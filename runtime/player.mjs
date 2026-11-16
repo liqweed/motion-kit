@@ -162,6 +162,7 @@ export function mountPlayer(container, scene, options = {}) {
 	let stopAt = scene.duration;
 	let autoplayPending = false;
 	let destroyed = false;
+	let liveRaf = 0;
 	/** @type {IntersectionObserver | undefined} */
 	let visibilityObserver;
 
@@ -226,7 +227,19 @@ export function mountPlayer(container, scene, options = {}) {
 	/** @param {number} i */
 	function announce(i) {
 		const s = scene.steps[i];
-		live.textContent = `${i + 1}. ${s.detail ? `${s.label}: ${s.detail}` : s.label}`;
+		const text = `${i + 1}. ${s.detail ? `${s.label}: ${s.detail}` : s.label}`;
+		cancelAnimationFrame(liveRaf);
+		liveRaf = 0;
+		if (live.textContent !== text) {
+			live.textContent = text;
+			return;
+		}
+		// Identical text may be coalesced by screen readers: clear now, rewrite next frame.
+		live.textContent = "";
+		liveRaf = requestAnimationFrame(() => {
+			liveRaf = 0;
+			if (!destroyed) live.textContent = text;
+		});
 	}
 	function seekStep(i) {
 		autoplayPending = false;
@@ -284,6 +297,7 @@ export function mountPlayer(container, scene, options = {}) {
 		if (mounted.get(container) === controller) mounted.delete(container);
 		playing = false;
 		cancelAnimationFrame(raf);
+		cancelAnimationFrame(liveRaf);
 		visibilityObserver?.disconnect();
 		themeQuery?.removeEventListener?.("change", applyTheme);
 		if (g.__motionKit[id] === controller) delete g.__motionKit[id];
