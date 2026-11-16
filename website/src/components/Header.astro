@@ -1,0 +1,26 @@
+---
+import icon from "../../../assets/icon.svg?url";
+import pkg from "../../../package.json";
+import { REPO } from "../scripts/catalog.mjs";
+
+interface Props {
+	page?: "home" | "gallery" | "docs";
+}
+const { page } = Astro.props;
+const links = [
+	{ label: "Gallery", href: "/gallery/", key: "gallery" },
+	{ label: "Docs", href: "/docs/", key: "docs" },
+	{ label: "GitHub", href: REPO, key: "" },
+];
+---
+
+<header class="site-header">
+	<nav aria-label="Main">
+		<a class="brand" href="/"><img src={icon} alt="" width="28" height="28" /><span>motion-kit</span></a>
+		<div class="nav-links">
+			{links.map((l) => <a href={l.href} aria-current={l.key && l.key === page ? "page" : undefined}>{l.label}</a>)}
+		</div>
+		<span class="version">v{pkg.version} · MIT</span>
+		<a class="pill" href="/#install">Install</a>
+	</nav>
+</header>

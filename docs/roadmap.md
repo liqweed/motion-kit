@@ -35,7 +35,7 @@ visitors can reuse. Its design runs through Claude Design
 
 | Issue | What | Priority |
 |---|---|---|
-| [#14](https://github.com/liqweed/motion-kit/issues/14) | Claude Design round; land the design bundle | high |
+| [#14](https://github.com/liqweed/motion-kit/issues/14) | Claude Design round; land the design bundle (landed in `site/`: live scenes only, unbuilt types are "needs" cards) | high |
 | [#8](https://github.com/liqweed/motion-kit/issues/8) | Player call that animates to a step instead of jumping | high |
 | [#9](https://github.com/liqweed/motion-kit/issues/9) | Scroll-step and hover-link helpers (after #8) | medium |
 | [#10](https://github.com/liqweed/motion-kit/issues/10) | `<motion-diagram>` custom element adapter | medium |
