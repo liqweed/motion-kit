@@ -2,7 +2,9 @@ name: Release
 
 # Push a tag vX.Y.Z (matching package.json) to run the gate, publish
 # @liqweed/motion-kit to npm with provenance and create the GitHub release.
-# Secret: NPM_TOKEN (automation token with publish rights on the @liqweed scope).
+# Auth is npm trusted publishing (OIDC): no token. Configure it once on
+# npmjs.com -> package settings -> Trusted Publisher: repo liqweed/motion-kit,
+# workflow release.yml. The first version of a package is published by hand.
 on:
   push:
     tags: ["v*"]
@@ -26,9 +28,15 @@ jobs:
       - name: Tag matches package.json
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
       - run: npm run gate
-      - run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish (skipped if this version is already on npm)
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          if npm view "@liqweed/motion-kit@$v" version >/dev/null 2>&1; then
+            echo "@liqweed/motion-kit@$v already published; skipping"
+          else
+            npm install -g npm@^11.5.1
+            npm publish
+          fi
       - run: gh release create "$GITHUB_REF_NAME" --generate-notes --verify-tag
         env:
           GH_TOKEN: ${{ github.token }}
