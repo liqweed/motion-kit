@@ -76,8 +76,12 @@ before adding a scene type or changing motion helpers.
   `npm run media` and commit the diff so reviewers see the visual change.
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`), scope
   optional (`feat(slidev): …`).
-- Bump `version` in `package.json` and both `.claude-plugin/*.json`
-  together (`npm run versions` checks).
+- Don't bump versions or edit `CHANGELOG.md` by hand: a PR that changes what
+  ships (`changelog.release_paths` in `.config/jig.yaml`) adds a change note in
+  `changes/` (`/jig:changelog`), and CI opens a release PR that writes the
+  changelog and moves `version` in `package.json`, both `.claude-plugin/*.json`
+  and the lock file together (`npm run versions` checks). Merging it tags
+  `vX.Y.Z`, which publishes `@liqweed/motion-kit` to npm.
 
 ## Verifying visual changes
 
