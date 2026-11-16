@@ -35,6 +35,7 @@ and open the file.
 ## Quick start
 
 ```bash
+npx @liqweed/motion-kit --help     # or: npm i -g @liqweed/motion-kit (installs `motion-kit`)
 npm install                        # optional: @resvg/resvg-js for PNG/video
 node cli/motion-kit.mjs check examples/order-flow.json
 node cli/motion-kit.mjs build examples/order-flow.json -o out/order.html -f wide -l nl
