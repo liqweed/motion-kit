@@ -10,3 +10,4 @@ out/
 !.idea/icon_dark.svg
 website/dist/
 website/.astro/
+website/.cloudflare/
