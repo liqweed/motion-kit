@@ -29,7 +29,7 @@ then `src`. Escape JSON for its HTML context (in a script, escape `<` as
 
 Observed attributes are `spec`, `src`, `format` (default `16:9`), `locale`
 (default `en`), `theme` (`light`/`dark`, absent follows the OS), and
-`style-spec` (JSON visual-style tokens, default neutral). The standard `style`
+`style-spec` (JSON visual-style tokens, default neutral), and `labels` (JSON UI strings: flat, or keyed by locale). The standard `style`
 attribute remains CSS, for example `style="max-width: 960px"`. Attribute
 changes rebuild the player. Inline script text changes require a remount
 (remove and reinsert the element).

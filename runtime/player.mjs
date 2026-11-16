@@ -34,16 +34,36 @@ const CSS = `
 
 const styledDocuments = new WeakSet();
 
+/** @type {WeakMap<HTMLElement, { destroy: () => void }>} */
+const mounted = new WeakMap();
+
+/**
+ * UI strings from `labels`: either a flat `{ play, pause, … }` object or a
+ * dictionary keyed by locale (`{ en: {…}, nl: {…} }`). A dictionary resolves
+ * `locale`, then its language subtag (`nl-BE` → `nl`), then `en`, then its
+ * first entry; keys it lacks keep the English defaults.
+ * @param {Record<string, string | Record<string, string>> | undefined} labels
+ * @param {string} [locale]
+ * @returns {Record<string, string>}
+ */
+export function resolveLabels(labels, locale = "en") {
+	if (!labels) return {};
+	const entries = Object.entries(labels);
+	if (!entries.some(([, v]) => typeof v === "object" && v !== null)) return /** @type {Record<string, string>} */ (labels);
+	const dict = /** @type {Record<string, Record<string, string>>} */ (labels);
+	return dict[locale] ?? dict[locale.split("-")[0]] ?? dict.en ?? /** @type {Record<string, string>} */ (entries.find(([, v]) => typeof v === "object")?.[1]) ?? {};
+}
+
 /**
  * Mount a scene with controls and a clock owned by this player.
  * @param {HTMLElement} container
  * @param {{ id: string, title: string, description: string, width: number, height: number, duration: number, steps: { at: number, label: string, detail?: string }[], frame: (t: number) => string }} scene
- * @param {{ style?: Parameters<typeof normalizeStyle>[0], labels?: Record<string, string>, theme?: string, id?: string, injectCss?: boolean, scrubber?: boolean, captions?: boolean, autoplay?: string, animateSteps?: boolean }} [options]
+ * @param {{ style?: Parameters<typeof normalizeStyle>[0], labels?: Record<string, string | Record<string, string>>, locale?: string, theme?: string, id?: string, injectCss?: boolean, scrubber?: boolean, captions?: boolean, autoplay?: string, animateSteps?: boolean }} [options]
  * @returns The player controller; call destroy() before removing or replacing it.
  */
 export function mountPlayer(container, scene, options = {}) {
 	const style = normalizeStyle(options.style);
-	const labels = { play: "Play", pause: "Pause", replay: "Replay", steps: "Steps", ...(options.labels ?? {}) };
+	const labels = { play: "Play", pause: "Pause", replay: "Replay", steps: "Steps", scrubber: "Timeline", ...resolveLabels(options.labels, options.locale) };
 	const reduced = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 	/** @type {Document} */
 	const doc = container.ownerDocument;
@@ -55,6 +75,8 @@ export function mountPlayer(container, scene, options = {}) {
 		styledDocuments.add(doc);
 	}
 
+	// One player per container: mounting again releases the previous one.
+	mounted.get(container)?.destroy();
 	const id = options.id ?? scene.id;
 	container.classList.add("mk-player");
 	const applyTheme = () => {
@@ -102,7 +124,7 @@ export function mountPlayer(container, scene, options = {}) {
 		input.min = "0";
 		input.max = String(scene.duration);
 		input.step = "0.01";
-		input.setAttribute("aria-label", options.labels?.scrubber ?? "Timeline");
+		input.setAttribute("aria-label", labels.scrubber);
 		input.addEventListener("input", () => {
 			pause();
 			seek(Number(input.value));
@@ -124,6 +146,14 @@ export function mountPlayer(container, scene, options = {}) {
 	}
 	container.appendChild(sr);
 
+	// Keyboard step changes are announced; autoplay and pointer use stay silent.
+	const live = doc.createElement("div");
+	live.className = "mk-sr mk-live";
+	live.setAttribute("role", "status");
+	live.setAttribute("aria-live", "polite");
+	live.setAttribute("aria-atomic", "true");
+	container.appendChild(live);
+
 	let t = 0;
 	let playing = false;
 	let raf = 0;
@@ -132,6 +162,7 @@ export function mountPlayer(container, scene, options = {}) {
 	let stopAt = scene.duration;
 	let autoplayPending = false;
 	let destroyed = false;
+	let liveRaf = 0;
 	/** @type {IntersectionObserver | undefined} */
 	let visibilityObserver;
 
@@ -180,14 +211,36 @@ export function mountPlayer(container, scene, options = {}) {
 	playBtn?.addEventListener("click", () => (playing ? pause() : play()));
 	stage.addEventListener("keydown", (e) => {
 		const idx = stepIndexAt(scene, t);
-		if (e.key === "ArrowRight") selectStep(Math.min(idx + 1, scene.steps.length - 1));
-		else if (e.key === "ArrowLeft") selectStep(Math.max(idx - 1, 0));
-		else if (e.key === "Home") selectStep(0);
-		else if (e.key === "End") selectStep(scene.steps.length - 1);
+		/** @param {number} i */
+		const step = (i) => {
+			selectStep(i);
+			announce(i);
+		};
+		if (e.key === "ArrowRight") step(Math.min(idx + 1, scene.steps.length - 1));
+		else if (e.key === "ArrowLeft") step(Math.max(idx - 1, 0));
+		else if (e.key === "Home") step(0);
+		else if (e.key === "End") step(scene.steps.length - 1);
 		else if (e.key === " " && !reduced) playing ? pause() : play();
 		else return;
 		e.preventDefault();
 	});
+	/** @param {number} i */
+	function announce(i) {
+		const s = scene.steps[i];
+		const text = `${i + 1}. ${s.detail ? `${s.label}: ${s.detail}` : s.label}`;
+		cancelAnimationFrame(liveRaf);
+		liveRaf = 0;
+		if (live.textContent !== text) {
+			live.textContent = text;
+			return;
+		}
+		// Identical text may be coalesced by screen readers: clear now, rewrite next frame.
+		live.textContent = "";
+		liveRaf = requestAnimationFrame(() => {
+			liveRaf = 0;
+			if (!destroyed) live.textContent = text;
+		});
+	}
 	function seekStep(i) {
 		autoplayPending = false;
 		visibilityObserver?.disconnect();
@@ -241,8 +294,10 @@ export function mountPlayer(container, scene, options = {}) {
 	function destroy() {
 		if (destroyed) return;
 		destroyed = true;
+		if (mounted.get(container) === controller) mounted.delete(container);
 		playing = false;
 		cancelAnimationFrame(raf);
+		cancelAnimationFrame(liveRaf);
 		visibilityObserver?.disconnect();
 		themeQuery?.removeEventListener?.("change", applyTheme);
 		if (g.__motionKit[id] === controller) delete g.__motionKit[id];
@@ -251,5 +306,6 @@ export function mountPlayer(container, scene, options = {}) {
 	const g = globalThis;
 	g.__motionKit = g.__motionKit ?? {};
 	g.__motionKit[id] = controller;
+	mounted.set(container, controller);
 	return controller;
 }

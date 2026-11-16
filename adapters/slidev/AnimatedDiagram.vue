@@ -102,6 +102,12 @@ watch(stepIndex, (next, prev) => {
 	}
 });
 
+// A replaced scene keeps the same step index but may time that step differently.
+watch(scene, (next) => {
+	cancelAnimationFrame(raf);
+	t.value = next.steps[Math.min(stepIndex.value, next.steps.length - 1)].at;
+});
+
 onMounted(() => {
 	if (info) clicks.register(id, info);
 	if (animated.value && props.intro && stepIndex.value === 0) animate(0, scene.value.steps[0].at);
@@ -111,6 +117,12 @@ onUnmounted(() => {
 	clicks?.unregister(id);
 });
 
+const announcement = computed(() => {
+	const steps = scene.value.steps;
+	const i = Math.min(stepIndex.value, steps.length - 1);
+	const s = steps[i];
+	return `${i + 1}. ${s.detail ? `${s.label}: ${s.detail}` : s.label}`;
+});
 const dark = computed(() => (props.theme ? props.theme === "dark" : isDark.value));
 const markup = computed(() => renderSvg(scene.value, t.value, { style: style.value, live: true, idPrefix: id }));
 const vars = computed(() => `${cssVars(style.value, dark.value ? "dark" : "light")};--mk-max-h:${props.maxHeight}`);
@@ -119,13 +131,25 @@ const vars = computed(() => `${cssVars(style.value, dark.value ? "dark" : "light
 <template>
 	<figure class="mk-slidev" :style="vars" :data-mk-step="stepIndex + 1">
 		<div class="mk-slidev-stage" v-html="markup" />
+		<!-- Clicks advance steps; say which one, like the live player does. -->
+		<div class="mk-slidev-live" role="status" aria-live="polite" aria-atomic="true">{{ announcement }}</div>
 	</figure>
 </template>
 
 <style scoped>
 .mk-slidev {
+	position: relative;
 	margin: 0;
 	width: 100%;
+}
+.mk-slidev-live {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
 }
 .mk-slidev-stage :deep(svg) {
 	display: block;

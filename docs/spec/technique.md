@@ -320,7 +320,13 @@ Every target goes through this one function. It MUST emit `<svg>` with
 | `destroy()` MUST cancel the animation frame, disconnect visibility observation, remove theme listening and remove this controller's capture entry. | `runtime/player.mjs`, `test/player.test.mjs` |
 | **Capture hook**: the controller `{seek, play, pause, seekStep, playToStep, destroy, time, scene}` MUST be exposed at `globalThis.__motionKit[options.id ?? scene.id]`. | `runtime/player.mjs` |
 
-UI strings MAY be localized via `options.labels`.
+UI strings MAY be localized via `options.labels`: a flat `{ play, pause, replay, steps, scrubber }` object, or a dictionary keyed by locale (`{ en: {…}, nl: {…} }`) resolved with `options.locale`, then its language subtag, then `en`, then the first entry. Missing keys keep the English defaults (`resolveLabels`, `runtime/player.mjs`).
+
+Keyboard step changes (←/→/Home/End) MUST be announced through a visually hidden `role="status"` polite live region (`N. label: detail`); autoplay, pointer and scrubber use stay silent.
+
+`mountPlayer` MUST release any player already mounted on the same container (`destroy()`), so remounting never leaks clocks, observers or capture entries. The build output passes `locale` through, so label dictionaries resolve there too; the Slidev adapter announces each click's step through the same kind of live region.
+
+The Astro adapter mounts each diagram once, tears the players down on `astro:before-swap` and mounts the new page's diagrams on `astro:page-load`.
 
 ### 10.2.1 Custom element (`adapters/element/motion-diagram.mjs`)
 
