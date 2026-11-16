@@ -84,10 +84,10 @@ on:
   pull_request:
   push:
     branches: ["main"]
-  # No workflow_run trigger: motion-kit has no CI workflow that reports a
-  # required check, and a workflow cannot listen to itself. Tags come from the
-  # schedule below (or workflow_dispatch). Add `workflow_run` for the CI
-  # workflow's name when one exists.
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: ["main"]
   schedule:
     - cron: "23 */6 * * *"
   workflow_dispatch:
