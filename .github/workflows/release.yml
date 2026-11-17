@@ -2,9 +2,28 @@ name: Release
 
 # Push a tag vX.Y.Z (matching package.json) to run the gate, publish
 # @liqweed/motion-kit to npm with provenance and create the GitHub release.
-# Auth is npm trusted publishing (OIDC): no token. Configure it once on
-# npmjs.com -> package settings -> Trusted Publisher: repo liqweed/motion-kit,
-# workflow release.yml. The first version of a package is published by hand.
+# Auth is npm trusted publishing (OIDC): no token. The first version of a
+# package is published by hand.
+#
+# Configure the Trusted Publisher once on npmjs.com: the package's Settings ->
+# Trusted publishing -> GitHub Actions. Every field is case-sensitive, and npm
+# does not check them when you save, so a wrong value only shows at publish:
+#   Organization or user:  liqweed
+#   Repository:            motion-kit
+#   Workflow filename:     release.yml
+#   Environment name:      (empty)
+#   Allowed actions:       npm publish (allow it; "npm stage publish" is always on)
+# An entry created after 2026-09-03 allows only "npm stage publish" until you
+# also allow "npm publish", which is what the step below runs. If it fails with
+# E403 "OIDC permission denied for this action" (#32), check that first.
+# The fields above cannot be edited once saved: delete the entry and add it
+# again. An entry that has not published within 2 days expires; recreate it the
+# same way and re-run right away.
+#
+# To publish a tag whose Release run failed, fix the setting and re-run that run
+# from the Actions tab. Re-run older tags first: `npm publish` without --tag
+# refuses a version below the highest one already on npm, so a newer tag
+# published first blocks the older one for good.
 on:
   push:
     tags: ["v*"]

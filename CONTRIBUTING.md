@@ -79,6 +79,11 @@ files by hand.
 - Don't edit `CHANGELOG.md` or the version by hand. CI turns the waiting notes
   into a release pull request; merging it tags `vX.Y.Z`, which publishes
   `@liqweed/motion-kit` to npm and creates the GitHub release.
+- Publishing uses npm trusted publishing, with no token. The header of
+  `.github/workflows/release.yml` lists the Trusted Publisher values the package
+  needs on npmjs.com. If a Release run fails at `npm publish` with an OIDC 403,
+  check those, then re-run the failed runs from the Actions tab, oldest tag
+  first.
 - A change to the public API (`docs/stability.md`) also updates that page and
   the spec, and its change note says what users must change.
 
