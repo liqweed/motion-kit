@@ -13,9 +13,12 @@ name: Release
 #   Workflow filename:     release.yml
 #   Environment name:      (empty)
 #   Allowed actions:       npm publish (allow it; "npm stage publish" is always on)
+# The job sets no `environment:`, so keep the environment empty: an entry that
+# names one (the first entry named `release`) never matches this workflow.
 # An entry created after 2026-09-03 allows only "npm stage publish" until you
-# also allow "npm publish", which is what the step below runs. If it fails with
-# E403 "OIDC permission denied for this action" (#32), check that first.
+# also allow "npm publish", which is what the step below runs. The first entry
+# had both mistakes (#32), and `npm publish` failed with E403 "OIDC permission
+# denied for this action".
 # The fields above cannot be edited once saved: delete the entry and add it
 # again. An entry that has not published within 2 days expires; recreate it the
 # same way and re-run right away.
