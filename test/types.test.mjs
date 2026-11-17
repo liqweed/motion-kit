@@ -82,3 +82,54 @@ describe("timeline", () => {
 		assert.throws(() => createScene(many, { format: "1:1" }), /do not fit format 1:1/);
 	});
 });
+
+describe("stack", () => {
+	const webStack = example("web-stack");
+	const layers = (n) => Array.from({ length: n }, (_, i) => ({ label: `Layer ${i + 1}` }));
+	const spec = (extra) => ({ type: "stack", id: "s", title: "S", description: "D", ...extra });
+
+	it("the web-stack example passes the gate in every format and locale", () => {
+		gateAll(webStack, LOCALES);
+	});
+	it("visits layers top to bottom, or bottom to top, one step each, carrying the spec's ids", () => {
+		const withIds = { ...webStack, layers: webStack.layers.map((l, i) => ({ ...l, id: `l${i}` })) };
+		const down = createScene(withIds, { format: "16:9", locale: "nl" });
+		assert.deepEqual(down.steps.map((s) => s.id), ["l0", "l1", "l2", "l3", "l4"]);
+		assert.deepEqual(down.steps.map((s) => s.label), ["Browser", "CDN", "API-gateway", "Bestelservice", "Database"]);
+		const up = createScene({ ...withIds, direction: "up" }, { format: "16:9" });
+		assert.deepEqual(up.steps.map((s) => s.id), ["l4", "l3", "l2", "l1", "l0"]);
+		assert.ok(down.duration <= 8, `duration ${down.duration}`);
+	});
+	it("ends with the last layer filled, the passed ones outlined, and one emphasis packet", () => {
+		const svg = renderSvg(createScene(spec({ layers: layers(4) }), { format: "16:9" }), 99);
+		assert.equal((svg.match(/<rect[^>]*fill="var\(--mk-accent\)"/g) ?? []).length, 1, "one filled layer");
+		assert.equal((svg.match(/<rect[^>]*fill="var\(--mk-surface\)" stroke="var\(--mk-accent\)"/g) ?? []).length, 3, "three outlined layers");
+		assert.equal((svg.match(/var\(--mk-emphasis\)/g) ?? []).length, 1, "one emphasis element: the packet");
+	});
+	it("lays out 2 to 8 layers, two-line labels and both directions in every format", () => {
+		gateAll(spec({ layers: layers(2) }));
+		gateAll(spec({ layers: layers(8), direction: "up" }));
+		gateAll(spec({ layers: [{ label: "Application" }, { label: "Network firewall and intrusion detection" }, { label: "Hardware" }] }));
+	});
+	it("grows strips to fit and keeps fixed formats at their size", () => {
+		const s = spec({ layers: layers(6) });
+		assert.equal(createScene(s, { format: "9:16" }).height, 960);
+		const wide = createScene(s, { format: "wide" });
+		assert.ok(wide.height > createScene(spec({ layers: layers(3) }), { format: "wide" }).height);
+	});
+	it("rejects specs it cannot draw, naming the cause", () => {
+		const bad = (extra, re) => assert.throws(() => createScene(spec(extra), { format: "16:9" }), re);
+		bad({}, /needs "layers"/);
+		bad({ layers: layers(1) }, /needs 2–8 layers, got 1/);
+		bad({ layers: layers(9) }, /needs 2–8 layers, got 9/);
+		bad({ layers: [{ label: "A" }, {}] }, /layer 2 needs a "label"/);
+		bad({ layers: layers(3), direction: "sideways" }, /"direction" must be "down" or "up", got "sideways"/);
+		assert.throws(() => createScene(spec({ layers: layers(3) }), { format: "5:4" }), /unknown format "5:4"/);
+	});
+	it("refuses labels that do not fit, with the remedy", () => {
+		const long = spec({ layers: [{ label: "Supercalifragilisticexpialidocious-gateway-layer" }, { label: "B" }] });
+		assert.throws(() => createScene(long, { format: "tall" }), /2 layers do not fit format tall at ≥ 14px .*use fewer layers, shorter labels or a larger format/);
+		const wordy = spec({ layers: layers(8).map(() => ({ label: "Many words that cannot fit into two lines of a narrow phone column at all" })) });
+		assert.throws(() => createScene(wordy, { format: "16:9" }), /do not fit format 16:9/);
+	});
+});

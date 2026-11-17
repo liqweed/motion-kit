@@ -1,0 +1,17 @@
+{
+	"type": "stack",
+	"id": "web-stack",
+	"title": { "en": "A request through the layers", "nl": "Een verzoek door de lagen" },
+	"description": {
+		"en": "A request from the browser passes the CDN, the API gateway and the service before it reaches the database.",
+		"nl": "Een verzoek uit de browser passeert het CDN, de API-gateway en de dienst voordat het de database bereikt."
+	},
+	"layers": [
+		{ "label": { "en": "Browser", "nl": "Browser" }, "detail": { "en": "The user's click becomes an HTTPS request.", "nl": "De klik van de gebruiker wordt een HTTPS-verzoek." } },
+		{ "label": { "en": "CDN", "nl": "CDN" }, "detail": { "en": "The edge answers cached pages and passes everything else on.", "nl": "De rand beantwoordt gecachete pagina's en geeft de rest door." } },
+		{ "label": { "en": "API gateway", "nl": "API-gateway" }, "detail": { "en": "Checks who is asking and how often.", "nl": "Controleert wie er vraagt en hoe vaak." } },
+		{ "label": { "en": "Order service", "nl": "Bestelservice" }, "detail": { "en": "The business logic decides what the request means.", "nl": "De bedrijfslogica bepaalt wat het verzoek betekent." } },
+		{ "label": { "en": "Database", "nl": "Database" }, "detail": { "en": "The data is read or written, and the answer travels back.", "nl": "De gegevens worden gelezen of geschreven, en het antwoord gaat terug." } }
+	],
+	"direction": "down"
+}

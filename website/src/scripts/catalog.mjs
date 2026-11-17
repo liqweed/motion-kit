@@ -36,6 +36,7 @@ export const LIVE = [
 	{ id: "incident", group: "process", title: "An incident, start to review", type: "timeline", file: "examples/incident.json", kind: "spec", steps: 7 },
 	{ id: "smart-home", group: "system", title: "What the home hub connects", type: "hub-spoke", file: "examples/smart-home.json", kind: "spec", steps: 6 },
 	{ id: "integrations", group: "system", title: "One platform, many integrations", type: "hub-spoke", file: "examples/integrations.json", kind: "spec", steps: 8 },
+	{ id: "web-stack", group: "system", title: "A request through the layers", type: "stack", file: "examples/web-stack.json", kind: "spec", steps: 5 },
 	{ id: "custom-pulse", group: "custom", title: "Request and response", type: "custom scene", file: "examples/custom-pulse.scene.mjs", kind: "module", steps: 3 },
 	{ id: "logo", group: "custom", title: "The motion-kit mark", type: "custom scene", file: "brand/logo.scene.mjs", kind: "module", steps: 3, kit: true },
 ];
@@ -46,7 +47,6 @@ export const LIVE = [
 /** @type {PlannedExample[]} */
 export const PLANNED = [
 	{ id: "player-states", group: "process", title: "The live player, as states", type: "state-machine", issue: 18, story: "States wait as pending; a token walks the transitions; the current state turns accent." },
-	{ id: "web-stack", group: "system", title: "A request through the layers", type: "stack", issue: 17, story: "Layers rise; a packet travels down and back up." },
 	{ id: "checkout", group: "system", title: "A checkout request", type: "request-journey", issue: 19, story: "Regions and components appear; a dot hops the path; async edges are dashed." },
 	{ id: "one-scene", group: "change", title: "Per-medium authoring vs one scene", type: "before-after", issue: 3, story: "The left state shows, a divider sweeps, the right state builds, the difference is emphasised." },
 	{ id: "bake-vs-live", group: "change", title: "Baked SVG or live player?", type: "comparison", issue: 3, story: "Two columns; criteria rows fill; the deciding row is emphasised." },

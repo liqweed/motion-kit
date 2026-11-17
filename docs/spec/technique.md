@@ -41,7 +41,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
-  `createScene(spec, {format, locale})` (`runtime/types/index.mjs:23-27`) — or a
+  `createScene(spec, {format, locale})` (`runtime/types/index.mjs:25-29`) — or a
   custom module whose default export is `(opts) → scene`, called by
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
@@ -93,13 +93,15 @@ Formats map a name to a viewBox (`runtime/scene.mjs:23-30`):
   `W/H ≥ 1.5` → row (or 2-row snake when cells are < 96 px) for `sequence`;
   otherwise snake grid (`runtime/types/sequence.mjs:35-46`) or radial ellipse
   (`runtime/types/hub-spoke.mjs:40,59-73`). `timeline` runs its axis
-  vertically when narrow and horizontally otherwise (`runtime/types/timeline.mjs:239`).
+  vertically when narrow and horizontally otherwise (`runtime/types/timeline.mjs:239`);
+  `stack` is one column of layers with a rail on the right in every format.
 - **Auto-fit text**: a type MUST try the largest font size and step down by
   1 px to `FONT_MIN = 14` (`runtime/parts.mjs:12`) until every label wraps
   into its budget; if none fits it MUST throw. Maxima: `sequence` 22 px fixed /
   16 px strips (`runtime/types/sequence.mjs:127`); `hub-spoke` 20 / 16
   (`runtime/types/hub-spoke.mjs:97`); `timeline` 22 / 16
-  (`runtime/types/timeline.mjs:280`); `spec.fontSize` overrides the maximum.
+  (`runtime/types/timeline.mjs:280`); `stack` 22 / 16
+  (`runtime/types/stack.mjs:129`); `spec.fontSize` overrides the maximum.
 - **Collisions**: a layout whose boxes overlap (6 px gap) or leave the canvas
   MUST throw rather than render (`runtime/types/hub-spoke.mjs:33-35,76-84,119`).
 - Connectors MUST NOT cross labels; snake-grid row turns route as elbows
@@ -284,16 +286,18 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 
 ## 9. Scene types
 
-Registered types: `sequence` (2–12 nodes), `hub-spoke` (2–10 spokes) and
-`timeline` (2–8 events) (`runtime/types/index.mjs:17-21`). Fields and storyboards:
+Registered types: `sequence` (2–12 nodes), `hub-spoke` (2–10 spokes),
+`timeline` (2–8 events) and `stack` (2–8 layers)
+(`runtime/types/index.mjs:18-23`). Fields and storyboards:
 [`scene-types.md`](../../skills/animated-diagram/references/scene-types.md).
 Normative points:
 
-- Out-of-range node/spoke/event counts, a missing hub and an unknown type MUST throw
+- Out-of-range node/spoke/event/layer counts, a missing hub and an unknown type MUST throw
   (`runtime/types/sequence.mjs:123`, `runtime/types/hub-spoke.mjs:89-90`,
-  `runtime/types/timeline.mjs:203-231`, `runtime/types/index.mjs:25`). A
-  timeline event without `when` or `label`, a past event after a planned one,
-  and planned events without `now` MUST throw.
+  `runtime/types/timeline.mjs:203-231`, `runtime/types/stack.mjs:117-126`,
+  `runtime/types/index.mjs:27`). A timeline event without `when` or `label`, a
+  past event after a planned one, planned events without `now`, a stack layer
+  without `label` and a stack `direction` other than `down`/`up` MUST throw.
 - A new type MUST export `(spec, {format, locale}) → scene`, be registered in
   `SCENE_TYPES`, and get a gate run across every format and locale
   (`AGENTS.md:59-61`). A custom shape SHOULD be promoted to a type once used twice.

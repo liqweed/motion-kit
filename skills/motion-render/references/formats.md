@@ -9,10 +9,10 @@
 | `wide` | 960×auto | web strip inside a page | row; horizontal axis; height computed |
 | `tall` | 360×auto | phone column on a page | column / tree / vertical axis; height computed |
 
-Fixed formats auto-fit text up to 22 px (sequence, timeline) / 20 px (hub-spoke) and
+Fixed formats auto-fit text up to 22 px (sequence, timeline, stack) / 20 px (hub-spoke) and
 step down to 14 px; strips max 16 px. A spec that cannot fit fails `check`
 with a reason. Fix it with shorter labels, fewer nodes, or another format.
-Never by cropping.
+Never by cropping. A `stack` is one column of layers in every format.
 
 Web pages: mount `wide` + `tall` and switch at the width where the wide
 layout's text would fall below ~14 px on screen.
