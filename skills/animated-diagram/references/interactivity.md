@@ -26,6 +26,11 @@
   scene id plus a counter), so scenes that define ids can share a page.
 - The stylesheet is added to the document whenever a player mounts and none is
   there, so a page swap (Astro view transitions) cannot leave players unstyled.
+- Each frame updates the SVG in place (`patchMarkup`, `runtime/patch.mjs`):
+  nodes that persist keep their identity and only changed attributes and text
+  are written, so hover state survives playback. Page CSS must not put
+  transitions or animations on the diagram's SVG: with persistent nodes they
+  would run between frames, and exports would no longer match what plays.
 - Capture hook: `window.__motionKit[id].seek(t)` (for Playwright/HyperFrames-
   style renderers).
 

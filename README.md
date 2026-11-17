@@ -65,10 +65,12 @@ runtime/        dependency-free ES modules (browser + Node)
   bake.mjs      zero-JS animated SVG
   player.mjs    live player (controls, a11y, reduced motion, capture hook)
   links.mjs     page links: scroll sections and data-mk-step terms drive the player
+  patch.mjs     in-place SVG updates for the player's frames
 lib/            Node-side: check (gate), export, build (HTML inliner), raster, video, icon
 adapters/       slidev (Vue), astro, element (custom element), page (README)
 skills/         animated-diagram, motion-render, project-logo (Claude Code / Craft skills)
 examples/       order-flow (sequence), smart-home (hub-spoke), custom-pulse (custom module)
+bench/          heavy scene for npm run bench:player (live-player frame cost)
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
 assets/         generated project icon: icon.svg, icon.png, icon-animated.svg
 docs/media/     baked README animations (generated: npm run media)

@@ -28,6 +28,7 @@ npm run check          # the scene gate over examples/ and brand/, every format 
 npm run site:dev       # Astro dev server for the website (npm run site builds; site:deploy ships to Cloudflare)
 npm run media          # regenerate docs/media/*.svg, assets/icon*, .idea/icon*; commit the result
 npm run snapshots:update  # regenerate the PNG snapshots in test/snapshots/ after an intended visual change
+npm run bench:player   # live-player frame cost, innerHTML vs in-place patch, headless Chromium at 6x CPU slowdown
 node cli/motion-kit.mjs --help
 ```
 

@@ -54,6 +54,7 @@
 		"site:dev": "npm run -w website dev",
 		"site:deploy": "npm run -w website deploy",
 		"versions": "node scripts/check-versions.mjs",
+		"bench:player": "node scripts/bench-player.mjs",
 		"snapshots:update": "node scripts/update-snapshots.mjs",
 		"gate:core": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check",
 		"gate": "npm run -s gate:core && npm run -s site"

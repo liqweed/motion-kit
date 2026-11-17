@@ -3,6 +3,7 @@ import { it } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { bundle } from "../lib/bundle.mjs";
+import { loadScene } from "../lib/load.mjs";
 import { PLAYER_CSS, playerMarkup, themeCss } from "../runtime/player.mjs";
 import { renderSvg } from "../runtime/scene.mjs";
 import { esc } from "../runtime/svg.mjs";
@@ -14,28 +15,43 @@ const scene = {
 	frame: (t) => `<text>${t}</text>`,
 };
 
-/** A small DOM: enough of Element and Document for the player, plus an HTML serializer. */
+/** Text node of the small DOM. */
+class Txt {
+	constructor(data) { this.data = data; this.parentNode = null; }
+	get textContent() { return this.data; }
+	get outerHTML() { return esc(this.data); }
+	*walk() {}
+}
+
+/** A small DOM: enough of Element and Document for the player and runtime/patch.mjs, plus an HTML serializer. */
 class El {
-	constructor(tag, doc) {
+	constructor(tag, doc, ns = "http://www.w3.org/1999/xhtml") {
 		this.tag = tag;
+		this.namespaceURI = ns;
 		this.ownerDocument = doc;
 		this.children = [];
 		this.parentNode = null;
 		this.attributes = new Map();
 		this.listeners = new Map();
 		this.props = new Map();
-		this.textContent = "";
+		this._text = "";
 		this.value = "";
 		this._html = "";
 		this.classList = { add: () => {} };
 		this.style = { setProperty: (k, v) => this.props.set(k, v), getPropertyValue: (k) => this.props.get(k) ?? "" };
 	}
 	get className() { return this.attributes.get("class") ?? ""; }
-	set innerHTML(v) { this._html = v; this.children = []; }
-	get innerHTML() { return this._html; }
-	appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
-	remove() { if (this.parentNode) this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1); this.parentNode = null; }
+	get childNodes() { return this.children; }
+	set textContent(v) { this.children = []; this._html = ""; this._text = String(v); }
+	get textContent() { return this.children.length ? this.children.map((c) => c.textContent).join("") : this._text; }
+	set innerHTML(v) { this._html = v; this._text = ""; this.children = []; }
+	get innerHTML() { return this.children.length ? this.children.map((c) => c.outerHTML).join("") : this._html; }
+	appendChild(child) { child.parentNode?.removeChild(child); child.parentNode = this; this.children.push(child); return child; }
+	removeChild(child) { const i = this.children.indexOf(child); if (i < 0) throw new Error("not a child"); this.children.splice(i, 1); child.parentNode = null; return child; }
+	replaceChild(next, prev) { const i = this.children.indexOf(prev); if (i < 0) throw new Error("not a child"); this.children[i] = next; next.parentNode = this; prev.parentNode = null; return prev; }
+	remove() { this.parentNode?.removeChild(this); }
 	setAttribute(k, v) { this.attributes.set(k, String(v)); }
+	setAttributeNS(_ns, k, v) { this.attributes.set(k, String(v)); }
 	getAttribute(k) { return this.attributes.get(k) ?? null; }
 	removeAttribute(k) { this.attributes.delete(k); }
 	addEventListener(name, callback) { this.listeners.set(name, callback); }
@@ -44,7 +60,9 @@ class El {
 	get outerHTML() {
 		const attrs = [...this.attributes].map(([k, v]) => (v === "" ? ` ${k}` : ` ${k}="${esc(v)}"`)).join("");
 		if (this.tag === "input") return `<input${attrs}>`;
-		const inner = this.children.length ? this.children.map((c) => c.outerHTML).join("") : this._html || esc(this.textContent);
+		const inner = this.children.length ? this.children.map((c) => c.outerHTML).join("") : this._html || esc(this._text);
+		// Empty SVG elements serialize the way el() writes them.
+		if (!inner && this.namespaceURI === "http://www.w3.org/2000/svg") return `<${this.tag}${attrs}/>`;
 		return `<${this.tag}${attrs}>${inner}</${this.tag}>`;
 	}
 }
@@ -52,6 +70,8 @@ class El {
 function makeDocument() {
 	const doc = {
 		createElement: (tag) => new El(tag, doc),
+		createElementNS: (ns, tag) => new El(tag, doc, ns),
+		createTextNode: (data) => new Txt(data),
 		querySelector(selector) {
 			const m = selector.match(/^style\[([\w-]+)\]$/);
 			for (const root of [doc.head, doc.body]) for (const el of root.walk()) if (m && el.tag === "style" && el.attributes.has(m[1])) return el;
@@ -106,6 +126,36 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none", optio
 		},
 	};
 }
+
+/** Markup with each tag's attributes sorted: the patch may add an attribute after the others. */
+const canonical = (markup) =>
+	markup.replace(/<([A-Za-z][\w:-]*)((?:\s+[\w:-]+="[^"]*")*)\s*(\/?)>/g, (_m, tag, attrs, self) => {
+		const list = [...attrs.matchAll(/([\w:-]+)="([^"]*)"/g)].map((a) => ` ${a[1]}="${a[2]}"`).sort();
+		return `<${tag}${list.join("")}${self ? "/" : ""}>`;
+	});
+
+it("draws every sampled time in place, equal to a fresh render, whatever the order of seeks", async () => {
+	const files = ["bench/fleet.scene.mjs", "examples/smart-home.json", "examples/order-flow.json", "examples/integrations.json", "examples/custom-pulse.scene.mjs", "brand/logo.scene.mjs"];
+	for (const file of files) {
+		for (const format of ["16:9", "9:16"]) {
+			const { scene: s } = await loadScene(fileURLToPath(new URL(`../${file}`, import.meta.url)), { format });
+			const { player, container } = setup({ sceneOverride: s, options: { id: "p" } });
+			const stage = container.children[0];
+			const svg = stage.children[0];
+			assert.equal(svg?.tag, "svg", `${file} ${format}: drawn as nodes, not through innerHTML`);
+			const n = 48;
+			// Forward through the timeline, then a scrambled order: backward jumps and repeats.
+			const forward = Array.from({ length: n + 1 }, (_, i) => (s.duration * i) / n);
+			const scrambled = Array.from({ length: n }, (_, i) => (s.duration * ((i * 29) % n)) / n);
+			for (const t of [...forward, ...scrambled]) {
+				player.seek(t);
+				assert.equal(canonical(stage.innerHTML), canonical(renderSvg(s, t, { idPrefix: "p", live: true })), `${file} ${format} at t=${t}`);
+				for (const el of stage.walk()) if (el !== stage) assert.equal(el.namespaceURI, "http://www.w3.org/2000/svg");
+			}
+			assert.equal(stage.children[0], svg, `${file} ${format}: the <svg> is kept`);
+		}
+	}
+});
 
 it("plays forward and holds the exact target frame even when a tick overshoots", () => {
 	const { player, container, advance, frames } = setup({ options: { id: "p" } });

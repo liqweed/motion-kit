@@ -51,9 +51,22 @@ function fixture(fetch = async () => { throw new Error("unexpected request"); })
 			if (this.parentNode) this.parentNode.childNodes.splice(this.parentNode.childNodes.indexOf(this), 1);
 			this.parentNode = null;
 		}
+		removeChild(child) {
+			child.remove();
+			return child;
+		}
+		replaceChild(next, prev) {
+			next.remove();
+			this.childNodes[this.childNodes.indexOf(prev)] = next;
+			next.parentNode = this;
+			prev.parentNode = null;
+			return prev;
+		}
 		setAttribute(key, value) { this.attributes.set(key, value); }
+		setAttributeNS(_ns, key, value) { this.attributes.set(key, value); }
 		getAttribute(key) { return this.attributes.get(key) ?? null; }
 		removeAttribute(key) { this.attributes.delete(key); }
+		removeAttributeNS(_ns, key) { this.attributes.delete(key); }
 		matches(selector) { return selector === 'script[type="application/json"]' && this.tagName === "script" && this.getAttribute("type") === "application/json"; }
 		querySelector(selector) {
 			for (const child of this.childNodes) {
@@ -64,8 +77,17 @@ function fixture(fetch = async () => { throw new Error("unexpected request"); })
 			return null;
 		}
 	}
+	/** The text of a drawn frame. */
+	class Text {
+		constructor(data) { this.data = data; this.parentNode = null; }
+		remove() { Element.prototype.remove.call(this); }
+		matches() { return false; }
+		querySelector() { return null; }
+	}
 	doc = {
 		createElement: (tag) => new Element(tag),
+		createElementNS: (_ns, tag) => new Element(tag),
+		createTextNode: (data) => new Text(data),
 		head: new Element("head"),
 		querySelector: (selector) => doc.head.childNodes.find((el) => selector === "style[data-mk-player-css]" && el.tagName === "style" && el.getAttribute("data-mk-player-css") !== null) ?? null,
 	};

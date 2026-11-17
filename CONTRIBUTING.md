@@ -47,6 +47,14 @@ Then run `npm run media` and commit the regenerated `docs/media/`, `assets/icon*
 and `.idea/icon*.svg`, so reviewers see the visual change. Never edit those
 files by hand.
 
+After changing how the live player draws (`runtime/player.mjs`,
+`runtime/patch.mjs`), run `npm run bench:player`: it times each frame of
+`bench/fleet.scene.mjs` (about 25 KB of SVG) and smart-home in headless
+Chromium at a 6× CPU slowdown, the innerHTML draw against the in-place patch,
+and fails if a patched frame differs from a fresh parse. It needs a Chromium
+(`--chrome <path>`, `$CHROME`, or Playwright's browser cache); nothing is
+installed.
+
 ### PNG snapshots
 
 `npm test` also rasterises every step frame of the bundled scenes (16:9,
@@ -78,6 +86,7 @@ skips.
 | `adapters/` | Thin wrappers over `runtime/`, copied into consumer repositories by `motion-kit vendor`. |
 | `skills/` | The Claude Code plugin's skills. A CLI flag or behaviour change updates the matching `SKILL.md` or reference in the same commit. |
 | `examples/`, `brand/` | Every scene here passes `npm run check`. |
+| `bench/` | Scenes for `npm run bench:player`; heavy on purpose, not shown anywhere. |
 | `website/` | motion-kit.dev (Astro). |
 
 ## Conventions

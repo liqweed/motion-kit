@@ -60,6 +60,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/svg.mjs` | `esc`, `num`, `attrString`, `el`, `text`, `translate`, `scaleAbout`, `fade`, `dist`, `pointOnLine`, `trimSegment`, `polyline`, `cubic`, `drawOn` |
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
 | `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` |
+| `runtime/patch.mjs` | `patchMarkup` |
 | `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `destroy`, `time`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
 | `runtime/links.mjs` | `scrollSteps` and `linkSteps` (their options, the `data-mk-step` attribute, the `aria-current="step"` marks, the returned dispose function), `stepRef`, `sectionSteps`, `activeSection`, `scrollMove` |
 | `runtime/bake.mjs` | `bake`, `bakeStats` |

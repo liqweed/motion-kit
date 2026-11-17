@@ -24,9 +24,12 @@
  * - Keyboard on the stage (a named group, described by a hint): ←/→ previous/next
  *   step, Space play/pause, Home/End.
  * - Capture hook: controller.seek(t), and window.__motionKit[id] for renderers.
+ * - Each frame updates the stage's SVG in place (runtime/patch.mjs): nodes that
+ *   persist between frames are kept, only changed attributes and text are written.
  *
  * The player owns the clock (requestAnimationFrame); scenes stay pure.
  */
+import { patchMarkup } from "./patch.mjs";
 import { renderSvg, safeId, stepIndex, stepIndexAt } from "./scene.mjs";
 import { cssVars, normalizeStyle, TOKENS } from "./style.mjs";
 import { esc } from "./svg.mjs";
@@ -284,7 +287,8 @@ export function mountPlayer(container, scene, options = {}) {
 	let visibilityObserver;
 
 	function draw() {
-		stage.innerHTML = renderSvg(scene, t, { style, idPrefix: prefix, live: true });
+		// In place: nodes that persist keep their identity, only what changed is written.
+		patchMarkup(stage, renderSvg(scene, t, { style, idPrefix: prefix, live: true }));
 		const idx = stepIndexAt(scene, t);
 		ui.steps.forEach((b, i) => (i === idx ? b.setAttribute("aria-current", "step") : b.removeAttribute("aria-current")));
 		ui.captions?.forEach((c, i) => (i === idx ? c.setAttribute("class", "mk-on") : c.removeAttribute("class")));
