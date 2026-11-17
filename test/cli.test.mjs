@@ -178,7 +178,10 @@ describe("cli", () => {
 	it("the manifest says whether the source differs from the commit it names", () => {
 		const repo = join(tmp, "repo");
 		mkdirSync(repo);
-		const git = (...args) => execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], { cwd: repo, stdio: "pipe" });
+		// Inside a git hook (pre-push runs the gate) GIT_DIR and friends name
+		// this repository; drop them so git works on the temporary one.
+		const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_")));
+		const git = (...args) => execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], { cwd: repo, env, stdio: "pipe" });
 		const spec = join(repo, "flow.json");
 		const manifest = (name) => {
 			run("export", spec, "-o", join(tmp, name), "-f", "16:9");
@@ -190,7 +193,7 @@ describe("cli", () => {
 		git("init", "-q");
 		git("add", "flow.json");
 		git("commit", "-q", "-m", "flow");
-		const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+		const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: repo, env, encoding: "utf8" }).trim();
 		assert.deepEqual(manifest("git-clean"), { commit: head, dirty: false });
 		writeFileSync(spec, readFileSync(spec, "utf8").replace("The customer places", "A customer places"));
 		assert.deepEqual(manifest("git-dirty"), { commit: head, dirty: true }, "modified since the commit");
