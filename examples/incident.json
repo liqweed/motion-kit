@@ -1,0 +1,18 @@
+{
+	"type": "timeline",
+	"id": "incident",
+	"title": { "en": "An incident, start to review", "nl": "Een storing, van begin tot evaluatie" },
+	"description": {
+		"en": "An outage from the first alert to the all-clear, with the review still to come.",
+		"nl": "Een storing van het eerste alarm tot het sein veilig, met de evaluatie nog te gaan."
+	},
+	"events": [
+		{ "when": "09:02", "label": { "en": "Alert fires", "nl": "Alarm gaat af" }, "detail": { "en": "Error rates cross the threshold and on-call is paged.", "nl": "Het foutpercentage gaat over de drempel en de dienstdoende wordt opgeroepen." } },
+		{ "when": "09:06", "label": { "en": "On-call responds", "nl": "Dienstdoende reageert" }, "detail": { "en": "The engineer on call acknowledges and opens an incident channel.", "nl": "De dienstdoende engineer bevestigt en opent een storingskanaal." } },
+		{ "when": "09:24", "label": { "en": "Cause found", "nl": "Oorzaak gevonden" }, "detail": { "en": "A configuration change from the morning release is the cause.", "nl": "Een configuratiewijziging uit de ochtendrelease is de oorzaak." } },
+		{ "when": "09:41", "label": { "en": "Fix deployed", "nl": "Herstel uitgerold" }, "detail": { "en": "The change is rolled back and error rates fall.", "nl": "De wijziging wordt teruggedraaid en het foutpercentage daalt." } },
+		{ "when": "10:15", "label": { "en": "All clear", "nl": "Sein veilig" }, "detail": { "en": "Metrics are back to normal and the incident is closed.", "nl": "De metrieken zijn weer normaal en de storing is gesloten." } },
+		{ "when": { "en": "Thursday", "nl": "Donderdag" }, "label": { "en": "Review", "nl": "Evaluatie" }, "planned": true, "detail": { "en": "The team writes down what happened and what changes, without blame.", "nl": "Het team legt vast wat er gebeurde en wat er verandert, zonder schuldvraag." } }
+	],
+	"now": { "label": { "en": "Now", "nl": "Nu" }, "detail": { "en": "The service is healthy; the review is still to come.", "nl": "De dienst is gezond; de evaluatie moet nog komen." } }
+}

@@ -1,7 +1,7 @@
 ---
 title: motion-kit — product requirements
 status: draft
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 ---
 
 # motion-kit — product requirements
@@ -62,7 +62,7 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 - **Determinism**: same inputs ⇒ byte-identical frames and reproducible
   manifests.
 - **Data over code**: common diagram shapes are spec-driven scene types
-  (`sequence`, `hub-spoke`); custom modules are the escape hatch.
+  (`sequence`, `hub-spoke`, `timeline`); custom modules are the escape hatch.
 - **Fail loudly, never ship broken pictures**: layouts that don't fit, unknown
   tokens/types/formats and gate violations throw.
 - **Accessible by default**: pause control, reduced motion, screen-reader step

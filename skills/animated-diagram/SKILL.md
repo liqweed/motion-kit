@@ -53,7 +53,7 @@ from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
    Write the spec, then render the step contact sheet and show it:
    `motion-kit export spec.json -o <scratch>/sb --png --qc` → open `index.html`
    or show the PNGs. Get a yes on the *story* before polishing.
-3. **Build.** Spec-driven types first (`sequence`, `hub-spoke`). Only write a
+3. **Build.** Spec-driven types first (`sequence`, `hub-spoke`, `timeline`). Only write a
    custom scene module when no type fits (`references/custom-scenes.md`).
 4. **Gate.** `motion-kit check spec.json` must pass in every format/locale
    shipped: deterministic, settled steps, rounded numbers, token-only colours,

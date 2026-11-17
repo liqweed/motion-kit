@@ -12,10 +12,12 @@
 import { validateScene } from "../scene.mjs";
 import { hubSpoke } from "./hub-spoke.mjs";
 import { sequence } from "./sequence.mjs";
+import { timeline } from "./timeline.mjs";
 
 export const SCENE_TYPES = {
 	sequence,
 	"hub-spoke": hubSpoke,
+	timeline,
 };
 
 export function createScene(spec, opts = {}) {

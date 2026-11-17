@@ -45,7 +45,7 @@ Two kinds of change are not breaking, even though output differs:
   and its rules (spec §1–§8).
 - Custom scene modules: a default export `(opts) => scene`, called with
   `{ ...options, format, locale, kit }`.
-- The spec format of each registered scene type (`sequence`, `hub-spoke`).
+- The spec format of each registered scene type (`sequence`, `hub-spoke`, `timeline`).
 - Style data: `{ name?, font?, light: {token: "#rrggbb"}, dark: {…} }` and the
   token names in `TOKENS`.
 

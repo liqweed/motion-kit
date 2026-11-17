@@ -47,7 +47,7 @@
 		"prepare": "lefthook install || true",
 		"test": "node --test test/*.test.mjs",
 		"typecheck": "tsc -p .",
-		"check": "node cli/motion-kit.mjs check examples/order-flow.json examples/smart-home.json examples/release-pipeline.json examples/agent-loop.json examples/integrations.json examples/custom-pulse.scene.mjs brand/logo.scene.mjs",
+		"check": "node cli/motion-kit.mjs check examples/order-flow.json examples/smart-home.json examples/release-pipeline.json examples/agent-loop.json examples/integrations.json examples/incident.json examples/custom-pulse.scene.mjs brand/logo.scene.mjs",
 		"media": "scripts/render-media.sh",
 		"media:check": "scripts/render-media.sh --check",
 		"site": "npm run -w website build",

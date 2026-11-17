@@ -33,6 +33,7 @@ export const LIVE = [
 	{ id: "order-flow", group: "process", title: "How an order reaches the customer", type: "sequence", file: "examples/order-flow.json", kind: "spec", steps: 6 },
 	{ id: "release-pipeline", group: "process", title: "From commit to published media", type: "sequence", file: "examples/release-pipeline.json", kind: "spec", steps: 5 },
 	{ id: "agent-loop", group: "process", title: "An agent goes from brief to checked diagram", type: "sequence", file: "examples/agent-loop.json", kind: "spec", steps: 6 },
+	{ id: "incident", group: "process", title: "An incident, start to review", type: "timeline", file: "examples/incident.json", kind: "spec", steps: 7 },
 	{ id: "smart-home", group: "system", title: "What the home hub connects", type: "hub-spoke", file: "examples/smart-home.json", kind: "spec", steps: 6 },
 	{ id: "integrations", group: "system", title: "One platform, many integrations", type: "hub-spoke", file: "examples/integrations.json", kind: "spec", steps: 8 },
 	{ id: "custom-pulse", group: "custom", title: "Request and response", type: "custom scene", file: "examples/custom-pulse.scene.mjs", kind: "module", steps: 3 },
@@ -44,7 +45,6 @@ export const LIVE = [
  */
 /** @type {PlannedExample[]} */
 export const PLANNED = [
-	{ id: "incident", group: "process", title: "An incident, start to review", type: "timeline", issue: 16, story: "The axis draws, milestones drop in, a “now” marker settles." },
 	{ id: "player-states", group: "process", title: "The live player, as states", type: "state-machine", issue: 18, story: "States wait as pending; a token walks the transitions; the current state turns accent." },
 	{ id: "web-stack", group: "system", title: "A request through the layers", type: "stack", issue: 17, story: "Layers rise; a packet travels down and back up." },
 	{ id: "checkout", group: "system", title: "A checkout request", type: "request-journey", issue: 19, story: "Regions and components appear; a dot hops the path; async edges are dashed." },
