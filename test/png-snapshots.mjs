@@ -32,18 +32,14 @@ const FONT_FAMILY = "Inter";
 export const STYLE = loadStyle(repo("styles/neutral.json"));
 
 /**
- * The scenes snapshotted: every step frame in the light theme, and the final
- * step in the dark theme. 16:9, English, scale 1, with the background.
+ * The scenes snapshotted: every scene the gate checks (`npm run check` in
+ * package.json), so a new example is snapshotted too. Every step frame in the
+ * light theme, and the final step in the dark theme. 16:9, English, scale 1,
+ * with the background.
  */
-const SCENES = [
-	"examples/order-flow.json",
-	"examples/smart-home.json",
-	"examples/release-pipeline.json",
-	"examples/agent-loop.json",
-	"examples/integrations.json",
-	"examples/custom-pulse.scene.mjs",
-	"brand/logo.scene.mjs",
-];
+const SCENES = JSON.parse(readFileSync(repo("package.json"), "utf8"))
+	.scripts.check.split(/\s+/)
+	.filter((/** @type {string} */ w) => /^(examples|brand)\/.*\.(json|mjs)$/.test(w));
 
 /**
  * How far a frame may drift before it fails: a pixel differs when any RGBA
