@@ -43,7 +43,8 @@ node cli/motion-kit.mjs export examples/smart-home.json -o out/slides --png --qc
 node cli/motion-kit.mjs bake examples/order-flow.json -o out/order.svg -f wide
 node cli/motion-kit.mjs video examples/smart-home.json -f 9:16 -o out/reel.mp4 --sheet out/sheet.png
 node cli/motion-kit.mjs icon brand/logo.scene.mjs -o .     # project icon set: assets/ + .idea/
-npm test
+npm test                           # includes PNG snapshots of the examples' step frames
+npm run snapshots:update           # after an intended visual change: regenerate test/snapshots/
 npm run gate                       # typecheck, versions, tests, scene gate, media freshness
 ```
 
@@ -72,6 +73,7 @@ assets/         generated project icon: icon.svg, icon.png, icon-animated.svg
 docs/media/     baked README animations (generated: npm run media)
 docs/           prd.md, roadmap.md, spec/technique.md
 styles/         neutral.json (the only style shipped; brands live in their repos)
+test/           node:test suites; snapshots/ holds PNG step frames (npm run snapshots:update)
 ```
 
 ## Install the skills

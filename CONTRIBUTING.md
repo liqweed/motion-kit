@@ -42,6 +42,28 @@ Then run `npm run media` and commit the regenerated `docs/media/`, `assets/icon*
 and `.idea/icon*.svg`, so reviewers see the visual change. Never edit those
 files by hand.
 
+### PNG snapshots
+
+`npm test` also rasterises every step frame of the bundled scenes (16:9,
+English, scale 1, light theme, plus each scene's final step in dark) and
+compares the pixels with the PNGs committed under `test/snapshots/`. A frame
+fails when more than 0.01 % of its pixels differ by more than 3/255 in a
+channel, so a colour token, layout, font or resvg change shows up. A failing
+frame leaves `<frame>.expected.png`, `.actual.png` and `.diff.png` (changed
+pixels in red) in `out/snapshots/`; CI uploads that folder as the
+`png-snapshot-diffs` artifact.
+
+When the change is intended, regenerate the snapshots and commit them with it:
+
+```bash
+npm run snapshots:update   # rewrites changed PNGs in test/snapshots/, removes stale ones
+```
+
+The snapshots are rendered with `test/fonts/Inter-Regular.ttf` (SIL Open Font
+Licence, `test/fonts/Inter-LICENSE.txt`) and no system fonts, so macOS and
+Linux give the same pixels. They need `@resvg/resvg-js`; without it the test
+skips.
+
 ## Where code goes
 
 | Path | Rule |

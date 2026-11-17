@@ -26,6 +26,7 @@ npm test               # node:test, test/*.test.mjs
 npm run check          # the scene gate over examples/ and brand/, every format × locale
 npm run site:dev       # Astro dev server for the website (npm run site builds; site:deploy ships to Cloudflare)
 npm run media          # regenerate docs/media/*.svg, assets/icon*, .idea/icon*; commit the result
+npm run snapshots:update  # regenerate the PNG snapshots in test/snapshots/ after an intended visual change
 node cli/motion-kit.mjs --help
 ```
 
@@ -47,6 +48,7 @@ runs `npm run gate`. Don't bypass them with `--no-verify`; fix the cause.
 | `website/` | browser + Node (build) | The motion-kit.dev site: Astro (static output) + Vite, deployed to Cloudflare as static assets with the `cf` CLI (`website/cloudflare.config.ts`; `npm run site:deploy`, which needs `cf auth login` or `CLOUDFLARE_API_TOKEN`; no Wrangler; `.github/workflows/deploy-site.yml` deploys on merge to main). An npm workspace, so the root `npm install` covers it. Pages are `.astro` and prerendered; interactivity is plain ES modules in `src/scripts/` importing `runtime/`, `examples/` and `brand/` from the repo root (Vite globs, no copies). `src/scripts/catalog.mjs` is DOM-free data checked by `test/site.test.mjs`. Show only built scenes live; unbuilt scene types stay "needs" cards. |
 | `examples/`, `brand/` | gate + docs | Every scene here must pass `npm run check`. `brand/logo.scene.mjs` is the logo source and the project-logo skill's template; it takes the runtime from `kit` instead of importing it. |
 | `docs/media/`, `assets/icon*`, `.idea/icon*.svg` | generated | Never hand-edit; run `npm run media`. `assets/icon.png` is what Conductor shows; `.idea/icon*.svg` is the JetBrains project icon. |
+| `test/snapshots/` | generated | PNG snapshots of the examples' step frames, compared by `test/snapshots.test.mjs` (`test/png-snapshots.mjs` sets the frames and tolerance). Never hand-edit; run `npm run snapshots:update` and commit the changed PNGs. A failure writes expected/actual/diff PNGs to `out/snapshots/`. |
 
 ## Scene rules (the gate enforces them)
 
@@ -76,7 +78,8 @@ before adding a scene type or changing motion helpers.
   helper in `runtime/` gets a unit test; a new scene type gets a gate run
   across formats and locales.
 - Determinism is a feature: when you change rendering, rerun
-  `npm run media` and commit the diff so reviewers see the visual change.
+  `npm run media` and `npm run snapshots:update` and commit the diff so
+  reviewers see the visual change.
 - Commits: Conventional Commits (`feat:`, `fix:`, `docs:`, `chore:`), scope
   optional (`feat(slidev): …`).
 - Don't bump versions or edit `CHANGELOG.md` by hand: a PR that changes what
