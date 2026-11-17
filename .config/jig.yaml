@@ -30,5 +30,13 @@ changelog:
       - { path: package.json, key: version }
   # The plugin manifests and the lock file repeat the version.
   after_version: node scripts/sync-version.mjs
+  # A merged change note releases at once: the release App pushes the release
+  # commit to main (no release pull request), then CI, the tag and the Release
+  # workflow follow. main's rules must let that push through: no required pull
+  # request, status check or signed commit, or the App listed as a bypass actor.
   release:
-    push: pull-request
+    push: direct
+  # A note without a `release` level waits for the next release, as before,
+  # instead of costing a commit on main per merge (`write`, the default under
+  # `direct`).
+  unreleased: wait

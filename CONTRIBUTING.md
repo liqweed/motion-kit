@@ -76,9 +76,25 @@ files by hand.
   `minor` or `major` in its front matter and [Keep a Changelog](https://keepachangelog.com/)
   sections (`### Added`, `### Changed`, `### Fixed`, `### Removed`) written for
   someone who uses motion-kit. See `changes/README.md`.
-- Don't edit `CHANGELOG.md` or the version by hand. CI turns the waiting notes
-  into a release pull request; merging it tags `vX.Y.Z`, which publishes
-  `@liqweed/motion-kit` to npm and creates the GitHub release.
+- Don't edit `CHANGELOG.md` or the version by hand. Merging a pull request whose
+  change note has a `release` level releases it, with no second merge: CI writes
+  the waiting notes into the changelog and moves the version in one commit on
+  `main`, tags `vX.Y.Z` once that commit passes the gate, and the tag publishes
+  `@liqweed/motion-kit` to npm and creates the GitHub release. So the `release:`
+  line is the decision to publish. A note without a `release` level adds no
+  commit and waits for the next release. There is no release pull request.
+- If a release does not go out, find where it stopped:
+  - No `chore(release): X.Y.Z` commit on `main`: open the `changelog` workflow
+    run for the merge. If its `push` job was refused by `main`'s rules, nothing
+    was released and the notes are still waiting. The rules must let the release
+    App push, so no required pull request, status check or signed commit unless
+    the App is a bypass actor. Fix the rule, then run the workflow again from the
+    Actions tab.
+  - The commit is there but there is no tag: its `gate` check failed or is still
+    running. The `tag-plan` job of the `changelog` workflow names it, and the tag
+    follows once the check passes.
+  - The tag is there but the version is not on npm: the Release run failed, see
+    the next point.
 - Publishing uses npm trusted publishing, with no token. The header of
   `.github/workflows/release.yml` lists the Trusted Publisher values the package
   needs on npmjs.com. If a Release run fails at `npm publish` with an OIDC 403,
