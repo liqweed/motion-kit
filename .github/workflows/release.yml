@@ -49,6 +49,9 @@ jobs:
       - run: npm ci
       - name: Tag matches package.json
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      # The gate on the .nvmrc Node only. The changelog workflow pushes the tag
+      # once CI's required checks passed on this commit, gate-node22 (Node 22)
+      # among them, so a Node 22 run here would repeat that one.
       - run: npm run gate
       - name: Publish (skipped if this version is already on npm)
         run: |

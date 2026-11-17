@@ -18,9 +18,10 @@ issue_tracker:
     priority: { store: label } # "priority: urgent|high|medium|low"
     size: { store: label } # small | medium | large
 ci:
-  # The `gate` job of .github/workflows/ci.yml, which runs on pushes to main;
-  # the changelog workflow tags a release once it passed on the releasing commit.
-  required_checks: [gate]
+  # The `gate` (Node from .nvmrc) and `gate-node22` (the engines floor) jobs of
+  # .github/workflows/ci.yml, which run on pushes to main; the changelog
+  # workflow tags a release once both passed on the releasing commit.
+  required_checks: [gate, gate-node22]
 changelog:
   file: CHANGELOG.md
   format: keep-a-changelog

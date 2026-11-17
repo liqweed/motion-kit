@@ -55,7 +55,8 @@
 		"site:deploy": "npm run -w website deploy",
 		"versions": "node scripts/check-versions.mjs",
 		"snapshots:update": "node scripts/update-snapshots.mjs",
-		"gate": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check && npm run -s site"
+		"gate:core": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check",
+		"gate": "npm run -s gate:core && npm run -s site"
 	},
 	"optionalDependencies": {
 		"@resvg/resvg-js": "^2.6.2"

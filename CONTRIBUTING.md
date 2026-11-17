@@ -8,7 +8,8 @@ contract for scenes, render targets and the gate.
 ## Setup
 
 - Node ≥ 22 for users; develop on the version in `.nvmrc` (26) and keep the
-  code to what Node 22 supports (`@types/node` stays on 22).
+  code to what Node 22 supports (`@types/node` stays on 22). CI also runs the
+  gate on Node 22 (see below); to try it locally, `nvm exec 22 npm run gate:core`.
 - `npm install` installs the dev tools, the website workspace and the git
   hooks (lefthook). The optional dependency `@resvg/resvg-js` renders PNGs;
   `ffmpeg` on your `PATH` renders video. Tests that need either skip without it.
@@ -22,7 +23,11 @@ npm run gate   # typecheck, version sync, tests, scene gate, media freshness, we
 ```
 
 A pull request merges only when `npm run gate` passes; CI runs it on every pull
-request and on `main`. The hooks run parts of it for you:
+request and on `main`, on the Node in `.nvmrc` (the `gate` check). The
+`gate-node22` check runs `npm run gate:core`, the same gate without the website
+build, on the latest Node 22, the oldest Node motion-kit supports; the website
+is not part of the package, and Astro asks for a newer Node 22. A release is
+tagged only once both passed. The hooks run parts of it for you:
 
 - pre-commit: typecheck, the scene gate, media freshness and version sync, for
   the files you staged;

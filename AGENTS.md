@@ -20,7 +20,8 @@ those, and fix its *Discrepancies* list rather than adding to it.
 
 ```bash
 npm install            # optional dep @resvg/resvg-js (PNG + video); ffmpeg for video
-npm run gate           # typecheck + versions + tests + scene gate + media freshness
+npm run gate           # typecheck + versions + tests + scene gate + media freshness + site build
+npm run gate:core      # the gate without the site build (what CI also runs on Node 22)
 npm run typecheck      # tsc --checkJs over JSDoc types (strict, noImplicitAny off); no emit
 npm test               # node:test, test/*.test.mjs
 npm run check          # the scene gate over examples/ and brand/, every format × locale
@@ -31,7 +32,11 @@ node cli/motion-kit.mjs --help
 ```
 
 Node ≥ 22 for users; develop on Node 26, the current LTS (`.nvmrc`), and keep
-the code to what Node 22 supports (`@types/node` stays on 22). No build step, no transpiler, no bundler: TypeScript is only a
+the code to what Node 22 supports (`@types/node` stays on 22). CI runs
+`npm run gate` on Node 26 (`gate` job) and `npm run gate:core` on the latest
+Node 22 (`gate-node22`; the site build is left out, Astro needs a newer 22
+than the floor); both are required before a release is tagged. Code that
+fails on Node 22 is a bug: try it with `nvm exec 22 npm run gate:core`. No build step, no transpiler, no bundler: TypeScript is only a
 checker over JSDoc. Git hooks (lefthook, installed by `npm install`):
 pre-commit runs typecheck / scene gate / media freshness / version sync on
 matching staged files, commit-msg enforces Conventional Commits, pre-push
