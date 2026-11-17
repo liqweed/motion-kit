@@ -69,6 +69,7 @@ describe("cli", () => {
 		run("vendor", dir, "--adapter", "element");
 		assert.ok(existsSync(join(dir, "adapter/motion-diagram.mjs")));
 		assert.ok(existsSync(join(dir, "runtime/player.mjs")));
+		assert.ok(existsSync(join(dir, "runtime/links.mjs")));
 		assert.ok(existsSync(join(dir, "runtime/types/index.mjs")));
 		assert.match(readFileSync(join(dir, "MOTION_KIT_VERSION"), "utf8"), /adapter element/);
 	});

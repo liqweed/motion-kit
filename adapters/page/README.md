@@ -21,3 +21,8 @@ step buttons, a scrubber and captions, and respects `prefers-reduced-motion`
 and `prefers-color-scheme`.
 
 Capture hook for renderers: `window.__motionKit[sceneId].seek(t)`.
+
+The page-link helpers (`scrollSteps`, `linkSteps`, from `runtime/links.mjs`)
+are bundled on the `MotionKitRuntime` global; bind them to the controller from
+the capture hook when you add text sections or `data-mk-step` terms around
+the diagram.

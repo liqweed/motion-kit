@@ -1,7 +1,7 @@
 ---
 title: motion-kit — public API and stability
 status: draft
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 ---
 
 # motion-kit — public API and stability
@@ -61,6 +61,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
 | `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` |
 | `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `destroy`, `time`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
+| `runtime/links.mjs` | `scrollSteps` and `linkSteps` (their options, the `data-mk-step` attribute, the `aria-current="step"` marks, the returned dispose function), `stepRef`, `sectionSteps`, `activeSection`, `scrollMove` |
 | `runtime/bake.mjs` | `bake`, `bakeStats` |
 
 `KIT` holds every export of `motion`, `svg`, `style`, `scene` and `wrap`; only

@@ -112,8 +112,8 @@ let playerCount = 0;
 export const themeOpt = () => (document.documentElement.dataset.theme === "light" || document.documentElement.dataset.theme === "dark" ? document.documentElement.dataset.theme : undefined);
 
 /**
- * Poll a controller for step changes. The runtime has no onStep event yet
- * (roadmap #9), so this reads controller.time; it stops when `stop()` is called.
+ * Poll a controller for step changes. The runtime has no step-change event yet,
+ * so this reads controller.time; it stops when `stop()` is called.
  * @param {any} controller
  * @param {(index: number) => void} cb
  */

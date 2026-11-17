@@ -64,6 +64,7 @@ runtime/        dependency-free ES modules (browser + Node)
   types/        spec-driven scene types: sequence, hub-spoke
   bake.mjs      zero-JS animated SVG
   player.mjs    live player (controls, a11y, reduced motion, capture hook)
+  links.mjs     page links: scroll sections and data-mk-step terms drive the player
 lib/            Node-side: check (gate), export, build (HTML inliner), raster, video, icon
 adapters/       slidev (Vue), astro, element (custom element), page (README)
 skills/         animated-diagram, motion-render, project-logo (Claude Code / Craft skills)

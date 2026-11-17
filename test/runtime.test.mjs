@@ -281,6 +281,14 @@ describe("buildHtml", () => {
 		assert.match(script, /MotionKitRuntime\.validateScene\(/);
 		assert.match(script, /MotionKitRuntime\.mountPlayer\(/);
 	});
+	it("bundles the page-link helpers, so a built page can bind scroll and hover", async () => {
+		const loaded = await loadScene(fileURLToPath(new URL("../examples/order-flow.json", import.meta.url)), { format: "wide", locale: "en" });
+		const html = buildHtml(loaded, { style: normalizeStyle("neutral"), format: "wide", locale: "en" });
+		const script = html.slice(html.lastIndexOf("<script>") + "<script>".length, html.lastIndexOf("(function () {"));
+		const ctx = vm.createContext({});
+		vm.runInContext(script, ctx);
+		for (const name of ["scrollSteps", "linkSteps"]) assert.equal(typeof ctx.MotionKitRuntime[name], "function", name);
+	});
 });
 
 describe("KIT", () => {

@@ -56,15 +56,115 @@ const go = (c) => c.playToStep("payment");
 el.controller ? go(el.controller) : el.addEventListener("motion-ready", (e) => go(e.detail.controller), { once: true });
 ```
 
+## Linking the page to the diagram (`runtime/links.mjs`)
+
+Two helpers bind a controller to the page around the player. Both are
+dependency-free browser code (no DOM at import), take a step by `id` or index,
+throw `RangeError` for an unknown id when they bind (not when the reader gets
+there), never move focus or layout, and return a `dispose()` that removes
+their listeners, observers and marks. Call it before removing the elements or
+the player (Astro: on `astro:before-swap`).
+
+- **Hover/focus linking:** `linkSteps(controller, rootOrElements, options)`.
+  Every element with `data-mk-step` under the root (or the elements given)
+  selects its step on hover (mouse and pen), keyboard focus (also focus inside
+  it) and click; touch selects on tap, so nothing is hover-only. Make terms
+  `<button type="button" data-mk-step="payment">` so the keyboard reaches
+  them. A selection jumps to the settled step; `animate: true` plays forward
+  to a later step, except under reduced motion. The step stays when the
+  pointer or focus leaves; `restore: true` turns hover and focus into a
+  preview: once neither is on a term, the diagram returns to the frame it
+  showed before, and a click keeps its step. The terms of the selected step
+  get `aria-current="step"` (`mark: false` to style them yourself);
+  `onChange(step, element)` reports each selection (`-1, null` on restore).
+  Terms are collected when binding; bind again for terms added later. When
+  scroll sections carry `data-mk-step` as well, pass the terms themselves
+  rather than a root that contains the sections.
+- **Scroll-driven steps:** `scrollSteps(controller, sections, options)`.
+  Each section names its step with `data-mk-step`, else by order (the third
+  section shows step 2). The active section is the last one whose top has
+  crossed a line across the viewport (`line`, a share of its height from the
+  top, default 0.5; `root` for a scrolling container), found with an
+  IntersectionObserver whose root ends at that line. It stays active through
+  the gap after it, and the last section stays active below it. Moving one
+  section forward plays to its step (`playToStep`); moving back, skipping
+  sections, the first section and reduced motion jump (`seekStep`);
+  `animate: false` always jumps. Above the first section the diagram keeps its
+  frame. The active section gets `aria-current="step"` (style it without
+  changing its size, e.g. opacity); `onChange(index, section)` reports each
+  change (`-1, null` above the first). It never scrubs continuously: the
+  diagram only ever rests on settled steps. Mount the player with
+  `autoplay: "none"`, and leave room below the last section (e.g.
+  `padding-bottom: 50vh`) so its top can reach the line. Without
+  IntersectionObserver it does nothing and the text still reads.
+
+Plain HTML (`motion-kit vendor … --adapter page`):
+
+```html
+<article id="story">
+  <section data-mk-step="order"><h2>The order</h2><p>…</p></section>
+  <section data-mk-step="payment"><h2>Payment</h2><p>The <button type="button" data-mk-step="payment">card check</button> …</p></section>
+  <section data-mk-step="shipping"><h2>Shipping</h2><p>…</p></section>
+</article>
+<div id="flow"></div>
+<script type="module">
+  import { mountPlayer } from "./motion-kit/runtime/player.mjs";
+  import { linkSteps, scrollSteps } from "./motion-kit/runtime/links.mjs";
+  const player = mountPlayer(document.getElementById("flow"), scene, { autoplay: "none" });
+  const story = document.getElementById("story");
+  const stopScroll = scrollSteps(player, story.querySelectorAll("section"));
+  // The sections carry data-mk-step too: pass the terms, not the article.
+  const stopLinks = linkSteps(player, story.querySelectorAll("button[data-mk-step]"));
+</script>
+```
+
+`<motion-diagram>` (`--adapter element`): wait for the controller.
+
+```js
+import { scrollSteps } from "./motion-kit/runtime/links.mjs";
+const el = document.querySelector("motion-diagram");
+const bind = (c) => scrollSteps(c, document.querySelectorAll("#story section"));
+el.controller ? bind(el.controller) : el.addEventListener("motion-ready", (e) => bind(e.detail.controller), { once: true });
+```
+
+The element remounts when an attribute changes, which makes a new controller:
+listen to every `motion-ready` (not `once`) and dispose the previous binding
+first if the page changes attributes.
+
+Astro (`--adapter astro`), with `id` on the diagram:
+
+```astro
+<AnimatedDiagram spec={spec} format="tall" id="flow" />
+<script>
+  import { linkSteps, scrollSteps } from "../motion-kit/runtime/links.mjs";
+  const el = document.getElementById("flow");
+  const bind = (c) => {
+    const stops = [scrollSteps(c, document.querySelectorAll("#story section")), linkSteps(c, document.querySelectorAll("#story button[data-mk-step]"))];
+    document.addEventListener("astro:before-swap", () => stops.forEach((stop) => stop()), { once: true });
+  };
+  el.controller ? bind(el.controller) : el.addEventListener("motion-ready", (e) => bind(e.detail.controller), { once: true });
+</script>
+```
+
+Module scripts run once per load: with view transitions (`<ClientRouter />`),
+run the binding code in an `astro:page-load` listener so each page binds its
+own diagram; the `astro:before-swap` dispose releases the previous one.
+
+A page from `motion-kit build` has them on the `MotionKitRuntime` global.
+
+The step mapping is pure and exported for tests and custom bindings:
+`stepRef(scene, ref)` (id first, then a whole-number index),
+`sectionSteps(scene, refs)` (a section's reference, else its position),
+`activeSection(tops, line)` and `scrollMove({ from, to, fromStep, toStep,
+animate, reduced })` (`"play"`, `"seek"` or null).
+
 ## Patterns worth adding per diagram (in the page around the player)
 
 - **Hover/focus linking:** terms in the surrounding text highlight the matching
-  part of the diagram (and back). Wrap the term in
-  `<span data-mk-step="payment">`; on hover and on focus,
-  `controller.seekStep("payment")`. Use step ids, not positions.
-- **Scroll-driven steps:** for long-form explainers, map section visibility to
-  steps (IntersectionObserver per text section → `seekStep(i)`). Don't scrub
-  continuously on scroll; jump to settled steps.
+  part of the diagram: `linkSteps` above. Use step ids, not positions.
+- **Scroll-driven steps:** for long-form explainers, one text section per step:
+  `scrollSteps` above. Don't scrub continuously on scroll; jump to settled
+  steps.
 - **Details on demand:** step buttons + caption first; tooltips only for
   secondary facts.
 - **Explorables:** a parameter slider can change the *spec* (e.g. number of

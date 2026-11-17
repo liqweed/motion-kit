@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 ---
 
 # motion-kit technique — normative specification
@@ -357,6 +357,21 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   destroy the player and restore the fallback; reconnection mounts afresh.
   Superseded asynchronous loads MUST NOT mount or publish errors.
 
+### 10.2.2 Page links (`runtime/links.mjs`)
+
+Helpers that drive a player controller from the page around it. They MUST
+touch the DOM only when called, never move focus, never change layout (the
+only marks are `aria-current="step"` attributes), and return a `dispose()`
+that removes every listener, observer and mark they added.
+
+| Requirement | Source |
+|---|---|
+| A step reference (`data-mk-step`, or a number) MUST resolve to the step with that `id`, else to a whole-number index; an unknown id or an index out of range throws `RangeError` when the helper binds. | `runtime/links.mjs` (`stepRef`, `sectionSteps`), `test/links.test.mjs` |
+| `scrollSteps(controller, sections, options)`: a section's step is its `data-mk-step`, else its position. The active section MUST be the last one, in order, whose top has reached a line at `line` (default 0.5) of the viewport's or `root`'s height (`activeSection`), observed with one IntersectionObserver whose root margin ends at that line. Before the first section nothing changes. | `runtime/links.mjs` (`scrollSteps`, `activeSection`) |
+| Moving one section forward to a later step MUST play to it (`playToStep`); every other change (back, skipping, the first section, `animate: false`, `prefers-reduced-motion: reduce`) MUST jump (`seekStep`); a change to the same step calls nothing (`scrollMove`). The diagram MUST only rest on settled steps: no continuous scrubbing. | `runtime/links.mjs` (`scrollMove`), `test/links.test.mjs` |
+| `linkSteps(controller, rootOrElements, options)`: every element with `data-mk-step` (under the root, or given) MUST select its step on `pointerenter` (not touch), `focusin` and `click`, so keyboard focus selects the same step as hover. A selection jumps; `animate: true` plays forward unless reduced motion. With `restore: true`, once neither hover nor focus is on a term, the frame shown before the preview returns (`seek`), unless a click committed a step. | `runtime/links.mjs` (`linkSteps`), `test/links.test.mjs` |
+| Without IntersectionObserver, `scrollSteps` MUST do nothing (the text still reads). | `runtime/links.mjs` |
+
 ### 10.3 Self-contained HTML (`motion-kit build`, `lib/build.mjs`)
 
 - MUST be one document with the runtime inlined by `lib/bundle.mjs`, no
@@ -366,6 +381,8 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   `themeCss`) and set `<html lang>` to the scene locale (`lib/build.mjs`).
 - A custom module is built with the caller's `--options` and `kit`: every
   runtime module is a bundle entry, so the `MotionKit` global is the kit.
+  The page-link helpers (§10.2.2) are bundled too (`MotionKitRuntime.scrollSteps`,
+  `MotionKitRuntime.linkSteps`).
 - The CLI MUST refuse a scene that fails the gate (`cli/motion-kit.mjs:112-113`)
   and bundled code containing `</script>` (`:115`).
 - The inlined runtime MUST render the same bytes as Node
