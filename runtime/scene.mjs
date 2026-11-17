@@ -36,7 +36,9 @@ import { normalizeStyle, cssVars, resolveTokens } from "./style.mjs";
  */
 /**
  * An animated diagram as a pure function of time (see the module comment).
- * @typedef {{ id: string, width: number, height: number, duration: number, title: string, description: string, steps: Step[], frame: (t: number, ctx: FrameContext) => string, stepLabelsInFrame?: boolean, type?: string, format?: string, locale?: string }} Scene
+ * `contrastPairs`: token pairs the scene draws beyond CONTRAST_PAIRS
+ * (runtime/style.mjs), which the gate checks the style against.
+ * @typedef {{ id: string, width: number, height: number, duration: number, title: string, description: string, steps: Step[], frame: (t: number, ctx: FrameContext) => string, stepLabelsInFrame?: boolean, contrastPairs?: { fg: string, bg: string, min: number, use?: string }[], type?: string, format?: string, locale?: string }} Scene
  */
 
 /** Formats: name → viewBox. Layouts are computed per format, never cropped. */

@@ -110,7 +110,7 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const sopts = await sceneOpts(file);
 			const loaded = await loadScene(file, sopts);
-			const r = checkScene(loaded.scene);
+			const r = checkScene(loaded.scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			const html = buildHtml(loaded, { style, ...where, options: sopts.options, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
 			if (/<\/script/i.test(html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>")))) fail("bundled code contains </script>");
@@ -124,7 +124,7 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const sopts = await sceneOpts(file);
 			const { scene } = await loadScene(file, sopts);
-			const r = checkScene(scene);
+			const r = checkScene(scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			if (a.png && !(await rasterizer())) fail("--png needs @resvg/resvg-js or Chrome");
 			// The contact sheet's phone row shows the tall layout, as a phone does.
@@ -174,7 +174,7 @@ async function main() {
 		case "icon": {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file, { ...where, format: format ?? "1:1" }));
-			const r = checkScene(scene);
+			const r = checkScene(scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			const png = !a["no-png"];
 			if (png && !(await rasterizer())) fail("icon PNG needs @resvg/resvg-js or Chrome (or pass --no-png)");

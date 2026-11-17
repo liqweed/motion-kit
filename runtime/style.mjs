@@ -40,7 +40,7 @@ export const NEUTRAL = Object.freeze({
 		ink: "#111827",
 		muted: "#4b5563",
 		line: "#8b929c",
-		accent: "#2563eb",
+		accent: "#1d36a8",
 		onAccent: "#ffffff",
 		emphasis: "#d97706",
 	}),
@@ -52,7 +52,7 @@ export const NEUTRAL = Object.freeze({
 		line: "#6b7280",
 		accent: "#2563eb",
 		onAccent: "#ffffff",
-		emphasis: "#f59e0b",
+		emphasis: "#fbbf24",
 	}),
 });
 
@@ -117,25 +117,71 @@ export function contrast(a, b) {
 }
 
 /**
- * WCAG checks a style must pass: text ≥ 4.5:1, strokes and shapes ≥ 3:1.
+ * Two tokens drawn one against the other, and the contrast the pair needs in
+ * both themes: 4.5 for text (WCAG 1.4.3), 3 for shapes and strokes (WCAG
+ * 1.4.11). `use` says where it is drawn.
+ * @typedef {{ fg: string, bg: string, min: number, use?: string }} ContrastPair
+ */
+/**
+ * A token pair the check leaves out on purpose, and why.
+ * @typedef {{ fg: string, bg: string, why: string }} ContrastExemption
+ */
+
+/**
+ * Every token pair the scene types and shared parts draw where the pair
+ * carries meaning in a step frame (runtime/types/*, runtime/parts.mjs). A
+ * scene that draws other pairs declares them in `scene.contrastPairs`; the
+ * gate checks those too (lib/check.mjs).
+ * @type {readonly ContrastPair[]}
+ */
+export const CONTRAST_PAIRS = Object.freeze([
+	{ fg: "ink", bg: "bg", min: 4.5, use: "labels of reached nodes, on the canvas (stateLabel)" },
+	{ fg: "ink", bg: "surface", min: 4.5, use: "labels inside pending boxes (boxNode)" },
+	{ fg: "muted", bg: "bg", min: 4.5, use: "labels of pending nodes, on the canvas (stateLabel)" },
+	{ fg: "muted", bg: "surface", min: 4.5, use: "glyphs and icons inside pending circles (circleNode)" },
+	{ fg: "onAccent", bg: "accent", min: 4.5, use: "labels, glyphs and icons inside reached nodes (boxNode, circleNode)" },
+	{ fg: "line", bg: "bg", min: 3, use: "connectors and the outlines of pending nodes" },
+	{ fg: "accent", bg: "bg", min: 3, use: "reached nodes and drawn connectors" },
+	{ fg: "emphasis", bg: "bg", min: 3, use: "the emphasis ring (sequence) and dot (hub-spoke) on the canvas" },
+	{
+		fg: "emphasis",
+		bg: "accent",
+		min: 3,
+		use: "the emphasis ring around the reached node it marks (sequence): 3.5 units apart, so adjacent at phone size. It tells the current node from the reached ones without relying on hue",
+	},
+]);
+
+/**
+ * Pairs that are drawn (by the scene types, only in motion; or by the
+ * motion-kit logo) but that CONTRAST_PAIRS leaves out, and why.
+ * @type {readonly ContrastExemption[]}
+ */
+export const CONTRAST_EXEMPT = Object.freeze([
+	{ fg: "line", bg: "surface", why: "a pending node's outline is its edge: it is told from the canvas outside it (line on bg), not from the node's own fill (WCAG 1.4.11)" },
+	{ fg: "accent", bg: "surface", why: "the reached layer covers the pending one only while a node fills; never side by side in a step frame. A scene that draws accent on surface (a bar on a track) declares the pair" },
+	{ fg: "emphasis", bg: "surface", why: "the sequence ring crosses pending nodes only mid-hop: in motion, never in a step frame" },
+	{ fg: "accent", bg: "line", why: "a connector's accent draw-on covers its pending line; they meet only at the moving tip, mid-draw" },
+	{ fg: "onAccent", bg: "emphasis", why: "no scene type draws it; the motion-kit logo's end keyframe does, and logos are exempt from WCAG 1.4.11" },
+]);
+
+/**
+ * WCAG contrast checks a style must pass, in both themes.
+ * @param {any} style style data or "neutral"; normalizeStyle fills the rest
+ * @param {readonly ContrastPair[]} [pairs] default CONTRAST_PAIRS; a scene's
+ *   own pairs (`scene.contrastPairs`) are checked with the same function
  * @returns {string[]} problems (empty = ok)
  */
-export function checkContrast(style) {
+export function checkContrast(style, pairs = CONTRAST_PAIRS) {
 	const s = normalizeStyle(style);
-	/** @type {[string, string, number][]} */
-	const rules = [
-		["ink", "bg", 4.5],
-		["ink", "surface", 4.5],
-		["muted", "bg", 4.5],
-		["muted", "surface", 4.5],
-		["onAccent", "accent", 4.5],
-		["line", "bg", 3],
-		["accent", "bg", 3],
-		["emphasis", "bg", 3],
-	];
+	if (!Array.isArray(pairs)) return [`${s.name}: contrast pairs must be an array of { fg, bg, min }`];
 	const problems = [];
+	for (const [i, p] of pairs.entries()) {
+		const bad = !p || typeof p !== "object" ? "is not an object" : !TOKENS.includes(p.fg) ? `has unknown fg token "${p.fg}"` : !TOKENS.includes(p.bg) ? `has unknown bg token "${p.bg}"` : !(typeof p.min === "number" && p.min >= 1 && p.min <= 21) ? "needs a min contrast between 1 and 21" : "";
+		if (bad) problems.push(`${s.name}: contrast pair ${i} ${bad}`);
+	}
+	if (problems.length) return problems;
 	for (const theme of ["light", "dark"]) {
-		for (const [fg, bg, min] of rules) {
+		for (const { fg, bg, min } of pairs) {
 			const r = contrast(s[theme][fg], s[theme][bg]);
 			if (r < min) problems.push(`${s.name} ${theme}: ${fg} on ${bg} is ${r.toFixed(2)}:1, needs ${min}:1`);
 		}

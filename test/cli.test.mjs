@@ -83,7 +83,7 @@ describe("cli", () => {
 		cpSync(`${EX}custom-pulse.scene.mjs`, join(dir, "scenes/pulse.scene.mjs"));
 		writeFileSync(join(dir, "scenes/labelled.scene.mjs"), LABELLED);
 		writeFileSync(join(dir, "scenes/labels.mjs"), DICT);
-		writeFileSync(join(dir, "brand.json"), JSON.stringify({ name: "brand", light: { accent: "#7c2d12" }, dark: { accent: "#2563eb" } }));
+		writeFileSync(join(dir, "brand.json"), JSON.stringify({ name: "brand", light: { accent: "#6b2510" }, dark: { accent: "#2563eb" } }));
 		writeFileSync(join(dir, "low.json"), JSON.stringify({ name: "low", light: { accent: "#9ca3af" } }));
 		const gate = join(dir, "check.mjs");
 
@@ -133,6 +133,21 @@ describe("cli", () => {
 	it("check passes every example in every format and locale", () => {
 		const out = run("check", `${EX}order-flow.json`, `${EX}smart-home.json`);
 		assert.equal((out.match(/✓/g) ?? []).length, 2 * 6 * 2);
+	});
+	it("check --style fails emphasis on accent, and the pairs a scene declares", () => {
+		const dir = join(tmp, "contrast");
+		mkdirSync(dir);
+		writeFileSync(join(dir, "blue.json"), JSON.stringify({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" }, dark: { accent: "#2563eb", emphasis: "#fbbf24" } }));
+		let r = node(CLI, "check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /✗ style: blue light: emphasis on accent is 1\.13:1, needs 3:1/);
+		// A lighter dark surface passes the shared pairs but not custom-pulse's bar on its track.
+		writeFileSync(join(dir, "raised.json"), JSON.stringify({ name: "raised", dark: { surface: "#2b3242" } }));
+		r = node(CLI, "check", `${EX}order-flow.json`, `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "raised.json"));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /✓ .*order-flow\.json · 16:9/);
+		assert.match(r.out, /✗ .*custom-pulse\.scene\.mjs · 16:9 · en\n {2}- contrast: raised dark: accent on surface is 2\.48:1, needs 3:1/);
+		assert.doesNotMatch(r.out, /✗ style:/);
 	});
 	it("export writes standalone steps, QC frames and a reproducible manifest", () => {
 		const dir = join(tmp, "exp");

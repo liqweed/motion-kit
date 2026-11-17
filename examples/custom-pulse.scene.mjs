@@ -135,6 +135,9 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 		// Steps here are events, not nodes: their labels live in the player's
 		// step buttons and captions, not in the drawing.
 		stepLabelsInFrame: false,
+		// Beyond the pairs every scene draws: the progress bar's accent fill on
+		// its surface track. The gate checks the style against it too.
+		contrastPairs: [{ fg: "accent", bg: "surface", min: 3, use: "the progress bar's fill on its track" }],
 		steps: steps.map((s) => ({ at: s.at, label: localize(s.label, locale), detail: localize(s.detail, locale) })),
 		frame,
 	};

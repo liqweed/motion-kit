@@ -38,6 +38,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `steps` | `{at, label, detail?, id?}[]` | MUST | ≥ 1 step; `at` strictly increasing; `at ≤ duration` (+1e-9); every `label` non-empty; an `id`, if present, is a non-empty string unique within the scene [throws] (`validateScene`). The last step is the finished diagram. Page scripts address steps by `id` (§10.2); scene types copy a spec node's, hub's or spoke's `id`. |
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
+| `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | Token pairs the scene draws beyond `CONTRAST_PAIRS` (§6); the gate checks the style against them in both themes [gate] G12 (`lib/check.mjs`, rule 8; used by `examples/custom-pulse.scene.mjs`). Tokens MUST be known and `min` in [1, 21]. |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
@@ -245,11 +246,21 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
   literal (`runtime/scene.mjs:84`, `runtime/style.mjs:86-93`), because slide
   apps, rasterizers and image viewers ignore CSS variables; an unresolvable
   token throws.
-- **Contrast** (`runtime/style.mjs:114-134`, WCAG relative luminance): in both
-  themes, text ≥ 4.5:1 — `ink`/`muted` on `bg` and `surface`, `onAccent` on
-  `accent`; shapes ≥ 3:1 — `line`, `accent`, `emphasis` on `bg`. `motion-kit
-  check` MUST fail when the selected style violates any pair [gate] G12
-  (`cli/motion-kit.mjs:83-85`). `neutral` MUST pass (`test/runtime.test.mjs:96-98`).
+- **Contrast** (`runtime/style.mjs`, `checkContrast`, WCAG relative
+  luminance): in both themes, every pair in `CONTRAST_PAIRS`, the token pairs
+  the scene types and shared parts draw where the pair carries meaning in a
+  step frame. Text ≥ 4.5:1 — `ink`/`muted` on `bg` and `surface`, `onAccent`
+  on `accent`; shapes ≥ 3:1 — `line`, `accent`, `emphasis` on `bg`, and
+  `emphasis` on `accent` (the ring marking the current node sits 3.5 units
+  from the reached node it surrounds, and tells "here" from "reached" without
+  hue). `CONTRAST_EXEMPT` lists, with a reason each, the pairs left out:
+  `line` on `surface` (an outline is told from the canvas outside it),
+  `accent` on `surface` and `emphasis` on `surface` and `accent` on `line`
+  (only in motion), `onAccent` on `emphasis` (only the logo; logos are exempt
+  from WCAG 1.4.11). A scene adds the pairs it draws besides through
+  `contrastPairs` (§1). `motion-kit check` MUST fail when the selected style
+  violates any shared pair, once per run, or a scene's own, per scene [gate]
+  G12 (`lib/gate.mjs`). `neutral` MUST pass (`test/runtime.test.mjs`).
 - motion-kit ships only `neutral` (`styles/neutral.json`); brand styles MUST
   live in the consumer repo.
 
@@ -527,7 +538,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G9 | `duration ≤ 12` s. | `:68` | Explainer budget (see §12 D1). |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
 | G11 | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
-| G12 | Style passes WCAG contrast in both themes. | `lib/gate.mjs`, `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark. |
+| G12 | Style passes WCAG contrast in both themes for every pair in `CONTRAST_PAIRS` (once per run) and for each scene's `contrastPairs` (per scene). | `lib/gate.mjs`, `lib/check.mjs` (rule 8), `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark, for the pairs actually drawn (§6). |
 | G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
 | G14 | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
 

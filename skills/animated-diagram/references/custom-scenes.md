@@ -30,7 +30,12 @@ Rules:
 
 - Pure: the frame depends only on `t` and constants. No clock, no randomness,
   no module-level mutable state.
-- Colours only via `tok()`; numbers in strings via `num()`.
+- Colours only via `tok()`; numbers in strings via `num()`. Named colours
+  (`"red"`) are literals too.
+- Drawing a token pair the scene types don't (accent on surface, emphasis on
+  onAccent)? Declare it so the gate checks the style against it:
+  `contrastPairs: [{ fg: "accent", bg: "surface", min: 3, use: "bar on its track" }]`
+  (4.5 for text, 3 for shapes; `references/styles.md`).
 - Use `fade()`/`el()` so invisible elements disappear; `drawOn()` for lines.
 - Ids (clip paths, gradients, masks, markers, filters) MUST be built from
   `idPrefix`, the second argument's field: `${idPrefix}-clip`, referenced as

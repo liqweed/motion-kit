@@ -17,7 +17,7 @@ import * as styleMod from "../runtime/style.mjs";
 import * as svgMod from "../runtime/svg.mjs";
 import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
-import { checkContrast, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
+import { checkContrast, contrast, CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
 import { cubic, drawOn, esc, num, polyline } from "../runtime/svg.mjs";
 import { createScene } from "../runtime/types/index.mjs";
 import { wrapLabel } from "../runtime/wrap.mjs";
@@ -103,8 +103,49 @@ describe("wrapLabel", () => {
 });
 
 describe("styles", () => {
-	it("neutral passes WCAG contrast in light and dark", () => {
+	it("neutral passes WCAG contrast in light and dark, and styles/neutral.json is NEUTRAL", () => {
 		assert.deepEqual(checkContrast(NEUTRAL), []);
+		assert.deepEqual(JSON.parse(readFileSync(new URL("../styles/neutral.json", import.meta.url), "utf8")), JSON.parse(JSON.stringify(NEUTRAL)));
+	});
+	it("fails a style whose emphasis is 1.13:1 on accent", () => {
+		assert.deepEqual(checkContrast({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" } }), [
+			"blue light: emphasis on accent is 1.13:1, needs 3:1",
+			"blue dark: emphasis on accent is 1.13:1, needs 3:1",
+		]);
+	});
+	it("checks every pair the scene types draw, at 4.5 for text and 3 for shapes", () => {
+		const text = ["ink/bg", "ink/surface", "muted/bg", "muted/surface", "onAccent/accent"];
+		const shapes = ["line/bg", "accent/bg", "emphasis/bg", "emphasis/accent"];
+		assert.deepEqual(CONTRAST_PAIRS.map((p) => `${p.fg}/${p.bg}:${p.min}`), [...text.map((p) => `${p}:4.5`), ...shapes.map((p) => `${p}:3`)]);
+		for (const { fg, bg, use } of CONTRAST_PAIRS) {
+			assert.ok(use, `${fg} on ${bg} says where it is drawn`);
+			// The fg token painted in the bg colour: 1:1, in the theme changed only.
+			const problems = checkContrast({ name: "probe", light: { [fg]: NEUTRAL.light[bg] }, dark: {} });
+			assert.ok(problems.includes(`probe light: ${fg} on ${bg} is 1.00:1, needs ${fg === "onAccent" || ["ink", "muted"].includes(fg) ? 4.5 : 3}:1`), `${fg} on ${bg}: ${problems.join("; ")}`);
+			assert.ok(problems.every((p) => p.startsWith("probe light:")), "the dark theme is untouched");
+		}
+	});
+	it("leaves out each exempt pair, with a reason, though a passing style fails it", () => {
+		const raised = { name: "raised", dark: { surface: "#2b3242" } }; // a lighter dark surface: accent on it is 2.48:1
+		assert.deepEqual(checkContrast(raised), []);
+		for (const { fg, bg, why } of CONTRAST_EXEMPT) {
+			assert.ok(why.length > 20, `${fg} on ${bg} says why`);
+			assert.ok(!CONTRAST_PAIRS.some((p) => p.fg === fg && p.bg === bg), `${fg} on ${bg} is not checked`);
+			const failing = [NEUTRAL, normalizeStyle(raised)].flatMap((s) => ["light", "dark"].map((th) => contrast(s[th][fg], s[th][bg]))).filter((r) => r < 3);
+			assert.ok(failing.length > 0, `${fg} on ${bg}: some passing style is below 3:1 on it`);
+		}
+	});
+	it("checks the pairs a scene declares against the style, and refuses malformed ones", () => {
+		const pairs = [{ fg: "accent", bg: "surface", min: 3 }];
+		assert.deepEqual(checkContrast({ name: "raised", dark: { surface: "#2b3242" } }, pairs), ["raised dark: accent on surface is 2.48:1, needs 3:1"]);
+		assert.deepEqual(checkContrast(NEUTRAL, pairs), []);
+		assert.deepEqual(checkContrast(NEUTRAL, [{ fg: "brand", bg: "bg", min: 3 }, { fg: "ink", bg: "bg", min: 0 }]), [
+			'neutral: contrast pair 0 has unknown fg token "brand"',
+			"neutral: contrast pair 1 needs a min contrast between 1 and 21",
+		]);
+		const scene = { ...clipped, contrastPairs: pairs };
+		assert.deepEqual(checkScene(scene).problems, []);
+		assert.deepEqual(checkScene(scene, { style: { name: "raised", dark: { surface: "#2b3242" } } }).problems, ["contrast: raised dark: accent on surface is 2.48:1, needs 3:1"]);
 	});
 	it("rejects unknown tokens and non-hex colours", () => {
 		assert.throws(() => normalizeStyle({ light: { brand: "#000000" } }));

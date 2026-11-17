@@ -78,8 +78,8 @@ export const STYLES = {
 		file: "diagrams/studio.json",
 		font: "Inter",
 		fontStack: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#d97706" },
-		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#f59e0b" },
+		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#1d36a8", onAccent: "#ffffff", emphasis: "#d97706" },
+		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
 	neutral: {
 		name: "neutral",
@@ -87,8 +87,8 @@ export const STYLES = {
 		file: "styles/neutral.json",
 		font: "system-ui",
 		fontStack: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
-		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#d97706" },
-		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#f59e0b" },
+		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#1d36a8", onAccent: "#ffffff", emphasis: "#d97706" },
+		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
 	tidewater: {
 		name: "tidewater",
@@ -96,8 +96,8 @@ export const STYLES = {
 		file: "diagrams/tidewater.json",
 		font: "Inter",
 		fontStack: 'Inter, ui-sans-serif, system-ui, sans-serif',
-		light: { bg: "#ffffff", surface: "#eef6f5", ink: "#0b2a2e", muted: "#3f5f63", line: "#6f8c8e", accent: "#0f766e", onAccent: "#ffffff", emphasis: "#c2410c" },
-		dark: { bg: "#071a1c", surface: "#0f2a2d", ink: "#e6f4f2", muted: "#9cc0bd", line: "#4f7a7c", accent: "#0f766e", onAccent: "#ffffff", emphasis: "#fb923c" },
+		light: { bg: "#ffffff", surface: "#eef6f5", ink: "#0b2a2e", muted: "#3f5f63", line: "#6f8c8e", accent: "#0f3f3b", onAccent: "#ffffff", emphasis: "#ea580c" },
+		dark: { bg: "#071a1c", surface: "#0f2a2d", ink: "#e6f4f2", muted: "#9cc0bd", line: "#4f7a7c", accent: "#0f766e", onAccent: "#ffffff", emphasis: "#fdba74" },
 	},
 	ledger: {
 		name: "ledger",
@@ -105,8 +105,8 @@ export const STYLES = {
 		file: "diagrams/ledger.json",
 		font: "Source Serif 4",
 		fontStack: '"Source Serif 4", Georgia, serif',
-		light: { bg: "#faf7f0", surface: "#f0ebe0", ink: "#1c1917", muted: "#57534e", line: "#8c8478", accent: "#9a3412", onAccent: "#ffffff", emphasis: "#1d4ed8" },
-		dark: { bg: "#1a1714", surface: "#26221d", ink: "#f5f0e6", muted: "#b5ab9c", line: "#7d7468", accent: "#c2410c", onAccent: "#ffffff", emphasis: "#93c5fd" },
+		light: { bg: "#faf7f0", surface: "#f0ebe0", ink: "#1c1917", muted: "#57534e", line: "#8c8478", accent: "#5c200e", onAccent: "#ffffff", emphasis: "#3b82f6" },
+		dark: { bg: "#1a1714", surface: "#26221d", ink: "#f5f0e6", muted: "#b5ab9c", line: "#7d7468", accent: "#c2410c", onAccent: "#ffffff", emphasis: "#bfdbfe" },
 	},
 	blueprint: {
 		name: "blueprint",
@@ -114,7 +114,7 @@ export const STYLES = {
 		file: "diagrams/blueprint.json",
 		font: "JetBrains Mono",
 		fontStack: '"JetBrains Mono", ui-monospace, monospace',
-		light: { bg: "#eef4fb", surface: "#e1ecf8", ink: "#0b2545", muted: "#2f4a6b", line: "#5b7aa0", accent: "#1d4ed8", onAccent: "#ffffff", emphasis: "#c2410c" },
+		light: { bg: "#eef4fb", surface: "#e1ecf8", ink: "#0b2545", muted: "#2f4a6b", line: "#5b7aa0", accent: "#172554", onAccent: "#ffffff", emphasis: "#d9480f" },
 		dark: { bg: "#0b1f3a", surface: "#11294b", ink: "#e6f0ff", muted: "#a9c1e0", line: "#5f86b8", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
 };
