@@ -63,11 +63,13 @@ Node ≥ 22. PNG/video need `@resvg/resvg-js` (`npm install` in `$MK`) and `ffmp
 mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
 mk types; mk formats
 mk check diagram.json                                  # all formats × locales
+mk check flow.scene.mjs -l en -l nl --options labels.mjs   # a custom module, with its text from the caller
 mk build diagram.json -o diagram.html -f wide -l nl    # Craft Page / standalone
 mk export diagram.json -o out/ --png --qc              # slides + review sheet
 mk bake diagram.json -o diagram.svg -f wide            # zero-JS animated SVG
 mk video diagram.json -f 9:16 -o reel.mp4 --sheet sheet.png
-mk vendor <repo>/components/motion-kit --adapter slidev   # or astro / page
+mk vendor <repo>/components/motion-kit --adapter slidev   # or astro / page / element
+node <repo>/components/motion-kit/check.mjs flow.scene.mjs -l en -l nl --style brand.json --options labels.mjs  # the vendored gate, same checks
 ```
 
 Vendoring includes the full MIT `LICENSE`. Keep that file and the SPDX

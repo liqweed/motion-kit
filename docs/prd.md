@@ -1,7 +1,7 @@
 ---
 title: motion-kit — product requirements
 status: draft
-last_updated: 2026-11-15
+last_updated: 2026-11-16
 ---
 
 # motion-kit — product requirements
@@ -108,6 +108,7 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 - Something animates; the final frame holds after `duration`.
 - Duration ≤ 12 s (the docs say ≤ ~8–10 s; see Discrepancies in the spec).
 - Every step label visible in the final frame, unless the scene opts out.
+- Ids come from the instance prefix: two renders with different prefixes share none.
 - No clock or randomness in `frame()`'s source.
 - Style contrast (WCAG 4.5:1 text, 3:1 shapes, both themes) for the style in use.
 - Layout/label fit per format × locale, through scene construction.
@@ -173,12 +174,16 @@ Proposed (not yet tracked — see open questions):
    language. Should a missing locale fail the gate?
 5. **Style `radius` / `stroke`.** Accepted and documented, unused by the scene
    types. Wire them up or drop them?
-6. **Vendored gate parity.** The vendored `check.mjs` skips contrast and
-   custom modules. Should it match `motion-kit check`?
+6. **Vendored gate parity.** The vendored `check.mjs` now runs the same code
+   as `motion-kit check` (`lib/gate.mjs`): modules, `--locale`, `--style` with
+   the contrast check, `--options` (#35). Is parity the rule from now on?
 7. **Versioning and re-vendoring.** How do consumers learn a new version
-   exists, and is there a compatibility promise for `runtime/` exports?
-8. **Capture hook id.** Should the hook key be stable and documented (it is
-   currently format-suffixed, and randomized in the Astro adapter)?
+   exists? The compatibility promise is drafted in
+   [`stability.md`](stability.md) (#7).
+8. **Capture hook id.** Should the hook key be stable and documented? It is
+   format-suffixed (`options.id ?? scene.id`); the Astro adapter uses its `id`
+   prop or a per-page `mk-<scene.id>-<n>`, and page scripts reach its players
+   through the root element's `controller` (#41).
 9. **Logo capability scope.** Which outputs (favicon sizes, social avatars,
    monochrome) must `motion-kit icon` guarantee, and does the logo get its own
    gate rules?

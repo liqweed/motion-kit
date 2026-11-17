@@ -115,7 +115,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .mk-player { --mk-font: Inter, ui-sans-serif, system-ui, sans-serif; }
 .mk-stage:focus-visible { outline: 3px solid var(--mk-emphasis, var(--emph)); outline-offset: 2px; border-radius: 8px; }
 .mk-controls { margin-top: 12px; }
-.mk-btn { min-height: 36px; border-radius: 999px; }
+.mk-btn { border-radius: 999px; }
 .mk-caption { font-size: 16px; }
 .mk-mini .mk-controls, .mk-mini .mk-caption { display: none; }
 .mk-hide-controls .mk-controls { display: none; }

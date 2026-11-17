@@ -32,8 +32,8 @@ animated-diagram skill, `references/targets.md`.
 ```bash
 mk export spec.json -o out/review --png --qc
 ```
-`index.html` holds the steps, frames 0.2 s before and after each step, a phone-size row and the
-review checklist. Fill in the review report (animated-diagram
+`index.html` holds the steps, frames 0.2 s before and after each step, a phone-size row (the
+scene's `tall` layout at 360 px, as a phone shows it) and the review checklist. Fill in the review report (animated-diagram
 `references/qc.md`) and get a human approval line before delivery.
 
 ## Video
@@ -52,6 +52,11 @@ Formats, sizes, encoder settings, variant matrices and the HyperFrames handoff:
 mk build spec.json -o out/page.html -f wide         # Craft Page / standalone interactive
 mk bake  spec.json -o out/diagram.svg -f wide --fps 12   # zero-JS animated SVG
 ```
+
+A custom module whose text comes from the caller (a site's dictionary) takes
+scene options: `--options labels.json`, inline JSON, or an `.mjs` whose default
+export is `({ format, locale }) => options`. `check`, `export`, `build`, `bake`,
+`video` and `icon` pass them to the module's factory unchanged.
 
 For plain HTML or a framework-independent live embed, use
 `mk vendor public/motion-kit --adapter element`, then load

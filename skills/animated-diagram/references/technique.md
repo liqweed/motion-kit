@@ -37,6 +37,11 @@ Video maps frame `f` at `fps` to `t = f / fps` (30 fps × 25 s = 750 frames).
 11. Visibility decisions use rounded values: an element whose opacity rounds to
     0 is dropped, and an opacity that rounds to 1 is omitted, so frames that
     look identical are byte-identical (`fade()`, `el()` do this).
+12. Ids come from the instance: anything in `<defs>` (clip path, gradient,
+    mask, marker, filter) is named `${idPrefix}-name`, with `idPrefix` from
+    `frame(t, { idPrefix })`. Two instances on one page (wide and tall, or the
+    same diagram twice) then never share an id. The gate renders with two
+    prefixes and refuses an id both share.
 
 ## 3. Authoring a timeline
 

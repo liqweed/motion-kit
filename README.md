@@ -92,10 +92,47 @@ The skills look for this clone at `~/workspace/motion-kit` first (it has
 node cli/motion-kit.mjs vendor <repo>/components/motion-kit --adapter slidev   # or astro / page / element
 ```
 
-Copies `runtime/`, the adapter, `lib/check.mjs` and `LICENSE`; writes a gate
-script and `MOTION_KIT_VERSION`. Don't edit vendored files; change motion-kit
-and re-vendor. Vendoring keeps consumer CI
-self-contained (no install step, no network).
+Copies `runtime/`, the adapter, the gate (`lib/check.mjs`, `lib/gate.mjs`,
+`lib/load.mjs`) and `LICENSE`; writes `check.mjs` and `MOTION_KIT_VERSION`.
+Don't edit vendored files; change motion-kit and re-vendor. Vendoring keeps
+consumer CI self-contained (no install step, no network): the vendored gate
+runs the same checks as `motion-kit check`.
+
+```bash
+node src/motion-kit/check.mjs src/diagrams/*.json src/diagrams/*.scene.mjs \
+  --locale en --locale nl --style src/brand/motion-style.json --options src/diagrams/labels.mjs
+```
+
+### Astro
+
+```bash
+node cli/motion-kit.mjs vendor <site>/src/motion-kit --adapter astro
+```
+
+```astro
+---
+import AnimatedDiagram from "../motion-kit/adapter/AnimatedDiagram.astro";
+import spec from "../diagrams/order-flow.json";
+import brandStyle from "../brand/motion-style.json"; // token data, as `--style` reads it
+import { dictionary } from "../i18n"; // your site's own text, keyed by locale
+const lang = Astro.currentLocale ?? "en";
+const t = dictionary[lang];
+---
+<AnimatedDiagram spec={spec} format="wide" locale="nl" class="hidden lg:block" />
+<AnimatedDiagram spec={spec} format="tall" locale="nl" class="lg:hidden" />
+
+<!-- A custom scene module, its text from the page's dictionary -->
+<AnimatedDiagram module="/src/diagrams/flow.scene.mjs" options={{ labels: t.flow }}
+  format="wide" locale={lang} theme="light" style={brandStyle} id="flow" />
+```
+
+The server render is the player's first state: the final frame, the step list
+and the style's colours, with the controls in place, so the diagram is complete
+without JavaScript and mounting causes no layout shift. `theme` fixes light or
+dark; `style` is token data. Page scripts reach a player through its root
+element's `controller` (set on mount; `motion-ready` announces it), and can
+address steps by id (`controller.playToStep("payment")`). All props are listed in the adapter's
+header comment.
 
 ### Plain HTML and framework-independent custom element
 
@@ -123,8 +160,16 @@ for inline specs, styles, lifecycle and error handling.
 
 Deterministic bytes · settled step frames · rounded numbers · token-only colours ·
 escaped labels · labels fit their budget in every locale · holds the final frame ·
-≤ ~8–10 s · no clock or randomness in scenes. See
+≤ ~8–10 s · no clock or randomness in scenes · ids from the instance prefix. See
 `skills/animated-diagram/references/technique.md`.
+
+## Contributing, changes and stability
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): setup, the gate and hooks, commits,
+  change notes, adding a scene type.
+- [CHANGELOG.md](CHANGELOG.md): what each release changed.
+- [docs/stability.md](docs/stability.md): the public API, what semver promises
+  for it, and how vendoring consumers learn about a new version.
 
 ## Licence and credits
 

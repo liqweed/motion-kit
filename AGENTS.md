@@ -11,6 +11,7 @@ Slidev, step frames (SVG/PNG), a zero-JS baked SVG and video. The repo is
 also a Claude Code plugin: `skills/` holds the `animated-diagram`,
 `motion-render` and `project-logo` skills that other repositories use.
 
+Contributor workflow: `CONTRIBUTING.md`; what semver covers: `docs/stability.md`.
 Product intent: `docs/prd.md`. The normative contract (scene, time model,
 targets, gate): `docs/spec/technique.md`; update it when you change one of
 those, and fix its *Discrepancies* list rather than adding to it.
@@ -59,6 +60,8 @@ runs `npm run gate`. Don't bypass them with `--no-verify`; fix the cause.
 - After `duration` the frame holds; total ≤ ~8–10 s.
 - Labels are escaped (`text()`/`esc()`) and fit their wrap budget in every
   locale and format.
+- Ids (clip paths, gradients, …) are built from `frame(t, { idPrefix })`, so
+  two instances on a page never share one.
 
 Design and motion guidance lives in `skills/animated-diagram/references/`
 (`technique.md`, `motion-vocabulary.md`, `qc.md`). Read the relevant one

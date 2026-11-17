@@ -1,0 +1,120 @@
+---
+title: motion-kit — public API and stability
+status: draft
+last_updated: 2026-11-16
+---
+
+# motion-kit — public API and stability
+
+Consumers copy `runtime/` and an adapter into their repositories
+(`motion-kit vendor`) or install `@liqweed/motion-kit` from npm. This page says
+which parts of motion-kit are public, what each kind of release may change, and
+how a vendoring consumer learns that a new version exists. The contract itself
+is [`spec/technique.md`](spec/technique.md); this page names its surface.
+
+## What semver promises
+
+Versions follow [Semantic Versioning](https://semver.org/). While the version is
+`0.x`:
+
+- a **patch** release (`0.4.0 → 0.4.1`) never changes the public API below in a
+  way that breaks a caller, a scene or a page;
+- a **minor** release (`0.4 → 0.5`) may break it, and its changelog entry says
+  what changed and what to do, under **Changed** or **Removed**;
+- an export that is going away is first marked deprecated (JSDoc `@deprecated`
+  and a changelog line) in one minor release, and removed no earlier than the
+  next.
+
+From `1.0` on, breaking changes come only in major releases.
+
+Two kinds of change are not breaking, even though output differs:
+
+- **Rendered output.** The same version renders the same bytes for the same
+  input. A new version may draw differently (layout, motion, markup); the
+  change note says so and the regenerated media show it.
+- **Gate rules.** The gate may grow stricter in a minor release, when a new
+  rule catches a defect (for example the rule that a scene's ids come from
+  the instance prefix). The change note names the rule and how to comply.
+
+## What is public
+
+### Scenes
+
+- The scene contract: `{ id, width, height, duration, title, description,
+  steps: [{ at, label, detail?, id? }], frame(t, { idPrefix }), stepLabelsInFrame? }`
+  and its rules (spec §1–§8).
+- Custom scene modules: a default export `(opts) => scene`, called with
+  `{ ...options, format, locale, kit }`.
+- The spec format of each registered scene type (`sequence`, `hub-spoke`).
+- Style data: `{ name?, font?, light: {token: "#rrggbb"}, dark: {…} }` and the
+  token names in `TOKENS`.
+
+### Runtime exports
+
+| Module | Public exports |
+|---|---|
+| `runtime/scene.mjs` | `FORMATS`, `localize`, `validateScene`, `renderSvg` and its options, `stepTimes`, `stepIndexAt`, `stepIndex`, `safeId` |
+| `runtime/types/index.mjs` | `createScene`, `SCENE_TYPES` |
+| `runtime/kit.mjs` | `KIT`, `sceneFromModule` |
+| `runtime/motion.mjs` | `clamp01`, `lerp`, `cubicBezier`, `linear`, `easeOut`, `easeStandard`, `easeIn`, `progress`, `window01`, `springStep`, `springSettleTime`, `springTo`, `SPRING_SETTLE_X`, `splitEdge`, `stagger` |
+| `runtime/svg.mjs` | `esc`, `num`, `attrString`, `el`, `text`, `translate`, `scaleAbout`, `fade`, `dist`, `pointOnLine`, `trimSegment`, `polyline`, `cubic`, `drawOn` |
+| `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
+| `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` |
+| `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `destroy`, `time`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
+| `runtime/bake.mjs` | `bake`, `bakeStats` |
+
+`KIT` holds every export of `motion`, `svg`, `style`, `scene` and `wrap`; only
+the ones listed above are covered. Anything else in `runtime/` (for example
+`runtime/parts.mjs`, `withId`, `ENTRANCE_MAX`) is internal and may change in
+any release.
+
+### The player in the page
+
+- The capture hook `globalThis.__motionKit[id]`.
+- The class names pages style: `mk-player`, `mk-stage`, `mk-controls`,
+  `mk-btn`, `mk-play`, `mk-scrub`, `mk-caption`, `mk-sr`, and the
+  `data-mk-player-css` marker on the stylesheet. The markup inside them is not
+  public: style by class, not by structure.
+- Behaviour the spec states as MUST in §10.2 (autoplay, reduced motion, the
+  keyboard, 44 px targets, announcements).
+
+### Adapters
+
+- Astro (`AnimatedDiagram.astro`): its props (`spec`, `module`, `options`,
+  `format`, `locale`, `theme`, `style`, `id`, `scrubber`, `labels`, `class`),
+  the `/src/**/*.scene.{mjs,js}` module location, and the root element's
+  `controller` with the `motion-ready` and `motion-error` events.
+- `<motion-diagram>`: its attributes (`spec`, `src`, `format`, `locale`,
+  `theme`, `style-spec`, `labels`), `.controller`, and the `motion-ready` and
+  `motion-error` events.
+- Slidev (`AnimatedDiagram.vue`): its props.
+
+### Command line and files
+
+- `motion-kit` commands, their flags and exit codes (`--help` lists them).
+- The vendored gate, `check.mjs`, and its flags; the layout a vendored copy
+  has (`runtime/`, `adapter/`, `lib/`, `check.mjs`, `LICENSE`,
+  `MOTION_KIT_VERSION`).
+- Export output: file names and the fields of `manifest.json`.
+
+Not public: `lib/` modules imported directly, the website, tests and scripts.
+
+## Learning about a new version
+
+Each release has a GitHub release and an npm version, and `CHANGELOG.md` lists
+what changed. A vendored copy records its version in `MOTION_KIT_VERSION`;
+compare it with the latest:
+
+```bash
+head -1 src/motion-kit/MOTION_KIT_VERSION        # motion-kit 0.4.0
+npm view @liqweed/motion-kit version             # 0.5.0
+```
+
+To be told, watch the repository on GitHub with **Releases** selected. To
+update, read the changelog entries in between, re-vendor from the new version,
+and run the vendored gate:
+
+```bash
+npx @liqweed/motion-kit@latest vendor src/motion-kit --adapter astro
+node src/motion-kit/check.mjs src/diagrams/*.json src/diagrams/*.scene.mjs
+```

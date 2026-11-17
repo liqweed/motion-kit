@@ -11,14 +11,14 @@
  *
  * Spec:
  *   { type: "sequence", id, title, description,
- *     nodes: [{ label, detail?, glyph?, icon? }],     // 2–12 nodes
+ *     nodes: [{ label, detail?, glyph?, icon?, id? }], // 2–12 nodes; id names the node's step
  *     glyphs?: "numbers" | "none"                      // default "numbers"
  *     fontSize?: number }
  * Strings may be localized objects: { en: "...", nl: "..." }.
  */
 import { easeOut, easeStandard, progress } from "../motion.mjs";
 import { circleNode, FONT_MIN, stateLabel } from "../parts.mjs";
-import { FORMATS, localize } from "../scene.mjs";
+import { FORMATS, localize, withId } from "../scene.mjs";
 import { tok } from "../style.mjs";
 import { drawOn, el, polyline, trimSegment } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
@@ -195,7 +195,7 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 		duration,
 		title: localize(spec.title, locale),
 		description: localize(spec.description, locale),
-		steps: items.map((it, k) => ({ at: stepAt(k), label: it.label, detail: it.detail })),
+		steps: items.map((it, k) => withId({ at: stepAt(k), label: it.label, detail: it.detail }, nodes[k].id)),
 		frame,
 	};
 }

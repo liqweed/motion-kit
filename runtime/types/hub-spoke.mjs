@@ -11,14 +11,14 @@
  *
  * Spec:
  *   { type: "hub-spoke", id, title, description,
- *     hub: { label, detail? },
- *     spokes: [{ label, detail? }],          // 2–10
+ *     hub: { label, detail?, id? },          // id names the step
+ *     spokes: [{ label, detail?, id? }],     // 2–10
  *     direction?: "out" | "in",              // default "out"
  *     fontSize?: number }
  */
 import { easeOut, easeStandard, progress, window01 } from "../motion.mjs";
 import { boxNode, FONT_MIN, rectEdge } from "../parts.mjs";
-import { FORMATS, localize } from "../scene.mjs";
+import { FORMATS, localize, withId } from "../scene.mjs";
 import { tok } from "../style.mjs";
 import { drawOn, el, pointOnLine } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
@@ -207,8 +207,8 @@ export function hubSpoke(spec, { format = "16:9", locale = "en" } = {}) {
 		title: localize(spec.title, locale),
 		description: localize(spec.description, locale),
 		steps: [
-			{ at: HUB_ON + FILL, label: hubLabel, detail: localize(spec.hub.detail, locale) },
-			...spokes.map((s, i) => ({ at: stepAt(i), label: s.label, detail: s.detail })),
+			withId({ at: HUB_ON + FILL, label: hubLabel, detail: localize(spec.hub.detail, locale) }, spec.hub.id),
+			...spokes.map((s, i) => withId({ at: stepAt(i), label: s.label, detail: s.detail }, spokesSpec[i].id)),
 		],
 		frame,
 	};

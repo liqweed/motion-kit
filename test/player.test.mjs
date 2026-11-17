@@ -3,36 +3,77 @@ import { it } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { bundle } from "../lib/bundle.mjs";
+import { PLAYER_CSS, playerMarkup, themeCss } from "../runtime/player.mjs";
 import { renderSvg } from "../runtime/scene.mjs";
+import { esc } from "../runtime/svg.mjs";
 
 const source = bundle([fileURLToPath(new URL("../runtime/player.mjs", import.meta.url))]);
 const scene = {
 	id: "test-player", title: "Test player", description: "Three steps", width: 100, height: 100,
-	duration: 3, steps: [{ at: 0, label: "One" }, { at: 1, label: "Two" }, { at: 2, label: "Three" }],
+	duration: 3, steps: [{ at: 0, label: "One" }, { at: 1, label: "Two", id: "two" }, { at: 2, label: "Three", detail: "The end." }],
 	frame: (t) => `<text>${t}</text>`,
 };
 
-function setup({ reduced = false, animateSteps = false, autoplay = "none" } = {}) {
+/** A small DOM: enough of Element and Document for the player, plus an HTML serializer. */
+class El {
+	constructor(tag, doc) {
+		this.tag = tag;
+		this.ownerDocument = doc;
+		this.children = [];
+		this.parentNode = null;
+		this.attributes = new Map();
+		this.listeners = new Map();
+		this.props = new Map();
+		this.textContent = "";
+		this.value = "";
+		this._html = "";
+		this.classList = { add: () => {} };
+		this.style = { setProperty: (k, v) => this.props.set(k, v), getPropertyValue: (k) => this.props.get(k) ?? "" };
+	}
+	get className() { return this.attributes.get("class") ?? ""; }
+	set innerHTML(v) { this._html = v; this.children = []; }
+	get innerHTML() { return this._html; }
+	appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
+	remove() { if (this.parentNode) this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1); this.parentNode = null; }
+	setAttribute(k, v) { this.attributes.set(k, String(v)); }
+	getAttribute(k) { return this.attributes.get(k) ?? null; }
+	removeAttribute(k) { this.attributes.delete(k); }
+	addEventListener(name, callback) { this.listeners.set(name, callback); }
+	fire(name, event = {}) { this.listeners.get(name)?.(event); }
+	*walk() { yield this; for (const c of this.children) yield* c.walk(); }
+	get outerHTML() {
+		const attrs = [...this.attributes].map(([k, v]) => (v === "" ? ` ${k}` : ` ${k}="${esc(v)}"`)).join("");
+		if (this.tag === "input") return `<input${attrs}>`;
+		const inner = this.children.length ? this.children.map((c) => c.outerHTML).join("") : this._html || esc(this.textContent);
+		return `<${this.tag}${attrs}>${inner}</${this.tag}>`;
+	}
+}
+
+function makeDocument() {
+	const doc = {
+		createElement: (tag) => new El(tag, doc),
+		querySelector(selector) {
+			const m = selector.match(/^style\[([\w-]+)\]$/);
+			for (const root of [doc.head, doc.body]) for (const el of root.walk()) if (m && el.tag === "style" && el.attributes.has(m[1])) return el;
+			return null;
+		},
+	};
+	doc.head = new El("head", doc);
+	doc.body = new El("body", doc);
+	return doc;
+}
+
+const entry = (visible, { ratio = visible ? 1 : 0, height = visible ? 100 : 0, viewport = 800 } = {}) => ({
+	isIntersecting: visible, intersectionRatio: ratio, intersectionRect: { height }, rootBounds: { height: viewport },
+});
+
+function setup({ reduced = false, animateSteps = false, autoplay = "none", options = {}, sceneOverride = scene } = {}) {
 	const frames = new Map();
 	let now = 0;
 	let nextId = 0;
-	let disconnected = false;
 	const themeListeners = new Set();
-	let visible;
-	const doc = { head: { appendChild() {} }, createElement };
-	function createElement(tag) {
-		const attributes = new Map();
-		const listeners = new Map();
-		return {
-			tag, ownerDocument: doc, children: /** @type {ReturnType<typeof createElement>[]} */ ([]), innerHTML: "", textContent: "", className: "",
-			classList: { add() {} },
-			appendChild(child) { this.children.push(child); },
-			setAttribute(name, value) { attributes.set(name, value); },
-			removeAttribute(name) { attributes.delete(name); },
-			addEventListener(name, callback) { listeners.set(name, callback); },
-			fire(name, event = {}) { listeners.get(name)?.(event); },
-		};
-	}
+	const observers = [];
+	const doc = makeDocument();
 	const context = vm.createContext({
 		performance: { now: () => now },
 		requestAnimationFrame(callback) { frames.set(++nextId, callback); return nextId; },
@@ -43,18 +84,20 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none" } = {}
 			removeEventListener: (_name, callback) => themeListeners.delete(callback),
 		}),
 		IntersectionObserver: class {
-			constructor(callback) { visible = callback; }
+			constructor(callback, init) { this.callback = callback; this.init = init; this.disconnected = false; observers.push(this); }
 			observe() {}
-			disconnect() { disconnected = true; }
+			disconnect() { this.disconnected = true; }
 		},
 	});
 	vm.runInContext(source, context);
-	const container = createElement("div");
-	const player = context.MotionKit.mountPlayer(container, scene, { animateSteps, autoplay });
+	const container = doc.createElement("div");
+	doc.body.appendChild(container);
+	const player = context.MotionKit.mountPlayer(container, sceneOverride, { animateSteps, autoplay, ...options });
 	return {
-		player, container, frames, context, themeListeners,
-		get disconnected() { return disconnected; },
-		show() { visible([{ isIntersecting: true }]); },
+		player, container, frames, context, themeListeners, doc, observers,
+		get disconnected() { return observers[0].disconnected; },
+		show(e = entry(true)) { observers[0].callback([e]); },
+		mount(target, s = scene, o = {}) { return context.MotionKit.mountPlayer(target, s, { autoplay: "none", ...o }); },
 		advance(ms) {
 			now += ms;
 			const callbacks = [...frames.values()];
@@ -65,14 +108,14 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none" } = {}
 }
 
 it("plays forward and holds the exact target frame even when a tick overshoots", () => {
-	const { player, container, advance, frames } = setup();
+	const { player, container, advance, frames } = setup({ options: { id: "p" } });
 	player.seekStep(1);
 	player.playToStep(2);
 	advance(400);
 	assert.equal(player.time, 1.4);
 	advance(900);
 	assert.equal(player.time, 2);
-	assert.equal(container.children[0].innerHTML, renderSvg(scene, 2, { idPrefix: scene.id, live: true }));
+	assert.equal(container.children[0].innerHTML, renderSvg(scene, 2, { idPrefix: "p", live: true }));
 	assert.equal(frames.size, 0);
 	advance(1000);
 	assert.equal(player.time, 2);
@@ -128,6 +171,19 @@ it("seek interrupts animation and invalid step indices preserve the current time
 	assert.equal(player.time, 0.25);
 });
 
+it("addresses steps by id as well as by index", () => {
+	const { player, advance } = setup();
+	player.seekStep("two");
+	assert.equal(player.time, 1);
+	player.seekStep(0);
+	player.playToStep("two");
+	advance(2000);
+	assert.equal(player.time, 1);
+	assert.throws(() => player.seekStep("unknown"), { name: "RangeError", message: "Unknown step id: unknown" });
+	assert.throws(() => player.playToStep("unknown"), /Unknown step id/);
+	assert.equal(player.time, 1);
+});
+
 it("step buttons and keyboard opt into animated steps", () => {
 	for (const animateSteps of [false, true]) {
 		const { player, container, advance, frames } = setup({ animateSteps });
@@ -151,18 +207,63 @@ it("explicit step navigation ignores an already queued autoplay notification", (
 	assert.equal(env.frames.size, 0);
 });
 
-it("explicit step navigation disables pending autoplay and destroy cleans external resources", () => {
+it("explicit step navigation cancels pending autoplay and destroy cleans external resources", () => {
 	const env = setup({ autoplay: "visible" });
 	env.player.seekStep(0);
-	assert.equal(env.disconnected, true);
+	env.show();
+	assert.equal(env.player.time, 0);
+	assert.equal(env.frames.size, 0);
 	env.player.playToStep(2);
 	assert.equal(env.themeListeners.size, 1);
+	assert.equal(env.disconnected, false);
 	env.player.destroy();
 	env.player.destroy();
+	assert.equal(env.disconnected, true);
 	env.show();
 	assert.equal(env.frames.size, 0);
 	assert.equal(env.themeListeners.size, 0);
 	assert.equal(env.context.__motionKit[scene.id], undefined);
+});
+
+it("autoplays once 40 % of the diagram or 40 % of the viewport shows", () => {
+	const env = setup({ autoplay: "visible" });
+	assert.ok(env.observers[0].init.threshold.includes(0.4));
+	assert.ok(Math.min(...env.observers[0].init.threshold.filter((x) => x > 0)) <= 0.01);
+	// A diagram three viewports tall: at most a third of it is ever visible.
+	env.show(entry(true, { ratio: 0.1, height: 240 }));
+	assert.equal(env.frames.size, 0);
+	env.show(entry(true, { ratio: 0.2, height: 480 }));
+	assert.equal(env.player.time, 0);
+	assert.equal(env.frames.size, 1);
+	// A short diagram with 40 % of itself in view starts too.
+	const small = setup({ autoplay: "visible" });
+	small.show(entry(true, { ratio: 0.4, height: 40 }));
+	assert.equal(small.frames.size, 1);
+});
+
+it("stops the frame loop while hidden and resumes without a jump", () => {
+	const env = setup({ autoplay: "visible" });
+	env.show();
+	env.advance(500);
+	assert.equal(env.player.time, 0.5);
+	const stage = env.container.children[0];
+	env.show(entry(false));
+	assert.equal(env.frames.size, 0);
+	const frozen = stage.innerHTML;
+	env.advance(1000);
+	assert.equal(env.player.time, 0.5);
+	assert.equal(stage.innerHTML, frozen);
+	env.show(entry(true));
+	assert.equal(env.frames.size, 1);
+	env.advance(250);
+	assert.equal(env.player.time, 0.75);
+	// Out of view, playing waits; it starts once the diagram shows.
+	env.show(entry(false));
+	env.player.pause();
+	env.player.play();
+	assert.equal(env.frames.size, 0);
+	env.show(entry(true, { ratio: 0.1, height: 10 }));
+	assert.equal(env.frames.size, 1);
 });
 
 it("announces keyboard step changes in a polite live region, and nothing else", () => {
@@ -174,7 +275,7 @@ it("announces keyboard step changes in a polite live region, and nothing else", 
 	container.children[0].fire("keydown", { key: "ArrowRight", preventDefault() {} });
 	assert.equal(live.textContent, "2. Two");
 	container.children[0].fire("keydown", { key: "End", preventDefault() {} });
-	assert.equal(live.textContent, "3. Three");
+	assert.equal(live.textContent, "3. Three: The end.");
 });
 
 it("re-announces a repeated step by clearing the live region first, and cancels on destroy", () => {
@@ -182,13 +283,13 @@ it("re-announces a repeated step by clearing the live region first, and cancels 
 	const live = container.children.find((c) => c.className === "mk-sr mk-live");
 	const keydown = (key) => container.children[0].fire("keydown", { key, preventDefault() {} });
 	keydown("End");
-	assert.equal(live.textContent, "3. Three");
+	assert.equal(live.textContent, "3. Three: The end.");
 	keydown("End");
 	assert.equal(live.textContent, "");
 	assert.equal(frames.size, 1);
 	for (const cb of [...frames.values()]) cb(0);
 	frames.clear();
-	assert.equal(live.textContent, "3. Three");
+	assert.equal(live.textContent, "3. Three: The end.");
 	keydown("End");
 	keydown("Home");
 	assert.equal(live.textContent, "1. One");
@@ -210,11 +311,86 @@ it("resolves flat and per-locale label dictionaries", async () => {
 });
 
 it("mounting twice on one container destroys the first player", () => {
-	const { player, container, context, frames } = setup();
-	const second = context.MotionKit.mountPlayer(container, scene, { id: "second", autoplay: "none" });
+	const { player, container, context, frames, mount } = setup();
+	const second = mount(container, scene, { id: "second" });
 	assert.equal(context.__motionKit["test-player"], undefined);
 	assert.equal(context.__motionKit.second, second);
 	player.seek(1);
 	assert.equal(player.time, 3);
 	assert.equal(frames.size, 0);
+});
+
+it("the stage is a named, described group, and every focusable element has a role", () => {
+	const { container } = setup({ options: { id: "p", labels: { nl: { keys: "Pijltjestoetsen: vorige of volgende stap." } }, locale: "nl" } });
+	const stage = container.children[0];
+	assert.equal(stage.getAttribute("role"), "group");
+	assert.equal(stage.getAttribute("aria-label"), scene.title);
+	const hint = [...container.walk()].find((el) => el.getAttribute("id") === stage.getAttribute("aria-describedby"));
+	assert.equal(hint?.textContent, "Pijltjestoetsen: vorige of volgende stap.");
+	for (const el of container.walk()) if (el.getAttribute("tabindex") === "0") assert.ok(el.getAttribute("role"), el.tag);
+	assert.match(PLAYER_CSS, /\.mk-btn\{[^}]*min-width:44px;min-height:44px/);
+	assert.match(PLAYER_CSS, /\.mk-scrub\{[^}]*min-height:44px/);
+});
+
+it("adds the player stylesheet again after a page swap removed it, and only once", () => {
+	const env = setup();
+	const styles = () => [...env.doc.head.walk(), ...env.doc.body.walk()].filter((el) => el.tag === "style" && el.attributes.has("data-mk-player-css"));
+	assert.equal(styles().length, 1);
+	env.mount(env.doc.body.appendChild(env.doc.createElement("div")));
+	assert.equal(styles().length, 1);
+	styles()[0].remove();
+	env.mount(env.doc.body.appendChild(env.doc.createElement("div")));
+	assert.equal(styles().length, 1);
+	styles()[0].remove();
+	env.mount(env.doc.body.appendChild(env.doc.createElement("div")), scene, { injectCss: false });
+	assert.equal(styles().length, 0);
+});
+
+it("sets tokens as properties, keeping the container's own CSS", () => {
+	const env = setup();
+	const host = env.doc.createElement("div");
+	host.setAttribute("style", "max-width:360px");
+	env.mount(host, scene, { theme: "dark", style: { dark: { accent: "#00ff00" } } });
+	assert.equal(host.getAttribute("style"), "max-width:360px");
+	assert.equal(host.style.getPropertyValue("--mk-accent"), "#00ff00");
+	assert.ok(host.style.getPropertyValue("--mk-font"));
+});
+
+it("gives every instance its own id prefix, so two players share no ids", () => {
+	const clipped = { ...scene, frame: (t, { idPrefix }) => `<defs><clipPath id="${idPrefix}-clip"><rect width="${t}"/></clipPath></defs><g clip-path="url(#${idPrefix}-clip)"/>` };
+	const env = setup({ sceneOverride: clipped });
+	const other = env.doc.body.appendChild(env.doc.createElement("div"));
+	env.mount(other, clipped);
+	const ids = (root) => [...root.outerHTML.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
+	const a = ids(env.container);
+	const b = ids(other);
+	assert.ok(a.some((id) => id.endsWith("-clip")));
+	assert.deepEqual(a.filter((id) => b.includes(id)), []);
+	assert.equal(new Set([...a, ...b]).size, a.length + b.length);
+});
+
+it("server markup is the mounted player's markup, with inert controls and no keyboard promise", () => {
+	for (const options of [{ id: "srv" }, { id: "srv", scrubber: true, captions: false, labels: { play: "Speel", replay: "Opnieuw" } }]) {
+		const { container } = setup({ options });
+		const ssr = playerMarkup(scene, options);
+		assert.match(ssr, /<div class="mk-controls" role="group" aria-label="Steps" inert>/);
+		assert.ok(!ssr.includes("tabindex") && !ssr.includes("srv-keys"));
+		// Mounting makes the controls live, and the stage focusable with its keyboard hint.
+		const live = ssr
+			.replace(" inert>", ">")
+			.replace('<div class="mk-stage" role="group" aria-label="Test player">', '<div class="mk-stage" tabindex="0" role="group" aria-label="Test player" aria-describedby="srv-keys">')
+			.replace('<div class="mk-sr mk-live"', '<p id="srv-keys" class="mk-sr">Use the arrow keys to move between steps.</p><div class="mk-sr mk-live"');
+		assert.equal(container.children.map((c) => c.outerHTML).join(""), live);
+		assert.match(ssr, /<ol class="mk-sr"><li>One<\/li><li>Two<\/li><li>Three: The end.<\/li><\/ol>/);
+	}
+});
+
+it("themeCss follows the system unless a theme is fixed", () => {
+	const both = themeCss("#d", { light: { accent: "#123456" } });
+	assert.match(both, /^#d\{[^}]*--mk-accent:#123456[^}]*--mk-font:/);
+	assert.match(both, /@media \(prefers-color-scheme:dark\)\{#d\{/);
+	const dark = themeCss("#d", "neutral", "dark");
+	assert.ok(!dark.includes("@media"));
+	assert.match(dark, /--mk-bg:#0f1115/);
+	assert.throws(() => themeCss("#d", { font: "x}</style><script>" }), /font must be/);
 });

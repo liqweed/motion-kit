@@ -72,6 +72,8 @@ export function normalizeStyle(style) {
 		light: { ...NEUTRAL.light, ...(style.light ?? {}) },
 		dark: { ...NEUTRAL.dark, ...(style.dark ?? style.light ?? {}) },
 	};
+	// The font goes into CSS and markup: a family list never needs these characters.
+	if (typeof out.font !== "string" || /[<>{};\\]/.test(out.font)) throw new Error(`style "${out.name}": font must be a CSS font-family list, got ${JSON.stringify(out.font)}`);
 	for (const theme of ["light", "dark"]) {
 		for (const key of Object.keys(out[theme])) {
 			if (!TOKENS.includes(key)) throw new Error(`style "${out.name}": unknown token "${key}" in ${theme}`);

@@ -2,7 +2,7 @@
 /**
  * motion-kit CLI.
  *
- *   motion-kit check  <scene...>             [--format F] [--locale L]   gate (all formats/locales by default)
+ *   motion-kit check  <scene...>             [--format F]… [--locale L]… [--style S]   gate (all formats/locales by default)
  *   motion-kit build  <scene> --out x.html   [--format F] [--locale L] [--style S] [--no-scrubber] [--no-heading]
  *   motion-kit export <scene> --out dir      [--format F] [--locale L] [--style S] [--theme light|dark] [--png] [--scale 2] [--qc] [--background]
  *   motion-kit bake   <scene> --out x.svg    [--fps 15] [--theme ...] [--style S]
@@ -12,6 +12,9 @@
  *   motion-kit formats | types
  *
  * <scene> is a spec (.json, any registered type) or a custom module (.mjs).
+ * --options O passes scene options to a custom module's factory, unchanged:
+ * inline JSON ('{"view":"short"}'), a .json file, or an .mjs module whose
+ * default export is the options or ({ format, locale }) => options.
  */
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -19,13 +22,13 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { FORMATS } from "../runtime/scene.mjs";
-import { checkContrast } from "../runtime/style.mjs";
 import { SCENE_TYPES } from "../runtime/types/index.mjs";
 import { checkScene } from "../lib/check.mjs";
+import { checkFiles } from "../lib/gate.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { writeIconSet } from "../lib/icon.mjs";
 import { exportSteps } from "../lib/export.mjs";
-import { loadScene, loadStyle } from "../lib/load.mjs";
+import { isModule, loadOptions, loadScene, loadStyle } from "../lib/load.mjs";
 import { rasterizer } from "../lib/raster.mjs";
 import { probe, renderVideo, videoContactSheet } from "../lib/video.mjs";
 
@@ -36,9 +39,10 @@ const { values: a, positionals } = parseArgs({
 	allowPositionals: true,
 	options: {
 		out: { type: "string", short: "o" },
-		format: { type: "string", short: "f" },
-		locale: { type: "string", short: "l" },
+		format: { type: "string", short: "f", multiple: true },
+		locale: { type: "string", short: "l", multiple: true },
 		style: { type: "string", short: "s" },
+		options: { type: "string" },
 		theme: { type: "string", default: "light" },
 		png: { type: "boolean", default: false },
 		scale: { type: "string", default: "2" },
@@ -73,7 +77,15 @@ async function main() {
 		return;
 	}
 	const style = loadStyle(a.style);
-	const opts = { format: a.format ?? "16:9", locale: a.locale ?? "en" };
+	// Commands other than check build one format and locale: the last one given.
+	const format = a.format?.at(-1);
+	const where = { format: format ?? "16:9", locale: a.locale?.at(-1) ?? "en" };
+	const optionsFor = await loadOptions(a.options);
+	/** Scene options for one scene file at `at`; specs take none. @param {string} file @param {{format: string, locale: string}} at */
+	const sceneOpts = async (file, at = where) => {
+		if (optionsFor && !isModule(file)) fail(`${cmd}: --options apply to custom scene modules, not to the spec ${file}`);
+		return { ...at, options: optionsFor ? await optionsFor(at) : undefined };
+	};
 
 	switch (cmd) {
 		case "formats":
@@ -84,38 +96,17 @@ async function main() {
 			return;
 		case "check": {
 			if (!args.length) fail("check: give at least one scene file");
-			const styleProblems = checkContrast(style);
-			for (const p of styleProblems) console.error(`✗ style: ${p}`);
-			let bad = styleProblems.length;
-			for (const file of args) {
-				const formats = a.format ? [a.format] : Object.keys(FORMATS);
-				const raw = file.endsWith(".json") ? JSON.parse(readFileSync(file, "utf8")) : null;
-				const locales = a.locale ? [a.locale] : raw ? detectLocales(raw) : ["en"];
-				for (const format of formats) {
-					for (const locale of locales) {
-						try {
-							const { scene } = await loadScene(file, { format, locale });
-							const r = checkScene(scene);
-							if (r.ok) console.log(`✓ ${file} · ${format} · ${locale} · ${scene.duration.toFixed(2)} s · ${scene.steps.length} steps`);
-							else {
-								bad++;
-								console.error(`✗ ${file} · ${format} · ${locale}\n  - ${r.problems.join("\n  - ")}`);
-							}
-						} catch (e) {
-							bad++;
-							console.error(`✗ ${file} · ${format} · ${locale}: ${e instanceof Error ? e.message : e}`);
-						}
-					}
-				}
-			}
+			const bad = await checkFiles(args, { formats: a.format, locales: a.locale, style, options: optionsFor });
 			if (bad) process.exit(1);
 			return;
 		}
 		case "build": {
-			const loaded = await loadScene(need(args[0], "<scene>"), opts);
+			const file = need(args[0], "<scene>");
+			const sopts = await sceneOpts(file);
+			const loaded = await loadScene(file, sopts);
 			const r = checkScene(loaded.scene);
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
-			const html = buildHtml(loaded, { style, ...opts, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
+			const html = buildHtml(loaded, { style, ...where, options: sopts.options, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
 			if (/<\/script/i.test(html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>")))) fail("bundled code contains </script>");
 			const out = need(a.out, "--out");
 			mkdirSync(dirname(resolve(out)), { recursive: true });
@@ -125,16 +116,29 @@ async function main() {
 		}
 		case "export": {
 			const file = need(args[0], "<scene>");
-			const { scene } = await loadScene(file, opts);
+			const sopts = await sceneOpts(file);
+			const { scene } = await loadScene(file, sopts);
 			const r = checkScene(scene);
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			if (a.png && !(await rasterizer())) fail("--png needs @resvg/resvg-js or Chrome");
-			const m = await exportSteps(scene, { out: need(a.out, "--out"), style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION });
+			// The contact sheet's phone row shows the tall layout, as a phone does.
+			/** @type {{ scene?: any, error?: string }} */
+			const phone = {};
+			if (where.format === "tall") phone.scene = scene;
+			else {
+				try {
+					phone.scene = (await loadScene(file, await sceneOpts(file, { ...where, format: "tall" }))).scene;
+				} catch (e) {
+					phone.error = e instanceof Error ? e.message : String(e);
+				}
+			}
+			const m = await exportSteps(scene, { out: need(a.out, "--out"), style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION, phone, ...sopts });
 			console.log(`wrote ${m.files.length} frames + index.html + manifest.json to ${a.out}`);
 			return;
 		}
 		case "bake": {
-			const { scene } = await loadScene(need(args[0], "<scene>"), opts);
+			const file = need(args[0], "<scene>");
+			const { scene } = await loadScene(file, await sceneOpts(file));
 			const svg = bake(scene, { fps: Number(a.fps ?? 15), style, theme: a.theme, background: a.background });
 			const out = need(a.out, "--out");
 			writeFileSync(out, svg);
@@ -143,7 +147,8 @@ async function main() {
 			return;
 		}
 		case "video": {
-			const { scene } = await loadScene(need(args[0], "<scene>"), opts);
+			const file = need(args[0], "<scene>");
+			const { scene } = await loadScene(file, await sceneOpts(file));
 			const out = need(a.out, "--out");
 			const r = await renderVideo(scene, {
 				out,
@@ -161,7 +166,8 @@ async function main() {
 			return;
 		}
 		case "icon": {
-			const { scene } = await loadScene(need(args[0], "<scene>"), { ...opts, format: a.format ?? "1:1" });
+			const file = need(args[0], "<scene>");
+			const { scene } = await loadScene(file, await sceneOpts(file, { ...where, format: format ?? "1:1" }));
 			const r = checkScene(scene);
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			const png = !a["no-png"];
@@ -180,7 +186,7 @@ async function main() {
 			const adapter = join(ROOT, "adapters", a.adapter);
 			cpSync(adapter, join(dir, "adapter"), { recursive: true });
 			mkdirSync(join(dir, "lib"), { recursive: true });
-			cpSync(join(ROOT, "lib", "check.mjs"), join(dir, "lib", "check.mjs"));
+			for (const f of ["check.mjs", "gate.mjs", "load.mjs"]) cpSync(join(ROOT, "lib", f), join(dir, "lib", f));
 			writeFileSync(join(dir, "check.mjs"), VENDOR_CHECK);
 			writeFileSync(join(dir, "MOTION_KIT_VERSION"), `motion-kit ${VERSION}\nadapter ${a.adapter}\nvendored from liqweed/motion-kit; do not edit here, re-vendor instead.\n`);
 			console.log(`vendored runtime + ${a.adapter} adapter (motion-kit ${VERSION}) into ${dir}`);
@@ -192,48 +198,40 @@ async function main() {
 }
 
 const VENDOR_CHECK = `#!/usr/bin/env node
-// motion-kit gate for vendored copies: node check.mjs <spec.json...> [--format F]
-// Checks every listed spec in every format (or --format) and every locale it contains.
-import { readFileSync } from "node:fs";
-import { checkScene } from "./lib/check.mjs";
-import { FORMATS } from "./runtime/scene.mjs";
-import { createScene } from "./runtime/types/index.mjs";
+// motion-kit gate for vendored copies: the same checks as \`motion-kit check\` (lib/gate.mjs).
+//
+//   node check.mjs <scene.json|scene.mjs …> [--format F]… [--locale L]… [--style style.json] [--options O]
+//
+// Every format unless --format; for a spec every locale its strings carry, for
+// a custom module "en", unless --locale. The style (neutral by default) must
+// pass the contrast check. --options passes scene options to custom modules:
+// a .json file, inline JSON, or an .mjs module exporting ({ format, locale }) => options.
+// Exits 1 if anything fails; a file that cannot be loaded fails on its own.
+import { parseArgs } from "node:util";
+import { checkFiles } from "./lib/gate.mjs";
+import { loadOptions, loadStyle } from "./lib/load.mjs";
 
-const args = process.argv.slice(2);
-const fi = args.indexOf("--format");
-const formats = fi >= 0 ? [args.splice(fi, 2)[1]] : Object.keys(FORMATS);
-let bad = 0;
-for (const file of args) {
-	const spec = JSON.parse(readFileSync(file, "utf8"));
-	const locales = new Set();
-	JSON.stringify(spec, (k, v) => {
-		if (v && typeof v === "object" && !Array.isArray(v) && Object.keys(v).length && Object.keys(v).every((x) => /^[a-z]{2}$/.test(x))) Object.keys(v).forEach((l) => locales.add(l));
-		return v;
-	});
-	for (const format of formats) {
-		for (const locale of locales.size ? locales : ["en"]) {
-			try {
-				const r = checkScene(createScene(spec, { format, locale }));
-				if (r.ok) console.log(\`✓ \${file} · \${format} · \${locale}\`);
-				else { bad++; console.error(\`✗ \${file} · \${format} · \${locale}\\n  - \${r.problems.join("\\n  - ")}\`); }
-			} catch (e) { bad++; console.error(\`✗ \${file} · \${format} · \${locale}: \${e.message}\`); }
-		}
-	}
+const { values, positionals } = parseArgs({
+	allowPositionals: true,
+	options: {
+		format: { type: "string", multiple: true },
+		locale: { type: "string", multiple: true },
+		style: { type: "string" },
+		options: { type: "string" },
+		help: { type: "boolean", short: "h" },
+	},
+});
+if (values.help || !positionals.length) {
+	console.log("usage: node check.mjs <scene.json|scene.mjs …> [--format F]… [--locale L]… [--style style.json] [--options O]");
+	process.exit(values.help ? 0 : 1);
 }
-process.exit(bad ? 1 : 0);
+try {
+	const bad = await checkFiles(positionals, { formats: values.format, locales: values.locale, style: loadStyle(values.style), options: await loadOptions(values.options) });
+	process.exit(bad ? 1 : 0);
+} catch (e) {
+	console.error(\`✗ \${e instanceof Error ? e.message : e}\`);
+	process.exit(1);
+}
 `;
-
-function detectLocales(spec) {
-	const found = new Set();
-	const walk = (v) => {
-		if (v && typeof v === "object" && !Array.isArray(v)) {
-			const keys = Object.keys(v);
-			if (keys.length && keys.every((k) => /^[a-z]{2}(-[A-Z]{2})?$/.test(k) && typeof v[k] === "string")) keys.forEach((k) => found.add(k));
-			else Object.values(v).forEach(walk);
-		} else if (Array.isArray(v)) v.forEach(walk);
-	};
-	walk(spec);
-	return found.size ? [...found] : ["en"];
-}
 
 main().catch((e) => fail(e.stack ?? e.message));

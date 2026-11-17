@@ -16,22 +16,36 @@
 import { renderSvg } from "./scene.mjs";
 import { num } from "./svg.mjs";
 
+/**
+ * @param {import("./scene.mjs").Scene} scene
+ * @param {{ fps?: number, delay?: number, idPrefix?: string, style?: any, theme?: string, background?: boolean }} [options]
+ *   idPrefix: prefix for the file's ids (default "mk-bake"); give each baked
+ *   SVG inlined into one page its own.
+ * @returns {string}
+ */
 export function bake(scene, options = {}) {
 	const fps = options.fps ?? 15;
 	const delay = options.delay ?? 0.3;
+	const base = options.idPrefix ?? "mk-bake";
 	const total = Math.ceil(scene.duration * fps);
+	/** @param {number} t @param {string} idPrefix */
+	const render = (t, idPrefix) => renderSvg(scene, t, { ...options, standalone: true, idPrefix });
 	const frames = [];
 	for (let f = 0; f <= total; f++) {
 		const t = Math.min(f / fps, scene.duration);
-		const inner = innerOf(renderSvg(scene, t, { ...options, standalone: true, idPrefix: "mk-bake" }));
+		const inner = innerOf(render(t, base));
 		const last = frames[frames.length - 1];
 		if (last && last.body === inner) last.end = t;
 		else frames.push({ start: t, end: t, body: inner });
 	}
-	// Each slice lasts until the next one starts.
-	for (let i = 0; i < frames.length - 1; i++) frames[i].end = frames[i + 1].start;
+	// Each slice lasts until the next one starts. Slices sit in one document,
+	// so a scene that defines ids gets a prefix per slice.
+	for (let i = 0; i < frames.length; i++) {
+		if (i < frames.length - 1) frames[i].end = frames[i + 1].start;
+		if (/\sid="/.test(frames[i].body)) frames[i].body = innerOf(render(frames[i].start, `${base}-${i + 1}`));
+	}
 
-	const full = renderSvg(scene, scene.duration, { ...options, standalone: true, idPrefix: "mk-bake" });
+	const full = render(scene.duration, base);
 	const open = full.slice(0, full.indexOf(">") + 1);
 	const head = full.slice(open.length, full.indexOf("</desc>") + "</desc>".length);
 	const css = [
