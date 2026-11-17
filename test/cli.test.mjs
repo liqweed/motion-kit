@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { after, describe, it } from "node:test";
 import { rasterizer } from "../lib/raster.mjs";
 import { hasFfmpeg, probe } from "../lib/video.mjs";
@@ -144,6 +144,44 @@ describe("cli", () => {
 		run("export", `${EX}order-flow.json`, "-o", join(tmp, "exp2"), "--qc", "-l", "nl");
 		const m2 = JSON.parse(readFileSync(join(tmp, "exp2", "manifest.json"), "utf8"));
 		assert.deepEqual(m2, m);
+	});
+	it("re-exporting into a folder replaces the previous export and leaves other files alone", () => {
+		const dir = join(tmp, "re-export");
+		run("export", `${EX}order-flow.json`, "-o", dir, "--qc", "-l", "nl");
+		writeFileSync(join(dir, "notes.txt"), "mine");
+		const r = spawnSync(process.execPath, [CLI, "export", `${EX}order-flow.json`, "-o", dir, "-l", "en"], { encoding: "utf8" });
+		assert.equal(r.status, 0, r.stderr);
+		assert.match(r.stderr, /left 1 file\(s\) in .* that no export wrote: notes\.txt/);
+		const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
+		assert.equal(m.locale, "en");
+		const listed = new Set(["manifest.json", "index.html", ...m.files.flatMap((f) => [f.svg, f.png].filter(Boolean))]);
+		const present = readdirSync(dir, { recursive: true, withFileTypes: true }).filter((d) => d.isFile()).map((d) => relative(dir, join(d.parentPath, d.name)).split(sep).join("/"));
+		assert.deepEqual(present.filter((p) => !listed.has(p)), ["notes.txt"]);
+		assert.equal(present.length, listed.size + 1);
+		assert.equal(readFileSync(join(dir, "notes.txt"), "utf8"), "mine");
+	});
+	it("the manifest says whether the source differs from the commit it names", () => {
+		const repo = join(tmp, "repo");
+		mkdirSync(repo);
+		const git = (...args) => execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], { cwd: repo, stdio: "pipe" });
+		const spec = join(repo, "flow.json");
+		const manifest = (name) => {
+			run("export", spec, "-o", join(tmp, name), "-f", "16:9");
+			const m = JSON.parse(readFileSync(join(tmp, name, "manifest.json"), "utf8"));
+			return { commit: m.sourceCommit, dirty: m.sourceDirty };
+		};
+		cpSync(`${EX}order-flow.json`, spec);
+		assert.deepEqual(manifest("git-none"), { commit: null, dirty: null }, "outside a repository");
+		git("init", "-q");
+		git("add", "flow.json");
+		git("commit", "-q", "-m", "flow");
+		const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
+		assert.deepEqual(manifest("git-clean"), { commit: head, dirty: false });
+		writeFileSync(spec, readFileSync(spec, "utf8").replace("The customer places", "A customer places"));
+		assert.deepEqual(manifest("git-dirty"), { commit: head, dirty: true }, "modified since the commit");
+		writeFileSync(join(repo, "other.txt"), "unrelated");
+		git("checkout", "--", "flow.json");
+		assert.deepEqual(manifest("git-other"), { commit: head, dirty: false }, "other files do not count");
 	});
 	it("export's phone row shows the tall layout", () => {
 		const dir = join(tmp, "exp-phone");

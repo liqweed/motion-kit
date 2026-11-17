@@ -72,7 +72,8 @@ from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
 - Every motion must answer "what does this help the viewer understand?".
 - Skeleton first, then fill: show the whole structure, then walk through it.
 - One emphasis colour, one emphasis element.
-- Step frames are settled: the next motion starts at or after the step's `at`.
+- Step frames are settled: motion comes to rest by the step's `at`, and the
+  next motion starts no earlier than 50 ms after it.
 - Long text belongs in HTML captions (`detail`), not in the SVG.
 - Always a pause control (WCAG 2.2.2); reduced motion = final frame, no autoplay.
 - No `Date`, `Math.random`, `performance.now` inside a scene.

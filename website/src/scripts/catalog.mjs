@@ -155,7 +155,7 @@ export const DEFECTS = [
 	{
 		title: "A colour literal in frame()", rule: "G4", ruleName: "token-only colours", file: "diagrams/my-diagram.scene.mjs",
 		code: 'frame(t) {\n  return el("circle", { r: 8,\n    fill: "#2563eb" });   // literal\n}',
-		why: "A hex, rgb() or hsl() value in the output can’t follow light/dark or a brand style.",
+		why: "A hex, rgb(), hsl() or named colour (\"red\") in the output can’t follow light/dark or a brand style.",
 		fix: 'fill: tok("accent").',
 	},
 	{
@@ -185,12 +185,12 @@ export const RULES = [
 	["G3", "No number with 5 or more decimals"],
 	["G4", "No colour literals: tokens only"],
 	["G5", "No NaN, undefined or Infinity"],
-	["G6", "Settled step frames: render(at − 1 ms) = render(at)"],
+	["G6", "Settled step frames: at rest at the step, unchanged 45 ms after"],
 	["G7", "Something animates"],
 	["G8", "Holds the final frame"],
 	["G9", "Duration ≤ 12 s"],
 	["G10", "Every step label appears in the final frame"],
-	["G11", "No clock or randomness in frame()"],
+	["G11", "No clock or randomness in frame() or what it calls"],
 	["G12", "Style contrast, light and dark"],
 	["G13", "Builds in every format × locale"],
 ];

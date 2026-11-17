@@ -20,6 +20,9 @@ Model screenshots are evidence, not approval. **A human signs off on the look.**
      reads the step list.
    - Video: `video --sheet` contact sheet; duration, aspect and size via the
      printed probe; watch it once at full size.
+   - Exports: `manifest.json` names the source commit and says
+     `"sourceDirty": false`; a `true` means the frames come from uncommitted
+     changes. Re-exporting into a folder replaces what the last export wrote.
 
 **Don't trust virtual time.** Headless `--virtual-time-budget` doesn't advance
 the player's animation clock faithfully. Use `--timeout=<ms>` (real time) or a

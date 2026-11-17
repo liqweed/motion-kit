@@ -90,5 +90,13 @@ errors, and cleans up on disconnect. Full usage: `adapters/element/README.md`.
   REVIEW.md                      review report with human approval line
 ```
 `manifest.json` records scene, type, format, locale, size, duration, style,
-theme, an input hash and the source commit, with no timestamps, so a re-render
-from the same inputs is byte-identical and a stale export is easy to spot.
+theme, an input hash, the source commit and `sourceDirty` (`true` when the
+source file has uncommitted changes, so the frames match no commit; `null`
+outside git), with no timestamps, so a re-render from the same inputs is
+byte-identical and a stale export is easy to spot. Deliver from a clean
+source (`sourceDirty: false`).
+
+Re-exporting into the same folder replaces the previous export: files its
+`manifest.json` listed that the new export does not write are deleted, so the
+folder holds exactly what the new manifest lists. Files no export wrote are
+left alone and named in a warning; keep notes and review files elsewhere.

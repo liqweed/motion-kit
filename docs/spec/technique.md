@@ -63,13 +63,13 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 
 | # | Rule | Enforcement | Rationale |
 |---|---|---|---|
-| T1 | `frame(t)` MUST depend only on `t` and the scene's constants: no `Date`, `Math.random`, `performance.now`, no state carried between calls, no module-level mutable state. | [gate] G1 re-renders each `t`; G11 scans the source (`lib/check.mjs:42,80-81`) | Random access: a player can jump, an exporter can write exactly one frame, video samples `t = f/fps` (`runtime/scene.mjs:14-17`). |
+| T1 | `frame(t)` MUST depend only on `t` and the scene's constants: no `Date`, `Math.random`, `performance.now`, no state carried between calls, no module-level mutable state. | [gate] G1 re-renders each `t`; G11 renders under stubbed clocks and scans the source (`lib/check.mjs`) | Random access: a player can jump, an exporter can write exactly one frame, video samples `t = f/fps` (`runtime/scene.mjs:14-17`). |
 | T2 | Same `t` (and same style/options) MUST give byte-identical output. | [gate] G1 | Tests, diffs, caching and committed media all depend on it. |
 | T3 | Callers MUST clamp `t` to `[0, duration]`; `renderSvg` does (`runtime/scene.mjs:70`). `frame` MAY assume a clamped `t`. | — | Defines "before start" and "hold". |
 | T4 | Every number interpolated into markup MUST be rounded: `num(n, 2)` by default, 3 digits for `opacity`, 4 for scale factors (`runtime/svg.mjs:17-22,29,64`). `num` MUST throw on non-finite input and never emit `-0`. | [gate] G3; non-finite → G5 | 17-digit floats made "settled" frames differ by 1 ms (`skills/animated-diagram/references/technique.md:128-129`). |
 | T5 | Visibility MUST be decided on rounded values: an element whose opacity rounds to 0 is omitted; an opacity that rounds to 1 is not written (`runtime/svg.mjs:28,39,68-72`). | by construction (`el`, `fade`) | Identical-looking frames must be identical bytes (opacity 0.9999 vs omitted). |
 | T6 | Scenes MUST NOT use CSS transitions/animations or timers; the renderer owns the clock (`runtime/player.mjs:15`). | — | Exported frames would not match what plays. |
-| T7 | Variation, if any, MUST derive from constants and `t` (seeded), never from runtime randomness. | [gate] G11 (heuristic) | Same as T2. |
+| T7 | Variation, if any, MUST derive from constants and `t` (seeded), never from runtime randomness. | [gate] G1, G11 | Same as T2. |
 
 ## 3. Formats and layout per format
 
@@ -219,7 +219,17 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 
 - Scenes MUST NOT contain colour literals [gate] G4. Colours MUST be
   `tok(name)` → `var(--mk-<name>)`; an unknown name throws
-  (`runtime/style.mjs:52-55`).
+  (`runtime/style.mjs:52-55`). Besides tokens, a colour attribute (`fill`,
+  `stroke`, `stop-color`, `color`, `flood-color`, `lighting-color`) or colour
+  property (in `style="…"` or a `<style>` element: those, `background` and
+  any `*-color`) MAY hold only `url(#…)` references and the keywords `none`,
+  `currentColor`, `transparent`, `inherit`, `initial`, `unset`, `revert`,
+  `revert-layer`, `context-fill` and `context-stroke`. None of them names a
+  colour, so they look the same under every style and theme; `transparent`
+  is allowed because it paints nothing in either theme. Named colours
+  (`red`), hex, colour functions and other custom properties (`var(--brand)`,
+  `var(--mk-accent, red)`) are literals. Text content is not checked: a label
+  may say "#1".
 - Tokens (`runtime/style.mjs:14-23`): `bg`, `surface`, `ink`, `muted`, `line`,
   `accent`, `onAccent`, `emphasis`. Roles: see
   [`styles.md`](../../skills/animated-diagram/references/styles.md). Exactly one
@@ -269,11 +279,17 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 
 - `steps[i].at` is the time step *i* is fully shown; its frame is what a slide,
   a step button and Slidev show.
-- Step frames MUST be settled: nothing moves at `at` [gate] G6
-  (`frame(at − 1 ms) === frame(at)`, `lib/check.mjs:55-58`).
-- Authoring rule: the next motion MUST NOT start before `at`, and anything that
-  fades out by a step (a travelling dot) MUST reach 0 by `at`. Scene types
-  satisfy this by construction: `PERIOD ≥ HOP + FILL`
+- Step frames MUST be settled: nothing moves at `at` [gate] G6. The step's
+  own motion MAY end exactly at `at` but MUST be at rest there
+  (`frame(at − 1 ms) === frame(at)`), and nothing MAY change in the 50 ms
+  after it (`frame(at + δ) === frame(at)` for δ = 1, 15, 30 and 45 ms, up to
+  the next step; `SETTLE_AFTER` in `lib/check.mjs`). The look-ahead is what
+  catches slow motion passing through `at`, which rounding hides over 1 ms.
+- Authoring rule: the next motion MUST NOT start earlier than 50 ms after
+  `at` (the "pause between beats" in
+  [`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)),
+  and anything that fades out by a step (a travelling dot) MUST reach 0 by
+  `at`. Scene types satisfy this by construction: `PERIOD = HOP + FILL + 0.05`
   (`runtime/types/sequence.mjs:24-29`), step = fill end
   (`runtime/types/sequence.mjs:147`, `runtime/types/hub-spoke.mjs:149`).
   Springs and split edges MUST budget their settle time and lag (§4.3, §4.5).
@@ -433,10 +449,20 @@ that removes every listener, observer and mark they added.
   layout cannot be built, it shows the exported frame and says why.
 - `manifest.json` MUST contain no timestamps: tool, version, scene, type,
   format, locale, scene options, size, duration, style, theme, a 16-hex input
-  hash (source file + style + scene options), source commit, render settings,
-  file list
-  (`lib/export.mjs:66-88`). Two exports of the same inputs MUST be equal
-  (`test/cli.test.mjs:20-30`).
+  hash (source file + style + scene options), source commit, source dirty
+  flag, render settings, file list (`lib/export.mjs`). Two exports of the
+  same inputs MUST be equal (`test/cli.test.mjs`).
+- `sourceCommit` is the short `HEAD` of the repository holding the source
+  file. `sourceDirty` is `true` when that file differs from it (modified,
+  staged or untracked: `status --porcelain -- <file>` is not empty), `false`
+  when it does not, and `null`, like `sourceCommit`, outside a repository.
+  Only the source file counts: modules a custom scene imports, the style file
+  and the options file do not (the input hash covers the style and options).
+- A re-export into the same folder MUST replace the previous one: files the
+  folder's previous `manifest.json` listed and the new one does not are
+  removed, so the folder holds what the new manifest lists. Files no manifest
+  listed MUST NOT be touched; the export names them in a warning on stderr
+  (`lib/export.mjs`, `test/cli.test.mjs`).
 
 ### 10.6 Video (`motion-kit video`, `lib/video.mjs`)
 
@@ -493,14 +519,14 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G1 | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs:41-42` | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
 | G2 | Each sampled frame MUST be well-formed (balanced tags, no stray `<`, entities only `amp lt gt quot #39 #n`). | `:12-31,43-44` | Escaping failures and broken markup break every target. |
 | G3 | No number with ≥ 5 decimals in the full SVG. | `:45-46` | Rounding (T4). |
-| G4 | No `#hex`, `rgb(a)(`, `hsl(a)(` in `frame()` output; id references (`url(#…)`, `href="#…"`) are not colours. | `:47-49` | Token-only colours: themes and brand styles must work everywhere. |
+| G4 | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content is not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
 | G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
-| G6 | `render(at − 0.001) === render(at)` for every step. | `:55-58` | Settled step frames (§8). |
+| G6 | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | First frame ≠ last frame. | `:61-63` | Something must animate. |
 | G8 | `render(duration + 5) === render(duration)`. | `:65` | Holds the final frame. |
 | G9 | `duration ≤ 12` s. | `:68` | Explainer budget (see §12 D1). |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
-| G11 | `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`. | `:80-81` | T1. Textual heuristic: helpers defined outside `frame` are not scanned. |
+| G11 | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
 | G12 | Style passes WCAG contrast in both themes. | `lib/gate.mjs`, `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark. |
 | G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
 | G14 | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
@@ -521,7 +547,7 @@ Recorded, not resolved. Each needs an owner decision.
 | D3 | Every locale is checked | `.mjs` modules are checked in `en` only (`cli/motion-kit.mjs:89`), although `examples/custom-pulse.scene.mjs` ships `nl`. | "Labels fit … in every locale" (`README.md:97`, `AGENTS.md:48-49`). |
 | D4 | Missing copy | `localize` silently falls back to the first available language (`runtime/scene.mjs:36-39`). | "Missing label → throw" (`skills/animated-diagram/references/technique.md:111`). Only an empty *step* label throws. |
 | D5 | Gate rule G10 and `stepLabelsInFrame` | Enforced (`lib/check.mjs:70-77`). | Absent from the scene contract comment (`runtime/scene.mjs:4-12`), `custom-scenes.md`, and the rule lists in `README.md:94-99` and `AGENTS.md:38-49`. |
-| D6 | "Enforced by `motion-kit check`" | G1 and G11 only partly verify purity (no cross-call state detection; source scan limited to `frame`'s own text); CSS-transition and "no earlier-frame state" rules are not checked. Escaping is guaranteed by `esc`/`text`, and only detected by G2 for `<` and `&`. | All 11 determinism rules listed as "enforced by `motion-kit check`" (`skills/animated-diagram/references/technique.md:23-39`). |
+| D6 | "Enforced by `motion-kit check`" | G1 and G11 only partly verify purity: no cross-call state detection, and a clock reference taken at import time escapes G11's stub; CSS-transition and "no earlier-frame state" rules are not checked. Escaping is guaranteed by `esc`/`text`, and only detected by G2 for `<` and `&`. | All 11 determinism rules listed as "enforced by `motion-kit check`" (`skills/animated-diagram/references/technique.md:23-39`). |
 | D7 | Style `radius` / `stroke` | Normalized (`runtime/style.mjs:63-64`) but never read; parts default to radius 10, stroke 2 (`runtime/parts.mjs:52,75`). | Documented as style fields (`styles.md:28-29`). |
 | D8 | Dark fallback | A style with no `dark` applies its **light** overrides to dark (`runtime/style.mjs:66`). | "Missing tokens fall back to neutral" (`styles.md:35`). |
 | D9 | Video frame reuse | PNGs are reused only when `t` repeats (lead and hold) (`lib/video.mjs:46`). | "Identical consecutive frames are rasterized once" (`skills/motion-render/references/video.md:9`). |

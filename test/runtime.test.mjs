@@ -3,12 +3,12 @@ import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
-import { checkScene, wellFormed } from "../lib/check.mjs";
+import { checkScene, colourLiteral, findColourLiteral, wellFormed } from "../lib/check.mjs";
 import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
-import { easeIn, easeOut, easeStandard, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
+import { easeIn, easeOut, easeStandard, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
 import { claimId, claimStylesheet, newPageState } from "../runtime/page.mjs";
 import * as motionMod from "../runtime/motion.mjs";
@@ -147,12 +147,14 @@ describe("scenes", () => {
 	});
 });
 
-// A scene with a clip path whose id follows the instance prefix, as the contract asks.
+// A scene with a clip path whose id follows the instance prefix, as the
+// contract asks. The bar grows to half by 0.8 s, holds through the first
+// step, and grows to full from 1.1 s to 1.9 s.
 const clipped = {
 	id: "clipped", width: 100, height: 40, duration: 2, title: "Clip", description: "A bar grows under a clip path.", stepLabelsInFrame: false,
 	steps: [{ at: 1, label: "Half", id: "half" }, { at: 2, label: "Full", id: "full" }],
 	frame: (t, { idPrefix }) => {
-		const w = Math.round(Math.min(t, 1) * 50 + Math.max(t - 1, 0) * 50);
+		const w = Math.round(50 * Math.min(t / 0.8, 1) + 50 * Math.min(Math.max((t - 1.1) / 0.8, 0), 1));
 		return `<defs><clipPath id="${idPrefix}-clip"><rect width="${w}" height="40"/></clipPath></defs><rect width="100" height="40" fill="var(--mk-accent)" clip-path="url(#${idPrefix}-clip)"/>`;
 	},
 };
@@ -184,6 +186,58 @@ describe("instance ids", () => {
 		assert.ok(all.filter((id) => id.endsWith("-clip")).length > 2);
 		assert.equal(wellFormed(svg), null);
 		assert.ok(!bake(clipped, { fps: 4, idPrefix: "other" }).includes('id="mk-bake'));
+	});
+});
+
+/**
+ * A probe scene: the settled `clipped` bar plus `extra(t)` markup.
+ * @param {(t: number) => string} extra
+ */
+const probe = (extra) => ({ ...clipped, id: "probe", frame: (t, ctx) => clipped.frame(t, ctx) + extra(t) });
+
+describe("gate probes", () => {
+	it("refuses named colours and other literal forms where a token is expected", () => {
+		for (const markup of ['<circle r="4" fill="red"/>', '<path d="M0 0" stroke="RebeccaPurple"/>', '<stop stop-color="white"/>', '<rect style="fill: navy"/>', '<feFlood flood-color="black"/>', '<rect fill="var(--brand)"/>', '<rect fill="var(--mk-accent, red)"/>', '<rect fill="oklch(70% 0.1 200)"/>', '<style>.x{stroke:teal}</style>']) {
+			const { problems } = checkScene(probe(() => markup));
+			assert.ok(problems.length > 0, markup);
+			for (const p of problems) assert.match(p, /^colour literal .* at t=[\d.]+ \(use tok\(\)\)$/, markup);
+		}
+		assert.equal(colourLiteral("red"), "red");
+		assert.equal(colourLiteral("var(--mk-accent) !important"), null);
+	});
+	it("accepts tokens, references and colourless keywords, and ignores text", () => {
+		const ok = '<g fill="none" stroke="currentColor" color="inherit"><rect fill="url(#probe-g) var(--mk-accent)" stroke="transparent"/><text fill="var(--mk-ink)">#1 red: rgb(0 0 0)</text><use href="#probe-g"/></g>';
+		assert.deepEqual(checkScene(probe(() => ok)).problems, []);
+		assert.equal(findColourLiteral('<rect style="fill: var(--mk-accent); stroke: none"/>'), null);
+	});
+	it("catches the clock or randomness read in a helper the frame calls", () => {
+		const year = () => new Date().getUTCFullYear();
+		const jitter = () => (Math.random() < 0.5 ? 1 : 2);
+		const later = () => (performance.now() > 1e8 ? "late" : "early");
+		for (const helper of [year, jitter, later]) {
+			const scene = probe(() => `<text fill="var(--mk-ink)">${helper()}</text>`);
+			assert.ok(!/Date|random|performance/.test(scene.frame.toString()), "the frame's own source is clean");
+			const { problems } = checkScene(scene);
+			assert.ok(problems.some((p) => /reads the clock or randomness/.test(p)), `${helper.name}: ${problems.join("; ")}`);
+		}
+		// The globals are restored afterwards.
+		assert.equal(typeof Date.now(), "number");
+		assert.ok(Date.now() > 1.7e12);
+		assert.notEqual(Math.random(), Math.random());
+	});
+	it("catches a slow fade passing through a step, which the 1 ms look-back misses", () => {
+		// 0.23 at 0.9 s, 0.25 at 1 s (the step), 0.28 at 1.1 s.
+		const fade = (t) => `<circle r="4" fill="var(--mk-emphasis)" opacity="${num(0.25 + 0.25 * (Math.min(Math.max(t, 0.2), 1.8) - 1), 3)}"/>`;
+		const scene = probe(fade);
+		assert.equal(renderSvg(scene, 0.999), renderSvg(scene, 1), "invisible over 1 ms after rounding");
+		const { problems } = checkScene(scene);
+		assert.deepEqual(problems, ['step "Half" at 1.000s is not settled: the frame 15 ms after differs (something is still moving)']);
+		// An eased motion that comes to rest at the step, and the next beat 50 ms later, are settled.
+		const beat = (t) => `<circle r="4" fill="var(--mk-emphasis)" opacity="${num(0.2 + 0.3 * progress(t, 0.6, 0.4, easeStandard) + 0.3 * progress(t, 1.05, 0.4, easeStandard), 3)}"/>`;
+		assert.deepEqual(checkScene(probe(beat)).problems, []);
+		// A linear one that stops abruptly at the step still moves 1 ms before it.
+		const abrupt = (t) => `<circle r="4" fill="var(--mk-emphasis)" opacity="${num(0.2 + 0.6 * Math.min(Math.max((t - 0.6) / 0.4, 0), 1), 3)}"/>`;
+		assert.deepEqual(checkScene(probe(abrupt)).problems, ['step "Half" at 1.000s is not settled: the frame 1 ms before differs (something is still moving)']);
 	});
 });
 

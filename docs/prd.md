@@ -104,13 +104,13 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 [`spec/technique.md` §11](spec/technique.md#11-the-gate):
 
 - Deterministic bytes at 121 sampled times; well-formed markup.
-- No numbers with ≥ 5 decimals; no colour literals; no `NaN`/`undefined`/`Infinity`.
-- Settled step frames (`frame(at − 1 ms) === frame(at)`).
+- No numbers with ≥ 5 decimals; no colour literals (named colours included); no `NaN`/`undefined`/`Infinity`.
+- Settled step frames: at rest 1 ms before `at`, unchanged for 45 ms after it.
 - Something animates; the final frame holds after `duration`.
 - Duration ≤ 12 s (the docs say ≤ ~8–10 s; see Discrepancies in the spec).
 - Every step label visible in the final frame, unless the scene opts out.
 - Ids come from the instance prefix: two renders with different prefixes share none.
-- No clock or randomness in `frame()`'s source.
+- No clock or randomness in `frame()` or the helpers it calls (rendered under stubbed clocks).
 - Style contrast (WCAG 4.5:1 text, 3:1 shapes, both themes) for the style in use.
 - Layout/label fit per format × locale, through scene construction.
 
