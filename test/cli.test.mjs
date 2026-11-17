@@ -154,7 +154,7 @@ describe("cli", () => {
 		run("build", `${EX}smart-home.json`, "-o", f);
 		const html = readFileSync(f, "utf8");
 		assert.ok(!/<script[^>]+src=|<link[^>]+href=|fetch\(|import\s*\(/.test(html));
-		assert.ok(html.includes("MotionKit.mountPlayer"));
+		assert.ok(html.includes("MotionKitRuntime.mountPlayer"));
 	});
 	it("bake writes a zero-JS SVG", () => {
 		const f = join(tmp, "b.svg");

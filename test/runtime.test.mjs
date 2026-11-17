@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { checkScene, wellFormed } from "../lib/check.mjs";
 import { bundle } from "../lib/bundle.mjs";
+import { buildHtml } from "../lib/build.mjs";
+import { loadScene } from "../lib/load.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { easeIn, easeOut, easeStandard, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
@@ -239,8 +242,8 @@ describe("bake", () => {
 
 describe("bundle", () => {
 	it("keeps a runtime-only global that a later entry cannot shadow", () => {
-		const root = new URL("../runtime/", import.meta.url).pathname;
-		const custom = new URL("./fixtures-shadow.mjs", import.meta.url).pathname;
+		const root = fileURLToPath(new URL("../runtime/", import.meta.url));
+		const custom = fileURLToPath(new URL("./fixtures-shadow.mjs", import.meta.url));
 		writeFileSync(custom, "export const progress = 1;\n");
 		try {
 			const ctx = vm.createContext({});
@@ -252,7 +255,7 @@ describe("bundle", () => {
 		}
 	});
 	it("inlines the runtime into one script that renders the same bytes as Node", () => {
-		const root = new URL("../runtime/", import.meta.url).pathname;
+		const root = fileURLToPath(new URL("../runtime/", import.meta.url));
 		const code = bundle([`${root}types/index.mjs`, `${root}scene.mjs`, `${root}bake.mjs`]);
 		assert.ok(!/^\s*import\s/m.test(code));
 		assert.ok(!/https?:\/\//.test(code.replace(/http:\/\/www\.w3\.org\/2000\/svg/g, "")));
@@ -263,6 +266,20 @@ describe("bundle", () => {
 		for (const t of [0, 0.7, 2.2, ref.duration]) {
 			assert.equal(ctx.MotionKit.renderSvg(scene, t), renderSvg(ref, t));
 		}
+	});
+});
+
+describe("buildHtml", () => {
+	it("cannot be broken out of its inline script by an option string", async () => {
+		const file = fileURLToPath(new URL("../examples/custom-pulse.scene.mjs", import.meta.url));
+		const options = { labels: { title: "</script><b>x" } };
+		const loaded = await loadScene(file, { format: "wide", locale: "en", options });
+		const html = buildHtml(loaded, { style: normalizeStyle("neutral"), format: "wide", locale: "en", options });
+		const script = html.slice(html.lastIndexOf("<script>"));
+		assert.equal(script.match(/<\/script>/g)?.length, 1, "only the closing tag ends the script");
+		assert.ok(script.includes("\\u003c/script>"));
+		assert.match(script, /MotionKitRuntime\.validateScene\(/);
+		assert.match(script, /MotionKitRuntime\.mountPlayer\(/);
 	});
 });
 
@@ -280,6 +297,8 @@ describe("page state", () => {
 		assert.equal(claimId(page, undefined, "flow"), "mk-flow-1");
 		assert.equal(claimId(page, undefined, "flow"), "mk-flow-2");
 		assert.equal(claimId(page, "mine", "flow"), "mine");
+		assert.equal(claimId(page, "mk-flow-3", "flow"), "mk-flow-3");
+		assert.equal(claimId(page, undefined, "flow"), "mk-flow-4", "a generated id skips one a request took");
 		assert.throws(() => claimId(page, "mine", "flow"), /already used/);
 		assert.throws(() => claimId(page, "1bad", "flow"), /must be letters/);
 	});

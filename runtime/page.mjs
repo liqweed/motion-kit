@@ -29,7 +29,12 @@ export function newPageState() {
  */
 export function claimId(page, requested, sceneId) {
 	if (requested != null && safeId(requested) !== requested) throw new Error(`id "${requested}" must be letters, digits, "_" and "-", starting with a letter`);
-	const id = requested ?? safeId(`mk-${sceneId}-${++page.count}`);
+	let id = requested;
+	if (id == null) {
+		// Skip ids an explicit request already took.
+		do id = safeId(`mk-${sceneId}-${++page.count}`);
+		while (page.ids.has(id));
+	}
 	if (page.ids.has(id)) throw new Error(`id "${id}" is already used on this page; give each instance (the wide and the tall one too) its own`);
 	page.ids.add(id);
 	return id;
