@@ -51,6 +51,11 @@ export default ({ locale }) => ({ labels: DICT[locale] });
 `;
 
 describe("cli", () => {
+	it("--version prints the package version", () => {
+		const { version } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+		assert.equal(run("--version").trim(), version);
+		assert.equal(run("-v").trim(), version);
+	});
 	it("vendor includes the full MIT licence with every adapter", () => {
 		const license = readFileSync(new URL("../LICENSE", import.meta.url), "utf8");
 		for (const adapter of ["page", "astro", "slidev", "element"]) {

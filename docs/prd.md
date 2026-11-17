@@ -157,8 +157,9 @@ Proposed (not yet tracked — see open questions):
 
 ## 9. Assumptions
 
-- The canonical clone lives at `~/workspace/motion-kit`; the plugin copy is a
-  fallback without `node_modules` (`README.md:81-82`).
+- The skills find the CLI through `MOTION_KIT_HOME`, then the npm package via
+  `npx`, then the plugin copy, which has no `node_modules` and so renders no
+  PNG or video (README, "Install the skills").
 - Early consumers are the maintainer's own repos (decks, websites); Craft is
   a primary destination (`skills/animated-diagram/references/targets.md`).
 
@@ -189,8 +190,7 @@ Proposed (not yet tracked — see open questions):
    gate rules?
 10. **Success measures.** Which of §8's proposed measures are worth tracking,
     and where?
-11. **Public release (decided: MIT, open source).** Still open: the npm
-    package name (`motion-kit` is taken; `package.json` stays `private` until
-    this is settled), the skills' hard-coded clone path
-    (`~/workspace/motion-kit`), and a public docs site. Tracked in
-    [`roadmap.md`](roadmap.md) (#5, #6, #2).
+11. **Public release (decided: MIT, open source).** Settled: the package is
+    `@liqweed/motion-kit` on npm, the skills no longer assume a clone path,
+    and motion-kit.dev is live. The website epic is tracked in
+    [`roadmap.md`](roadmap.md) (#2).

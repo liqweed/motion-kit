@@ -10,6 +10,7 @@
  *   motion-kit icon   <scene> --out <repo>  [--size 512] [--style S] [--no-png]   project icon set (assets/, .idea/)
  *   motion-kit vendor <dir> [--adapter page|slidev|astro|element]
  *   motion-kit formats | types
+ *   motion-kit --version                      print the version
  *
  * <scene> is a spec (.json, any registered type) or a custom module (.mjs).
  * --options O passes scene options to a custom module's factory, unchanged:
@@ -57,6 +58,7 @@ const { values: a, positionals } = parseArgs({
 		"no-scrubber": { type: "boolean", default: false },
 		"no-heading": { type: "boolean", default: false },
 		help: { type: "boolean", short: "h" },
+		version: { type: "boolean", short: "v" },
 	},
 });
 const [cmd, ...args] = positionals;
@@ -71,6 +73,10 @@ function need(v, what) {
 }
 
 async function main() {
+	if (a.version) {
+		console.log(VERSION);
+		return;
+	}
 	if (!cmd || a.help) {
 		const src = readFileSync(fileURLToPath(import.meta.url), "utf8");
 		console.log(src.slice(src.indexOf("/**") + 3, src.indexOf("*/")).replace(/^ \* ?/gm, ""));

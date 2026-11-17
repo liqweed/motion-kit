@@ -6,12 +6,22 @@ description: "Render motion-kit scenes (animated diagrams) to deliverables: slid
 # Motion render
 
 All outputs come from the same pure scene, so they always agree. Locate the
-toolkit as in the animated-diagram skill (`MK=$HOME/workspace/motion-kit`, else
-the plugin root two levels above this skill). PNG and video need
-`@resvg/resvg-js` (`npm install` in `$MK`) and `ffmpeg`.
+toolkit as in the animated-diagram skill's "Locate the toolkit": first
+`MOTION_KIT_HOME`, then the npm package through `npx` (at the version of these
+skills), then the plugin copy two levels above this skill. PNG and video need
+`@resvg/resvg-js`, which the `npx` route installs; video also needs `ffmpeg`.
+The plugin copy alone has neither, so prefer `npx` there.
 
 ```bash
-mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+PLUGIN="$(cd "<this skill's base directory>/../.." && pwd)"
+V="$(node -p "require('$PLUGIN/package.json').version")"
+if [ -n "${MOTION_KIT_HOME:-}" ]; then
+  MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+elif npx -y "@liqweed/motion-kit@$V" --help >/dev/null 2>&1; then
+  MK="$PLUGIN"; mk() { npx -y "@liqweed/motion-kit@$V" "$@"; }
+else
+  MK="$PLUGIN"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+fi
 ```
 
 **Always run `mk check <scene>` first.** Exporters refuse scenes that fail the gate.

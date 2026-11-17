@@ -11,12 +11,32 @@ clock; exporters sample exact times; video samples `t = f / fps`. Read
 
 ## Locate the toolkit
 
+`$MK` is where the toolkit's files are (examples, styles, `brand/`); `mk` runs
+the CLI. Take the first that works:
+
+1. `MOTION_KIT_HOME`: a clone or install the user chose (run `npm install`
+   there for PNG and video).
+2. The npm package through `npx`, at the version of these skills. `npx`
+   installs the PNG renderer with it.
+3. The plugin copy, two levels above this skill: `check`, `build`, `bake` and
+   SVG `export` work; PNG and video do not.
+
 ```bash
-MK="$HOME/workspace/motion-kit"                 # canonical clone (has node_modules)
-[ -d "$MK" ] || MK="$(cd "<this skill's base directory>/../.." && pwd)"   # plugin copy
-node "$MK/cli/motion-kit.mjs" --help
+PLUGIN="$(cd "<this skill's base directory>/../.." && pwd)"
+V="$(node -p "require('$PLUGIN/package.json').version")"
+if [ -n "${MOTION_KIT_HOME:-}" ]; then
+  MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+elif npx -y "@liqweed/motion-kit@$V" --help >/dev/null 2>&1; then
+  MK="$PLUGIN"; mk() { npx -y "@liqweed/motion-kit@$V" "$@"; }
+else
+  MK="$PLUGIN"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+fi
+mk --help
 ```
-Node ≥ 22. PNG/video need `@resvg/resvg-js` (`npm install` in `$MK`) and `ffmpeg`.
+Node ≥ 22. PNG and video need `@resvg/resvg-js`; video also needs `ffmpeg`.
+When one is missing, the CLI names it: install `@resvg/resvg-js` with
+`npm install` in `$MOTION_KIT_HOME` (or use the `npx` route), and `ffmpeg`
+from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
 
 ## Workflow
 

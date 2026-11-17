@@ -83,8 +83,10 @@ styles/         neutral.json (the only style shipped; brands live in their repos
   `~/.agents/skills/motion-render` and `~/.agents/skills/project-logo` to
   `skills/*` in this clone.
 
-The skills look for this clone at `~/workspace/motion-kit` first (it has
-`node_modules`), then fall back to the plugin copy.
+The skills find the CLI in this order: `MOTION_KIT_HOME` (a clone or install
+you choose; run `npm install` there for PNG and video), then the npm package
+through `npx` at the plugin's version (it installs the PNG renderer), then the
+plugin copy, which checks, builds and exports SVG but renders no PNG or video.
 
 ## Use in another repo (vendor)
 
