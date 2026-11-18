@@ -9,7 +9,7 @@
 		"ink": "#111827",
 		"muted": "#4b5563",
 		"line": "#8b929c",
-		"accent": "#2563eb",
+		"accent": "#1d36a8",
 		"onAccent": "#ffffff",
 		"emphasis": "#d97706"
 	},
@@ -21,6 +21,6 @@
 		"line": "#6b7280",
 		"accent": "#2563eb",
 		"onAccent": "#ffffff",
-		"emphasis": "#f59e0b"
+		"emphasis": "#fbbf24"
 	}
 }

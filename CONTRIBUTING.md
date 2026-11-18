@@ -8,7 +8,8 @@ contract for scenes, render targets and the gate.
 ## Setup
 
 - Node ≥ 22 for users; develop on the version in `.nvmrc` (26) and keep the
-  code to what Node 22 supports (`@types/node` stays on 22).
+  code to what Node 22 supports (`@types/node` stays on 22). CI also runs the
+  gate on Node 22 (see below); to try it locally, `nvm exec 22 npm run gate:core`.
 - `npm install` installs the dev tools, the website workspace and the git
   hooks (lefthook). The optional dependency `@resvg/resvg-js` renders PNGs;
   `ffmpeg` on your `PATH` renders video. Tests that need either skip without it.
@@ -22,7 +23,11 @@ npm run gate   # typecheck, version sync, tests, scene gate, media freshness, we
 ```
 
 A pull request merges only when `npm run gate` passes; CI runs it on every pull
-request and on `main`. The hooks run parts of it for you:
+request and on `main`, on the Node in `.nvmrc` (the `gate` check). The
+`gate-node22` check runs `npm run gate:core`, the same gate without the website
+build, on the latest Node 22, the oldest Node motion-kit supports; the website
+is not part of the package, and Astro asks for a newer Node 22. A release is
+tagged only once both passed. The hooks run parts of it for you:
 
 - pre-commit: typecheck, the scene gate, media freshness and version sync, for
   the files you staged;
@@ -42,6 +47,36 @@ Then run `npm run media` and commit the regenerated `docs/media/`, `assets/icon*
 and `.idea/icon*.svg`, so reviewers see the visual change. Never edit those
 files by hand.
 
+After changing how the live player draws (`runtime/player.mjs`,
+`runtime/patch.mjs`), run `npm run bench:player`: it times each frame of
+`bench/fleet.scene.mjs` (about 25 KB of SVG) and smart-home in headless
+Chromium at a 6× CPU slowdown, the innerHTML draw against the in-place patch,
+and fails if a patched frame differs from a fresh parse. It needs a Chromium
+(`--chrome <path>`, `$CHROME`, or Playwright's browser cache); nothing is
+installed.
+
+### PNG snapshots
+
+`npm test` also rasterises every step frame of the bundled scenes (16:9,
+English, scale 1, light theme, plus each scene's final step in dark) and
+compares the pixels with the PNGs committed under `test/snapshots/`. A frame
+fails when more than 0.01 % of its pixels differ by more than 3/255 in a
+channel, so a colour token, layout, font or resvg change shows up. A failing
+frame leaves `<frame>.expected.png`, `.actual.png` and `.diff.png` (changed
+pixels in red) in `out/snapshots/`; CI uploads that folder as the
+`png-snapshot-diffs` artifact.
+
+When the change is intended, regenerate the snapshots and commit them with it:
+
+```bash
+npm run snapshots:update   # rewrites changed PNGs in test/snapshots/, removes stale ones
+```
+
+The snapshots are rendered with `test/fonts/Inter-Regular.ttf` (SIL Open Font
+Licence, `test/fonts/Inter-LICENSE.txt`) and no system fonts, so macOS and
+Linux give the same pixels. They need `@resvg/resvg-js`; without it the test
+skips.
+
 ## Where code goes
 
 | Path | Rule |
@@ -51,6 +86,7 @@ files by hand.
 | `adapters/` | Thin wrappers over `runtime/`, copied into consumer repositories by `motion-kit vendor`. |
 | `skills/` | The Claude Code plugin's skills. A CLI flag or behaviour change updates the matching `SKILL.md` or reference in the same commit. |
 | `examples/`, `brand/` | Every scene here passes `npm run check`. |
+| `bench/` | Scenes for `npm run bench:player`; heavy on purpose, not shown anywhere. |
 | `website/` | motion-kit.dev (Astro). |
 
 ## Conventions

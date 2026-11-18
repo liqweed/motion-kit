@@ -49,7 +49,15 @@ jobs:
       - run: npm ci
       - name: Tag matches package.json
         run: test "v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      # The full gate on the .nvmrc Node, then the Node 22 gate: a tag pushed by
+      # hand skips the changelog workflow, which waits for CI's gate-node22,
+      # so nothing publishes unless the `engines` floor passed on this commit.
       - run: npm run gate
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - run: npm run gate:core
       - name: Publish (skipped if this version is already on npm)
         run: |
           v="$(node -p "require('./package.json').version")"

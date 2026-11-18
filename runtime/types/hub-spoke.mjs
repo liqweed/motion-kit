@@ -17,7 +17,7 @@
  *     fontSize?: number }
  */
 import { easeOut, easeStandard, progress, window01 } from "../motion.mjs";
-import { boxNode, FONT_MIN, rectEdge } from "../parts.mjs";
+import { boxNode, FONT_MIN, maxFontSize, rectEdge } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { tok } from "../style.mjs";
 import { drawOn, el, pointOnLine } from "../svg.mjs";
@@ -96,7 +96,7 @@ export function hubSpoke(spec, { format = "16:9", locale = "en" } = {}) {
 	const hubLabel = localize(spec.hub.label, locale);
 	const labels = spokesSpec.map((s) => localize(s.label, locale));
 	// Largest font (≤ max) at which the layout fits and every label wraps.
-	const maxFs = spec.fontSize ?? (f.height > 0 ? 20 : 16);
+	const maxFs = maxFontSize(spec, f.height > 0 ? 20 : 16, `hub-spoke "${spec.id}"`);
 	let L;
 	let fs;
 	let hubLines;

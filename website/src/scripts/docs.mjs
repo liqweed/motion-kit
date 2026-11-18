@@ -5,6 +5,7 @@
  * the diagram explorable. Both demos use only the shipped player.
  */
 import { createScene } from "../../../runtime/types/index.mjs";
+import { linkSteps } from "../../../runtime/links.mjs";
 import { stepIndexAt } from "../../../runtime/scene.mjs";
 import { LIVE } from "./catalog.mjs";
 import { $, initPage, prefersDark, failNote, fetchText, h, loadScene, mount, onStep, styleFor, themeOpt } from "./site.mjs";
@@ -22,16 +23,12 @@ const fmt = phone ? "tall" : "wide";
 		if (!home) return;
 		const sc = await loadScene(home, { format: fmt });
 		const { controller } = mount(stage, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "none" });
-		const term = (i, text) => {
-			const b = h("button", { type: "button", class: "term-btn", "data-mk-step": String(i), "aria-pressed": "false" }, text);
-			const go = () => controller.seekStep(i);
-			b.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && go());
-			b.addEventListener("focus", go);
-			b.addEventListener("click", go);
-			return b;
-		};
+		const term = (i, text) => h("button", { type: "button", class: "term-btn", "data-mk-step": String(i), "aria-pressed": "false" }, text);
 		const terms = [term(0, "home hub"), term(1, "lights"), term(2, "door locks"), term(3, "heating"), term(4, "smoke alarms"), term(5, "phones")];
-		$("#demo-text").replaceChildren("The ", terms[0], " talks to everything. It switches the ", terms[1], " by room, reports the battery of the ", terms[2], ", steers the ", terms[3], ", raises the ", terms[4], " and tells your ", terms[5], ".");
+		const text = $("#demo-text");
+		text.replaceChildren("The ", terms[0], " talks to everything. It switches the ", terms[1], " by room, reports the battery of the ", terms[2], ", steers the ", terms[3], ", raises the ", terms[4], " and tells your ", terms[5], ".");
+		// The player's step buttons move the step too, so the marks follow the diagram (onStep).
+		linkSteps(controller, text, { mark: false });
 		onStep(controller, (i) => terms.forEach((b, j) => b.setAttribute("aria-pressed", String(j === i))));
 	} catch (err) {
 		failNote(stage, err);

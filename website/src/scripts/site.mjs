@@ -112,8 +112,8 @@ let playerCount = 0;
 export const themeOpt = () => (document.documentElement.dataset.theme === "light" || document.documentElement.dataset.theme === "dark" ? document.documentElement.dataset.theme : undefined);
 
 /**
- * Poll a controller for step changes. The runtime has no onStep event yet
- * (roadmap #9), so this reads controller.time; it stops when `stop()` is called.
+ * Poll a controller for step changes. The runtime has no step-change event yet,
+ * so this reads controller.time; it stops when `stop()` is called.
  * @param {any} controller
  * @param {(index: number) => void} cb
  */
@@ -257,18 +257,9 @@ export function wireCopyButtons(root = document) {
 }
 
 /**
- * The pairs the gate's G12 checks (runtime/style.mjs checkContrast): [label, fg, bg, minimum].
+ * The pairs the gate's G12 checks (runtime/style.mjs CONTRAST_PAIRS): [label, fg, bg, minimum].
  * @type {[string, string, string, number][]}
  */
-export const CONTRAST_PAIRS = [
-	["ink on bg", "ink", "bg", 4.5],
-	["ink on surface", "ink", "surface", 4.5],
-	["muted on bg", "muted", "bg", 4.5],
-	["muted on surface", "muted", "surface", 4.5],
-	["onAccent on accent", "onAccent", "accent", 4.5],
-	["line on bg", "line", "bg", 3],
-	["accent on bg", "accent", "bg", 3],
-	["emphasis on bg", "emphasis", "bg", 3],
-];
+export const CONTRAST_PAIRS = style.CONTRAST_PAIRS.map((p) => [`${p.fg} on ${p.bg}`, p.fg, p.bg, p.min]);
 export const contrastOf = style.contrast;
 export const contrastProblems = style.checkContrast;

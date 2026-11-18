@@ -25,25 +25,21 @@ import { DOCS_NAV, REPO } from "../../scripts/catalog.mjs";
 		</section>
 
 		<section aria-labelledby="build-h"><h2 id="build-h">Build it</h2>
-			<p class="lede" style="font-size:16px">Mount the player as usual, keep its controller, and mark terms with <code>data-mk-step</code>. Use buttons, not spans, so the terms are reachable without a mouse.</p>
-			<div class="codecard"><div class="file">page.html</div><pre tabindex="0"><code set:html={`&lt;p&gt;The &lt;button data-mk-step="0"&gt;home hub&lt;/button&gt; switches the
-   &lt;button data-mk-step="1"&gt;lights&lt;/button&gt; …&lt;/p&gt;
+			<p class="lede" style="font-size:16px">Mount the player as usual, keep its controller, mark terms with <code>data-mk-step</code> (a step id or index) and bind them with <code>linkSteps</code>. Use buttons, not spans, so the terms are reachable without a mouse.</p>
+			<div class="codecard"><div class="file">page.html</div><pre tabindex="0"><code set:html={`&lt;p&gt;The &lt;button type="button" data-mk-step="0"&gt;home hub&lt;/button&gt; switches the
+   &lt;button type="button" data-mk-step="1"&gt;lights&lt;/button&gt; …&lt;/p&gt;
 &lt;div id="home"&gt;&lt;!-- server-rendered final frame --&gt;&lt;/div&gt;
 &lt;script type="module"&gt;
   import { mountPlayer } from "./motion-kit/runtime/player.mjs";
-  const player = mountPlayer(home, scene);
-  for (const term of document.querySelectorAll("[data-mk-step]")) {
-    const go = () =&gt; player.seekStep(Number(term.dataset.mkStep));
-    term.addEventListener("pointerenter", go);
-    term.addEventListener("focus", go);
-    term.addEventListener("click", go);
-  }
+  import { linkSteps } from "./motion-kit/runtime/links.mjs";
+  const player = mountPlayer(home, scene, { autoplay: "none" });
+  const dispose = linkSteps(player, document.querySelector("article"));
 &lt;/script&gt;`} /></pre></div>
 			<ul>
-				<li><code>seekStep(i)</code> jumps to a settled frame without animating, so the diagram never shows a half-drawn state.</li>
-				<li>Never hover-only: touch has no hover, so the same handler runs on focus and click.</li>
-				<li>Marking the term back from the diagram needs the active step. This page polls <code>controller.time</code> against the scene’s steps: <b>needs: player onStep event</b> (<a href={`${REPO}/issues/9`}>#9</a>).</li>
-				<li>Reduced motion changes nothing here: jumps are already instant.</li>
+				<li>Hover (mouse and pen), keyboard focus and click select the same step. Touch selects on tap; never hover-only.</li>
+				<li>A selection jumps to a settled frame, so the diagram never shows a half-drawn state. <code>{`{ animate: true }`}</code> plays forward instead, except under reduced motion.</li>
+				<li>The step stays when the pointer leaves; <code>{`{ restore: true }`}</code> makes hover and focus a preview that returns to the previous frame, and a click keeps its step.</li>
+				<li><code>linkSteps</code> marks the terms of the step it selected with <code>aria-current="step"</code>. This page also follows the player’s own buttons, so it polls <code>controller.time</code> against the scene’s steps and passes <code>{`{ mark: false }`}</code>: <b>needs: player step-change event</b>.</li>
 			</ul>
 		</section>
 

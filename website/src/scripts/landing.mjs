@@ -4,6 +4,7 @@
  * motion-kit.dev · landing page. Every diagram is the real runtime; the only
  * invented thing is the agent session wording, and the page says so.
  */
+import { linkSteps, scrollSteps } from "../../../runtime/links.mjs";
 import { stepIndexAt } from "../../../runtime/scene.mjs";
 import { BRIEFS, DEFECTS, LIVE, PLANNED, STORY, STYLES, TRANSCRIPT } from "./catalog.mjs";
 import { liveCard, plannedCard } from "./cards.mjs";
@@ -97,21 +98,19 @@ renderHero(BRIEFS[0].id);
 	try {
 		const sc = await loadScene(find("agent-loop"), { format: phone ? "tall" : "16:9" });
 		const { controller } = mount(stage, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "none" });
-		const lines = TRANSCRIPT.map((l, i) => {
-			const go = () => controller.seekStep(i);
-			const b = h(
+		const lines = TRANSCRIPT.map((l, i) =>
+			h(
 				"button",
-				{ type: "button", class: "line", "aria-label": `${l.who}: ${l.text}${l.cmd ? ` ${l.cmd}` : ""}. Shows step ${i + 1}.` },
+				{ type: "button", class: "line", "data-mk-step": String(i), "aria-label": `${l.who}: ${l.text}${l.cmd ? ` ${l.cmd}` : ""}. Shows step ${i + 1}.` },
 				h("span", { class: `who${l.who === "You" ? " you" : ""}` }, l.who),
 				h("span", { class: "body" }, l.text, l.cmd ? h("code", null, l.cmd) : null),
 				h("span", { class: "tag" }, `step ${i + 1}`),
-			);
-			b.addEventListener("click", go);
-			b.addEventListener("focus", go);
-			b.addEventListener("pointerenter", (e) => e.pointerType === "mouse" && go());
-			return b;
-		});
+			),
+		);
 		$("#transcript").replaceChildren(...lines);
+		// Hover, focus and click select a line's step; the player's own controls
+		// move the step too, so the marks follow the diagram (onStep), not the helper.
+		linkSteps(controller, lines, { mark: false });
 		onStep(controller, (i) => lines.forEach((b, j) => b.setAttribute("aria-current", String(j === i))));
 	} catch (err) {
 		failNote(stage, err);
@@ -188,24 +187,18 @@ showStyle("tidewater");
 	try {
 		const sc = await loadScene(find("release-pipeline"), { format: "tall" });
 		const { controller } = mount(stage, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "none", controls: false, captions: false });
-		const paras = STORY.map((s, i) => h("section", { "data-i": String(i), "aria-current": "false" }, h("h3", null, h("small", null, String(i + 1).padStart(2, "0")), s.h), h("p", null, s.p)));
+		const paras = STORY.map((s, i) => h("section", null, h("h3", null, h("small", null, String(i + 1).padStart(2, "0")), s.h), h("p", null, s.p)));
 		$("#story-paras").replaceChildren(...paras);
+		// The rail scrolls; scrollSteps moves the diagram as each section crosses the middle.
 		const rail = STORY.map((s, i) => h("button", { type: "button", "aria-label": `Step ${i + 1}: ${s.h}`, onClick: () => {
 			paras[i].scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "center" });
-			go(i);
 		} }, h("i")));
 		$("#story-rail").replaceChildren(...rail);
-		let cur = -1;
-		function go(i) {
-			if (i === cur) return;
-			cur = i;
-			controller.seekStep(i);
-			paras.forEach((p, j) => p.setAttribute("aria-current", String(j === i)));
-			rail.forEach((b, j) => (j === i ? b.setAttribute("aria-current", "step") : b.removeAttribute("aria-current")));
-		}
-		go(0);
-		const io = new IntersectionObserver((entries) => entries.forEach((e) => e.isIntersecting && go(Number(/** @type {HTMLElement} */ (e.target).dataset.i))), { rootMargin: "-45% 0px -45% 0px" });
-		paras.forEach((p) => io.observe(p));
+		/** @param {number} i */
+		const markRail = (i) => rail.forEach((b, j) => (j === Math.max(i, 0) ? b.setAttribute("aria-current", "step") : b.removeAttribute("aria-current")));
+		controller.seekStep(0);
+		markRail(0);
+		scrollSteps(controller, paras, { onChange: markRail });
 	} catch (err) {
 		failNote(stage, err);
 	}

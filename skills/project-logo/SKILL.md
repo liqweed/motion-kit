@@ -12,12 +12,23 @@ Same gate, same determinism as any diagram.
 
 ## Locate the toolkit
 
+As in the animated-diagram skill: first `MOTION_KIT_HOME`, then the npm
+package through `npx` (at the version of these skills), then the plugin copy.
+`$MK` holds the template files (`brand/`, `styles/`); `mk` runs the CLI.
+
 ```bash
-MK="$HOME/workspace/motion-kit"                 # canonical clone (has node_modules)
-[ -d "$MK" ] || MK="$(cd "<this skill's base directory>/../.." && pwd)"   # plugin copy
-mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+PLUGIN="$(cd -P "<this skill's base directory>" && cd ../.. && pwd -P)" # -P: the base may be a symlink to a clone
+V="$(node -p "require(process.argv[1] + '/package.json').version" "$PLUGIN")"
+if [ -n "${MOTION_KIT_HOME:-}" ]; then
+  MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+elif npx -y "@liqweed/motion-kit@$V" --help >/dev/null 2>&1; then
+  MK="$PLUGIN"; mk() { npx -y "@liqweed/motion-kit@$V" "$@"; }
+else
+  MK="$PLUGIN"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+fi
 ```
-Node ≥ 22. PNG needs `@resvg/resvg-js` (`npm install` in `$MK`).
+Node ≥ 22. PNG needs `@resvg/resvg-js`: the `npx` route installs it; in
+`$MOTION_KIT_HOME`, run `npm install`. The plugin copy alone renders SVG only.
 
 ## Workflow
 

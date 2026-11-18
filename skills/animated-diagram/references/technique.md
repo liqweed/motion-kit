@@ -31,7 +31,9 @@ Video maps frame `f` at `fps` to `t = f / fps` (30 fps × 25 s = 750 frames).
 7. Round every number. `el()` rounds numeric attributes; numbers you put in a
    template string (`transform`, `points`, path `d`) must go through `num()`.
    The gate rejects any number with 5+ decimals.
-8. No `Date`, `Math.random()`, `performance.now()` inside a scene.
+8. No `Date`, `Math.random()`, `performance.now()` inside a scene, nor in the
+   helpers it calls: the gate renders every sample under two stubbed clocks
+   and refuses a frame whose bytes change.
 9. **Step frames are settled** (§4).
 10. Markup is balanced and escaped: labels cannot inject markup.
 11. Visibility decisions use rounded values: an element whose opacity rounds to
@@ -82,9 +84,12 @@ Patterns:
 
 `steps[i].at` is when build step *i* is fully shown, and its frame is what a
 slide shows. It must look intentional on its own: nothing mid-motion, no
-half-drawn line pointing at nothing, no fading dot. Rule: **the next motion may
-not start before `at`.** The gate asserts `frame(at − 1 ms) === frame(at)`.
-Anything that fades out by a step (a travelling dot) must reach 0 by `at`.
+half-drawn line pointing at nothing, no fading dot. Rule: **the step's own
+motion comes to rest by `at`, and the next motion starts no earlier than
+50 ms after it.** The gate asserts `frame(at − 1 ms) === frame(at)` and that
+the frames 1, 15, 30 and 45 ms after `at` equal it too, so a slow fade passing
+through `at` fails even when rounding hides it over 1 ms. Anything that fades
+out by a step (a travelling dot) must reach 0 by `at`.
 
 ## 5. Layouts are computed per format
 

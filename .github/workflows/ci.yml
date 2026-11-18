@@ -1,9 +1,17 @@
 name: CI
 
 # The repository gate (typecheck, versions, tests, scene gate, media freshness,
-# site build) on every pull request and every push to main. The jig changelog
-# workflow tags a release once this workflow's `gate` job passed on the
-# releasing commit (ci.required_checks in .config/jig.yaml).
+# site build) on every pull request and every push to main, on the Node in
+# .nvmrc (`gate`), and the same without the site build on Node 22, the
+# `engines` floor (`gate-node22`, `npm run gate:core`). The website is not
+# part of the package and Astro needs a newer Node 22 than users may have.
+# Two jobs rather than a matrix, so the `gate` check keeps its name: the jig
+# changelog workflow tags a release once this workflow's `gate` and
+# `gate-node22` jobs passed on the releasing commit (ci.required_checks in
+# .config/jig.yaml), and release.yml relies on that for Node 22.
+#
+# When a PNG snapshot test fails (test/snapshots.test.mjs), the expected,
+# actual and diff PNGs it wrote to out/snapshots/ are uploaded as an artifact.
 on:
   pull_request:
   push:
@@ -31,3 +39,33 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run gate
+      - name: Upload PNG snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: png-snapshot-diffs
+          path: out/snapshots/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  gate-node22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run gate:core
+      - name: Upload PNG snapshot diffs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: png-snapshot-diffs-node22
+          path: out/snapshots/
+          if-no-files-found: ignore
+          retention-days: 14

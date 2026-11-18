@@ -12,5 +12,5 @@
 		"types": ["node"],
 		"skipLibCheck": true
 	},
-	"include": ["runtime/**/*.mjs", "lib/**/*.mjs", "cli/**/*.mjs", "brand/**/*.mjs", "examples/**/*.mjs", "test/**/*.mjs", "website/src/scripts/**/*.mjs", "website/src/scripts/**/*.d.ts", "website/*.mjs", "scripts/**/*.mjs"]
+	"include": ["runtime/**/*.mjs", "bench/**/*.mjs", "lib/**/*.mjs", "cli/**/*.mjs", "brand/**/*.mjs", "examples/**/*.mjs", "test/**/*.mjs", "website/src/scripts/**/*.mjs", "website/src/scripts/**/*.d.ts", "website/*.mjs", "scripts/**/*.mjs"]
 }

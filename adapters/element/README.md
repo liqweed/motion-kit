@@ -42,6 +42,11 @@ diagram.addEventListener("motion-error", ({ detail }) => console.error(detail.er
 diagram.controller?.seek(2);
 ```
 
+To drive the diagram from the page (text sections that advance it on scroll,
+terms marked `data-mk-step` that select a step on hover and focus), import
+`scrollSteps` / `linkSteps` from the vendored `runtime/links.mjs` and bind them
+to the controller; see `skills/animated-diagram/references/interactivity.md`.
+
 The player follows its normal visible autoplay and reduced-motion rules.
 Removing the element destroys its player, cancels pending loading and restores
 the fallback; reconnecting mounts a fresh controller. Events are dispatched

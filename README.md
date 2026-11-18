@@ -43,7 +43,8 @@ node cli/motion-kit.mjs export examples/smart-home.json -o out/slides --png --qc
 node cli/motion-kit.mjs bake examples/order-flow.json -o out/order.svg -f wide
 node cli/motion-kit.mjs video examples/smart-home.json -f 9:16 -o out/reel.mp4 --sheet out/sheet.png
 node cli/motion-kit.mjs icon brand/logo.scene.mjs -o .     # project icon set: assets/ + .idea/
-npm test
+npm test                           # includes PNG snapshots of the examples' step frames
+npm run snapshots:update           # after an intended visual change: regenerate test/snapshots/
 npm run gate                       # typecheck, versions, tests, scene gate, media freshness
 ```
 
@@ -60,18 +61,23 @@ runtime/        dependency-free ES modules (browser + Node)
   style.mjs     tokens, neutral style, contrast checks, token resolution
   scene.mjs     scene contract, formats, renderSvg
   parts.mjs     shared node/label drawing
-  types/        spec-driven scene types: sequence, hub-spoke
+  types/        spec-driven scene types: sequence, hub-spoke, timeline, stack
   bake.mjs      zero-JS animated SVG
   player.mjs    live player (controls, a11y, reduced motion, capture hook)
+  links.mjs     page links: scroll sections and data-mk-step terms drive the player
+  patch.mjs     in-place SVG updates for the player's frames
 lib/            Node-side: check (gate), export, build (HTML inliner), raster, video, icon
 adapters/       slidev (Vue), astro, element (custom element), page (README)
 skills/         animated-diagram, motion-render, project-logo (Claude Code / Craft skills)
-examples/       order-flow (sequence), smart-home (hub-spoke), custom-pulse (custom module)
+examples/       order-flow (sequence), smart-home (hub-spoke), incident (timeline),
+                web-stack (stack), custom-pulse (custom module)
+bench/          heavy scene for npm run bench:player (live-player frame cost)
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
 assets/         generated project icon: icon.svg, icon.png, icon-animated.svg
 docs/media/     baked README animations (generated: npm run media)
 docs/           prd.md, roadmap.md, spec/technique.md
 styles/         neutral.json (the only style shipped; brands live in their repos)
+test/           node:test suites; snapshots/ holds PNG step frames (npm run snapshots:update)
 ```
 
 ## Install the skills
@@ -83,8 +89,10 @@ styles/         neutral.json (the only style shipped; brands live in their repos
   `~/.agents/skills/motion-render` and `~/.agents/skills/project-logo` to
   `skills/*` in this clone.
 
-The skills look for this clone at `~/workspace/motion-kit` first (it has
-`node_modules`), then fall back to the plugin copy.
+The skills find the CLI in this order: `MOTION_KIT_HOME` (a clone or install
+you choose; run `npm install` there for PNG and video), then the npm package
+through `npx` at the plugin's version (it installs the PNG renderer), then the
+plugin copy, which checks, builds and exports SVG but renders no PNG or video.
 
 ## Use in another repo (vendor)
 

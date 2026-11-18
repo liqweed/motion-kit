@@ -11,12 +11,32 @@ clock; exporters sample exact times; video samples `t = f / fps`. Read
 
 ## Locate the toolkit
 
+`$MK` is where the toolkit's files are (examples, styles, `brand/`); `mk` runs
+the CLI. Take the first that works:
+
+1. `MOTION_KIT_HOME`: a clone or install the user chose (run `npm install`
+   there for PNG and video).
+2. The npm package through `npx`, at the version of these skills. `npx`
+   installs the PNG renderer with it.
+3. The plugin copy, two levels above this skill: `check`, `build`, `bake` and
+   SVG `export` work; PNG and video do not.
+
 ```bash
-MK="$HOME/workspace/motion-kit"                 # canonical clone (has node_modules)
-[ -d "$MK" ] || MK="$(cd "<this skill's base directory>/../.." && pwd)"   # plugin copy
-node "$MK/cli/motion-kit.mjs" --help
+PLUGIN="$(cd -P "<this skill's base directory>" && cd ../.. && pwd -P)" # -P: the base may be a symlink to a clone
+V="$(node -p "require(process.argv[1] + '/package.json').version" "$PLUGIN")"
+if [ -n "${MOTION_KIT_HOME:-}" ]; then
+  MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+elif npx -y "@liqweed/motion-kit@$V" --help >/dev/null 2>&1; then
+  MK="$PLUGIN"; mk() { npx -y "@liqweed/motion-kit@$V" "$@"; }
+else
+  MK="$PLUGIN"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+fi
+mk --help
 ```
-Node ≥ 22. PNG/video need `@resvg/resvg-js` (`npm install` in `$MK`) and `ffmpeg`.
+Node ≥ 22. PNG and video need `@resvg/resvg-js`; video also needs `ffmpeg`.
+When one is missing, the CLI names it: install `@resvg/resvg-js` with
+`npm install` in `$MOTION_KIT_HOME` (or use the `npx` route), and `ffmpeg`
+from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
 
 ## Workflow
 
@@ -33,7 +53,7 @@ Node ≥ 22. PNG/video need `@resvg/resvg-js` (`npm install` in `$MK`) and `ffmp
    Write the spec, then render the step contact sheet and show it:
    `motion-kit export spec.json -o <scratch>/sb --png --qc` → open `index.html`
    or show the PNGs. Get a yes on the *story* before polishing.
-3. **Build.** Spec-driven types first (`sequence`, `hub-spoke`). Only write a
+3. **Build.** Spec-driven types first (`sequence`, `hub-spoke`, `timeline`, `stack`). Only write a
    custom scene module when no type fits (`references/custom-scenes.md`).
 4. **Gate.** `motion-kit check spec.json` must pass in every format/locale
    shipped: deterministic, settled steps, rounded numbers, token-only colours,
@@ -52,7 +72,8 @@ Node ≥ 22. PNG/video need `@resvg/resvg-js` (`npm install` in `$MK`) and `ffmp
 - Every motion must answer "what does this help the viewer understand?".
 - Skeleton first, then fill: show the whole structure, then walk through it.
 - One emphasis colour, one emphasis element.
-- Step frames are settled: the next motion starts at or after the step's `at`.
+- Step frames are settled: motion comes to rest by the step's `at`, and the
+  next motion starts no earlier than 50 ms after it.
 - Long text belongs in HTML captions (`detail`), not in the SVG.
 - Always a pause control (WCAG 2.2.2); reduced motion = final frame, no autoplay.
 - No `Date`, `Math.random`, `performance.now` inside a scene.

@@ -6,12 +6,22 @@ description: "Render motion-kit scenes (animated diagrams) to deliverables: slid
 # Motion render
 
 All outputs come from the same pure scene, so they always agree. Locate the
-toolkit as in the animated-diagram skill (`MK=$HOME/workspace/motion-kit`, else
-the plugin root two levels above this skill). PNG and video need
-`@resvg/resvg-js` (`npm install` in `$MK`) and `ffmpeg`.
+toolkit as in the animated-diagram skill's "Locate the toolkit": first
+`MOTION_KIT_HOME`, then the npm package through `npx` (at the version of these
+skills), then the plugin copy two levels above this skill. PNG and video need
+`@resvg/resvg-js`, which the `npx` route installs; video also needs `ffmpeg`.
+The plugin copy alone has neither, so prefer `npx` there.
 
 ```bash
-mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+PLUGIN="$(cd -P "<this skill's base directory>" && cd ../.. && pwd -P)" # -P: the base may be a symlink to a clone
+V="$(node -p "require(process.argv[1] + '/package.json').version" "$PLUGIN")"
+if [ -n "${MOTION_KIT_HOME:-}" ]; then
+  MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+elif npx -y "@liqweed/motion-kit@$V" --help >/dev/null 2>&1; then
+  MK="$PLUGIN"; mk() { npx -y "@liqweed/motion-kit@$V" "$@"; }
+else
+  MK="$PLUGIN"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
+fi
 ```
 
 **Always run `mk check <scene>` first.** Exporters refuse scenes that fail the gate.
@@ -80,5 +90,13 @@ errors, and cleans up on disconnect. Full usage: `adapters/element/README.md`.
   REVIEW.md                      review report with human approval line
 ```
 `manifest.json` records scene, type, format, locale, size, duration, style,
-theme, an input hash and the source commit, with no timestamps, so a re-render
-from the same inputs is byte-identical and a stale export is easy to spot.
+theme, an input hash, the source commit and `sourceDirty` (`true` when the
+source file has uncommitted changes, so the frames match no commit; `null`
+outside git), with no timestamps, so a re-render from the same inputs is
+byte-identical and a stale export is easy to spot. Deliver from a clean
+source (`sourceDirty: false`).
+
+Re-exporting into the same folder replaces the previous export: files its
+`manifest.json` listed that the new export does not write are deleted, so the
+folder holds exactly what the new manifest lists. Files no export wrote are
+left alone and named in a warning; keep notes and review files elsewhere.

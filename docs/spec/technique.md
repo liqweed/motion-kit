@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 ---
 
 # motion-kit technique — normative specification
@@ -38,10 +38,11 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `steps` | `{at, label, detail?, id?}[]` | MUST | ≥ 1 step; `at` strictly increasing; `at ≤ duration` (+1e-9); every `label` non-empty; an `id`, if present, is a non-empty string unique within the scene [throws] (`validateScene`). The last step is the finished diagram. Page scripts address steps by `id` (§10.2); scene types copy a spec node's, hub's or spoke's `id`. |
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
+| `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | Token pairs the scene draws beyond `CONTRAST_PAIRS` (§6); the gate checks the style against them in both themes [gate] G12 (`lib/check.mjs`, rule 8; used by `examples/custom-pulse.scene.mjs`). Tokens MUST be known and `min` in [1, 21]. |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
-  `createScene(spec, {format, locale})` (`runtime/types/index.mjs:19-23`) — or a
+  `createScene(spec, {format, locale})` (`runtime/types/index.mjs:25-29`) — or a
   custom module whose default export is `(opts) → scene`, called by
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
@@ -63,13 +64,13 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 
 | # | Rule | Enforcement | Rationale |
 |---|---|---|---|
-| T1 | `frame(t)` MUST depend only on `t` and the scene's constants: no `Date`, `Math.random`, `performance.now`, no state carried between calls, no module-level mutable state. | [gate] G1 re-renders each `t`; G11 scans the source (`lib/check.mjs:42,80-81`) | Random access: a player can jump, an exporter can write exactly one frame, video samples `t = f/fps` (`runtime/scene.mjs:14-17`). |
+| T1 | `frame(t)` MUST depend only on `t` and the scene's constants: no `Date`, `Math.random`, `performance.now`, no state carried between calls, no module-level mutable state. | [gate] G1 re-renders each `t`; G11 renders under stubbed clocks and scans the source (`lib/check.mjs`) | Random access: a player can jump, an exporter can write exactly one frame, video samples `t = f/fps` (`runtime/scene.mjs:14-17`). |
 | T2 | Same `t` (and same style/options) MUST give byte-identical output. | [gate] G1 | Tests, diffs, caching and committed media all depend on it. |
 | T3 | Callers MUST clamp `t` to `[0, duration]`; `renderSvg` does (`runtime/scene.mjs:70`). `frame` MAY assume a clamped `t`. | — | Defines "before start" and "hold". |
 | T4 | Every number interpolated into markup MUST be rounded: `num(n, 2)` by default, 3 digits for `opacity`, 4 for scale factors (`runtime/svg.mjs:17-22,29,64`). `num` MUST throw on non-finite input and never emit `-0`. | [gate] G3; non-finite → G5 | 17-digit floats made "settled" frames differ by 1 ms (`skills/animated-diagram/references/technique.md:128-129`). |
 | T5 | Visibility MUST be decided on rounded values: an element whose opacity rounds to 0 is omitted; an opacity that rounds to 1 is not written (`runtime/svg.mjs:28,39,68-72`). | by construction (`el`, `fade`) | Identical-looking frames must be identical bytes (opacity 0.9999 vs omitted). |
 | T6 | Scenes MUST NOT use CSS transitions/animations or timers; the renderer owns the clock (`runtime/player.mjs:15`). | — | Exported frames would not match what plays. |
-| T7 | Variation, if any, MUST derive from constants and `t` (seeded), never from runtime randomness. | [gate] G11 (heuristic) | Same as T2. |
+| T7 | Variation, if any, MUST derive from constants and `t` (seeded), never from runtime randomness. | [gate] G1, G11 | Same as T2. |
 
 ## 3. Formats and layout per format
 
@@ -92,12 +93,16 @@ Formats map a name to a viewBox (`runtime/scene.mjs:23-30`):
 - Arrangement by aspect: "narrow" means `tall` or `W/H < 0.8` → column/tree;
   `W/H ≥ 1.5` → row (or 2-row snake when cells are < 96 px) for `sequence`;
   otherwise snake grid (`runtime/types/sequence.mjs:35-46`) or radial ellipse
-  (`runtime/types/hub-spoke.mjs:40,59-73`).
+  (`runtime/types/hub-spoke.mjs:40,59-73`). `timeline` runs its axis
+  vertically when narrow and horizontally otherwise (`runtime/types/timeline.mjs:239`);
+  `stack` is one column of layers with a rail on the right in every format.
 - **Auto-fit text**: a type MUST try the largest font size and step down by
   1 px to `FONT_MIN = 14` (`runtime/parts.mjs:12`) until every label wraps
   into its budget; if none fits it MUST throw. Maxima: `sequence` 22 px fixed /
   16 px strips (`runtime/types/sequence.mjs:127`); `hub-spoke` 20 / 16
-  (`runtime/types/hub-spoke.mjs:97`); `spec.fontSize` overrides the maximum.
+  (`runtime/types/hub-spoke.mjs:97`); `timeline` 22 / 16
+  (`runtime/types/timeline.mjs:280`); `stack` 22 / 16
+  (`runtime/types/stack.mjs:129`); `spec.fontSize` overrides the maximum.
 - **Collisions**: a layout whose boxes overlap (6 px gap) or leave the canvas
   MUST throw rather than render (`runtime/types/hub-spoke.mjs:33-35,76-84,119`).
 - Connectors MUST NOT cross labels; snake-grid row turns route as elbows
@@ -215,7 +220,17 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 
 - Scenes MUST NOT contain colour literals [gate] G4. Colours MUST be
   `tok(name)` → `var(--mk-<name>)`; an unknown name throws
-  (`runtime/style.mjs:52-55`).
+  (`runtime/style.mjs:52-55`). Besides tokens, a colour attribute (`fill`,
+  `stroke`, `stop-color`, `color`, `flood-color`, `lighting-color`) or colour
+  property (in `style="…"` or a `<style>` element: those, `background` and
+  any `*-color`) MAY hold only `url(#…)` references and the keywords `none`,
+  `currentColor`, `transparent`, `inherit`, `initial`, `unset`, `revert`,
+  `revert-layer`, `context-fill` and `context-stroke`. None of them names a
+  colour, so they look the same under every style and theme; `transparent`
+  is allowed because it paints nothing in either theme. Named colours
+  (`red`), hex, colour functions and other custom properties (`var(--brand)`,
+  `var(--mk-accent, red)`) are literals. Text content is not checked: a label
+  may say "#1".
 - Tokens (`runtime/style.mjs:14-23`): `bg`, `surface`, `ink`, `muted`, `line`,
   `accent`, `onAccent`, `emphasis`. Roles: see
   [`styles.md`](../../skills/animated-diagram/references/styles.md). Exactly one
@@ -231,11 +246,21 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
   literal (`runtime/scene.mjs:84`, `runtime/style.mjs:86-93`), because slide
   apps, rasterizers and image viewers ignore CSS variables; an unresolvable
   token throws.
-- **Contrast** (`runtime/style.mjs:114-134`, WCAG relative luminance): in both
-  themes, text ≥ 4.5:1 — `ink`/`muted` on `bg` and `surface`, `onAccent` on
-  `accent`; shapes ≥ 3:1 — `line`, `accent`, `emphasis` on `bg`. `motion-kit
-  check` MUST fail when the selected style violates any pair [gate] G12
-  (`cli/motion-kit.mjs:83-85`). `neutral` MUST pass (`test/runtime.test.mjs:96-98`).
+- **Contrast** (`runtime/style.mjs`, `checkContrast`, WCAG relative
+  luminance): in both themes, every pair in `CONTRAST_PAIRS`, the token pairs
+  the scene types and shared parts draw where the pair carries meaning in a
+  step frame. Text ≥ 4.5:1 — `ink`/`muted` on `bg` and `surface`, `onAccent`
+  on `accent`; shapes ≥ 3:1 — `line`, `accent`, `emphasis` on `bg`, and
+  `emphasis` on `accent` (the ring marking the current node sits 3.5 units
+  from the reached node it surrounds, and tells "here" from "reached" without
+  hue). `CONTRAST_EXEMPT` lists, with a reason each, the pairs left out:
+  `line` on `surface` (an outline is told from the canvas outside it),
+  `accent` on `surface` and `emphasis` on `surface` and `accent` on `line`
+  (only in motion), `onAccent` on `emphasis` (only the logo; logos are exempt
+  from WCAG 1.4.11). A scene adds the pairs it draws besides through
+  `contrastPairs` (§1). `motion-kit check` MUST fail when the selected style
+  violates any shared pair, once per run, or a scene's own, per scene [gate]
+  G12 (`lib/gate.mjs`). `neutral` MUST pass (`test/runtime.test.mjs`).
 - motion-kit ships only `neutral` (`styles/neutral.json`); brand styles MUST
   live in the consumer repo.
 
@@ -265,11 +290,17 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 
 - `steps[i].at` is the time step *i* is fully shown; its frame is what a slide,
   a step button and Slidev show.
-- Step frames MUST be settled: nothing moves at `at` [gate] G6
-  (`frame(at − 1 ms) === frame(at)`, `lib/check.mjs:55-58`).
-- Authoring rule: the next motion MUST NOT start before `at`, and anything that
-  fades out by a step (a travelling dot) MUST reach 0 by `at`. Scene types
-  satisfy this by construction: `PERIOD ≥ HOP + FILL`
+- Step frames MUST be settled: nothing moves at `at` [gate] G6. The step's
+  own motion MAY end exactly at `at` but MUST be at rest there
+  (`frame(at − 1 ms) === frame(at)`), and nothing MAY change in the 50 ms
+  after it (`frame(at + δ) === frame(at)` for δ = 1, 15, 30 and 45 ms, up to
+  the next step; `SETTLE_AFTER` in `lib/check.mjs`). The look-ahead is what
+  catches slow motion passing through `at`, which rounding hides over 1 ms.
+- Authoring rule: the next motion MUST NOT start earlier than 50 ms after
+  `at` (the "pause between beats" in
+  [`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)),
+  and anything that fades out by a step (a travelling dot) MUST reach 0 by
+  `at`. Scene types satisfy this by construction: `PERIOD = HOP + FILL + 0.05`
   (`runtime/types/sequence.mjs:24-29`), step = fill end
   (`runtime/types/sequence.mjs:147`, `runtime/types/hub-spoke.mjs:149`).
   Springs and split edges MUST budget their settle time and lag (§4.3, §4.5).
@@ -282,14 +313,18 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 
 ## 9. Scene types
 
-Registered types: `sequence` (2–12 nodes) and `hub-spoke` (2–10 spokes)
-(`runtime/types/index.mjs:14-17`). Fields and storyboards:
+Registered types: `sequence` (2–12 nodes), `hub-spoke` (2–10 spokes),
+`timeline` (2–8 events) and `stack` (2–8 layers)
+(`runtime/types/index.mjs:18-23`). Fields and storyboards:
 [`scene-types.md`](../../skills/animated-diagram/references/scene-types.md).
 Normative points:
 
-- Out-of-range node/spoke counts, a missing hub and an unknown type MUST throw
+- Out-of-range node/spoke/event/layer counts, a missing hub and an unknown type MUST throw
   (`runtime/types/sequence.mjs:123`, `runtime/types/hub-spoke.mjs:89-90`,
-  `runtime/types/index.mjs:21`).
+  `runtime/types/timeline.mjs:203-231`, `runtime/types/stack.mjs:117-126`,
+  `runtime/types/index.mjs:27`). A timeline event without `when` or `label`, a
+  past event after a planned one, planned events without `now`, a stack layer
+  without `label` and a stack `direction` other than `down`/`up` MUST throw.
 - A new type MUST export `(spec, {format, locale}) → scene`, be registered in
   `SCENE_TYPES`, and get a gate run across every format and locale
   (`AGENTS.md:59-61`). A custom shape SHOULD be promoted to a type once used twice.
@@ -318,6 +353,7 @@ Every target goes through this one function. It MUST emit `<svg>` with
 | Initial state MUST be the final frame. A server/no-JS fallback SHOULD be `playerMarkup(scene, { id, … })` inside a `.mk-player` container, with `PLAYER_CSS` in a `style[data-mk-player-css]` and the tokens from `themeCss(selector, style, theme)`: the markup the player builds, with the controls `inert`. The step list and the colours then exist without JavaScript, and mounting moves nothing. A plain final-frame SVG MAY be used instead. | `runtime/player.mjs` (`view`, `playerMarkup`, `themeCss`), `lib/build.mjs`, `adapters/astro/AnimatedDiagram.astro`, `test/player.test.mjs` |
 | Autoplay `visible` (default): plays once from 0 when ≥ 40 % of the diagram, or ≥ 40 % of the viewport's height, is in view (decided from the intersection, not `isIntersecting` alone), then holds; `none` disables. MUST NOT loop. | `runtime/player.mjs` (`shown`, `THRESHOLDS`) |
 | While a playing diagram does not intersect the viewport (scrolled away, `display: none`), its clock MUST stop and no frame be drawn; when it intersects again, playback resumes from the same time. Visibility is observed until `destroy()`. | `runtime/player.mjs` (`onVisibility`, `run`) |
+| Each frame MUST update the stage's SVG in place (`patchMarkup`): nodes that persist between frames are kept, only changed attributes and text are written, and nodes are added, removed or replaced (by position; a different tag replaces the subtree) only where the markup's structure changes. The DOM after each frame MUST equal what `innerHTML` would build from the same markup. Markup outside the subset the patch reproduces exactly (comments, CDATA, single-quoted or bare attributes, named entities beyond the XML five, elements inside `<title>`, `<desc>` or `<foreignObject>`, HTML elements that leave SVG) MUST fall back to `innerHTML` for that frame. Because nodes persist, a CSS transition on the diagram would run between frames: T6 keeps them out of scenes, and pages MUST NOT add them. | `runtime/patch.mjs`, `runtime/player.mjs` (`draw`), `test/patch.test.mjs`, `test/player.test.mjs`, `scripts/bench-player.mjs` |
 | Play/pause MUST always be present when motion can play (WCAG 2.2.2); label shows Play/Pause/Replay. | `runtime/player.mjs` (`playLabel`, `draw`) |
 | Every control (buttons, scrubber) MUST be at least 44 × 44 px. The caption and the play button MUST keep the size of their longest content, so playback does not shift the layout. | `PLAYER_CSS` (`.mk-btn`, `.mk-scrub`, `.mk-caption`, `.mk-play`) |
 | One `<button>` per step, labelled `N. label`; activating it jumps by default. `animateSteps: true` opts buttons and keyboard navigation into `playToStep`. `aria-current="step"` marks the active step. | `runtime/player.mjs` |
@@ -357,6 +393,21 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   destroy the player and restore the fallback; reconnection mounts afresh.
   Superseded asynchronous loads MUST NOT mount or publish errors.
 
+### 10.2.2 Page links (`runtime/links.mjs`)
+
+Helpers that drive a player controller from the page around it. They MUST
+touch the DOM only when called, never move focus, never change layout (the
+only marks are `aria-current="step"` attributes), and return a `dispose()`
+that removes every listener, observer and mark they added.
+
+| Requirement | Source |
+|---|---|
+| A step reference (`data-mk-step`, or a number) MUST resolve to the step with that `id`, else to a whole-number index; an unknown id or an index out of range throws `RangeError` when the helper binds. | `runtime/links.mjs` (`stepRef`, `sectionSteps`), `test/links.test.mjs` |
+| `scrollSteps(controller, sections, options)`: a section's step is its `data-mk-step`, else its position. The active section MUST be the last one, in order, whose top has reached a line at `line` (default 0.5) of the viewport's or `root`'s height (`activeSection`), observed with one IntersectionObserver whose root margin ends at that line. Before the first section nothing changes. | `runtime/links.mjs` (`scrollSteps`, `activeSection`) |
+| Moving one section forward to a later step MUST play to it (`playToStep`); every other change (back, skipping, the first section, `animate: false`, `prefers-reduced-motion: reduce`) MUST jump (`seekStep`); a change to the same step calls nothing (`scrollMove`). The diagram MUST only rest on settled steps: no continuous scrubbing. | `runtime/links.mjs` (`scrollMove`), `test/links.test.mjs` |
+| `linkSteps(controller, rootOrElements, options)`: every element with `data-mk-step` (under the root, or given) MUST select its step on `pointerenter` (not touch), `focusin` and `click`, so keyboard focus selects the same step as hover. A selection jumps; `animate: true` plays forward unless reduced motion. With `restore: true`, once neither hover nor focus is on a term, the frame shown before the preview returns (`seek`), unless a click committed a step. | `runtime/links.mjs` (`linkSteps`), `test/links.test.mjs` |
+| Without IntersectionObserver, `scrollSteps` MUST do nothing (the text still reads). | `runtime/links.mjs` |
+
 ### 10.3 Self-contained HTML (`motion-kit build`, `lib/build.mjs`)
 
 - MUST be one document with the runtime inlined by `lib/bundle.mjs`, no
@@ -366,6 +417,8 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   `themeCss`) and set `<html lang>` to the scene locale (`lib/build.mjs`).
 - A custom module is built with the caller's `--options` and `kit`: every
   runtime module is a bundle entry, so the `MotionKit` global is the kit.
+  The page-link helpers (§10.2.2) are bundled too (`MotionKitRuntime.scrollSteps`,
+  `MotionKitRuntime.linkSteps`).
 - The CLI MUST refuse a scene that fails the gate (`cli/motion-kit.mjs:112-113`)
   and bundled code containing `</script>` (`:115`).
 - The inlined runtime MUST render the same bytes as Node
@@ -407,10 +460,20 @@ The Astro adapter mounts each diagram once, tears the players down on `astro:bef
   layout cannot be built, it shows the exported frame and says why.
 - `manifest.json` MUST contain no timestamps: tool, version, scene, type,
   format, locale, scene options, size, duration, style, theme, a 16-hex input
-  hash (source file + style + scene options), source commit, render settings,
-  file list
-  (`lib/export.mjs:66-88`). Two exports of the same inputs MUST be equal
-  (`test/cli.test.mjs:20-30`).
+  hash (source file + style + scene options), source commit, source dirty
+  flag, render settings, file list (`lib/export.mjs`). Two exports of the
+  same inputs MUST be equal (`test/cli.test.mjs`).
+- `sourceCommit` is the short `HEAD` of the repository holding the source
+  file. `sourceDirty` is `true` when that file differs from it (modified,
+  staged or untracked: `status --porcelain -- <file>` is not empty), `false`
+  when it does not, and `null`, like `sourceCommit`, outside a repository.
+  Only the source file counts: modules a custom scene imports, the style file
+  and the options file do not (the input hash covers the style and options).
+- A re-export into the same folder MUST replace the previous one: files the
+  folder's previous `manifest.json` listed and the new one does not are
+  removed, so the folder holds what the new manifest lists. Files no manifest
+  listed MUST NOT be touched; the export names them in a warning on stderr
+  (`lib/export.mjs`, `test/cli.test.mjs`).
 
 ### 10.6 Video (`motion-kit video`, `lib/video.mjs`)
 
@@ -467,15 +530,15 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G1 | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs:41-42` | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
 | G2 | Each sampled frame MUST be well-formed (balanced tags, no stray `<`, entities only `amp lt gt quot #39 #n`). | `:12-31,43-44` | Escaping failures and broken markup break every target. |
 | G3 | No number with ≥ 5 decimals in the full SVG. | `:45-46` | Rounding (T4). |
-| G4 | No `#hex`, `rgb(a)(`, `hsl(a)(` in `frame()` output; id references (`url(#…)`, `href="#…"`) are not colours. | `:47-49` | Token-only colours: themes and brand styles must work everywhere. |
+| G4 | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content is not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
 | G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
-| G6 | `render(at − 0.001) === render(at)` for every step. | `:55-58` | Settled step frames (§8). |
+| G6 | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | First frame ≠ last frame. | `:61-63` | Something must animate. |
 | G8 | `render(duration + 5) === render(duration)`. | `:65` | Holds the final frame. |
 | G9 | `duration ≤ 12` s. | `:68` | Explainer budget (see §12 D1). |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
-| G11 | `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`. | `:80-81` | T1. Textual heuristic: helpers defined outside `frame` are not scanned. |
-| G12 | Style passes WCAG contrast in both themes. | `lib/gate.mjs`, `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark. |
+| G11 | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
+| G12 | Style passes WCAG contrast in both themes for every pair in `CONTRAST_PAIRS` (once per run) and for each scene's `contrastPairs` (per scene). | `lib/gate.mjs`, `lib/check.mjs` (rule 8), `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark, for the pairs actually drawn (§6). |
 | G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
 | G14 | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
 
@@ -495,7 +558,7 @@ Recorded, not resolved. Each needs an owner decision.
 | D3 | Every locale is checked | `.mjs` modules are checked in `en` only (`cli/motion-kit.mjs:89`), although `examples/custom-pulse.scene.mjs` ships `nl`. | "Labels fit … in every locale" (`README.md:97`, `AGENTS.md:48-49`). |
 | D4 | Missing copy | `localize` silently falls back to the first available language (`runtime/scene.mjs:36-39`). | "Missing label → throw" (`skills/animated-diagram/references/technique.md:111`). Only an empty *step* label throws. |
 | D5 | Gate rule G10 and `stepLabelsInFrame` | Enforced (`lib/check.mjs:70-77`). | Absent from the scene contract comment (`runtime/scene.mjs:4-12`), `custom-scenes.md`, and the rule lists in `README.md:94-99` and `AGENTS.md:38-49`. |
-| D6 | "Enforced by `motion-kit check`" | G1 and G11 only partly verify purity (no cross-call state detection; source scan limited to `frame`'s own text); CSS-transition and "no earlier-frame state" rules are not checked. Escaping is guaranteed by `esc`/`text`, and only detected by G2 for `<` and `&`. | All 11 determinism rules listed as "enforced by `motion-kit check`" (`skills/animated-diagram/references/technique.md:23-39`). |
+| D6 | "Enforced by `motion-kit check`" | G1 and G11 only partly verify purity: no cross-call state detection, and a clock reference taken at import time escapes G11's stub; CSS-transition and "no earlier-frame state" rules are not checked. Escaping is guaranteed by `esc`/`text`, and only detected by G2 for `<` and `&`. | All 11 determinism rules listed as "enforced by `motion-kit check`" (`skills/animated-diagram/references/technique.md:23-39`). |
 | D7 | Style `radius` / `stroke` | Normalized (`runtime/style.mjs:63-64`) but never read; parts default to radius 10, stroke 2 (`runtime/parts.mjs:52,75`). | Documented as style fields (`styles.md:28-29`). |
 | D8 | Dark fallback | A style with no `dark` applies its **light** overrides to dark (`runtime/style.mjs:66`). | "Missing tokens fall back to neutral" (`styles.md:35`). |
 | D9 | Video frame reuse | PNGs are reused only when `t` repeats (lead and hold) (`lib/video.mjs:46`). | "Identical consecutive frames are rasterized once" (`skills/motion-render/references/video.md:9`). |

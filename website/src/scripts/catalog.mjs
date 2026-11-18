@@ -33,8 +33,10 @@ export const LIVE = [
 	{ id: "order-flow", group: "process", title: "How an order reaches the customer", type: "sequence", file: "examples/order-flow.json", kind: "spec", steps: 6 },
 	{ id: "release-pipeline", group: "process", title: "From commit to published media", type: "sequence", file: "examples/release-pipeline.json", kind: "spec", steps: 5 },
 	{ id: "agent-loop", group: "process", title: "An agent goes from brief to checked diagram", type: "sequence", file: "examples/agent-loop.json", kind: "spec", steps: 6 },
+	{ id: "incident", group: "process", title: "An incident, start to review", type: "timeline", file: "examples/incident.json", kind: "spec", steps: 7 },
 	{ id: "smart-home", group: "system", title: "What the home hub connects", type: "hub-spoke", file: "examples/smart-home.json", kind: "spec", steps: 6 },
 	{ id: "integrations", group: "system", title: "One platform, many integrations", type: "hub-spoke", file: "examples/integrations.json", kind: "spec", steps: 8 },
+	{ id: "web-stack", group: "system", title: "A request through the layers", type: "stack", file: "examples/web-stack.json", kind: "spec", steps: 5 },
 	{ id: "custom-pulse", group: "custom", title: "Request and response", type: "custom scene", file: "examples/custom-pulse.scene.mjs", kind: "module", steps: 3 },
 	{ id: "logo", group: "custom", title: "The motion-kit mark", type: "custom scene", file: "brand/logo.scene.mjs", kind: "module", steps: 3, kit: true },
 ];
@@ -44,9 +46,7 @@ export const LIVE = [
  */
 /** @type {PlannedExample[]} */
 export const PLANNED = [
-	{ id: "incident", group: "process", title: "An incident, start to review", type: "timeline", issue: 16, story: "The axis draws, milestones drop in, a “now” marker settles." },
 	{ id: "player-states", group: "process", title: "The live player, as states", type: "state-machine", issue: 18, story: "States wait as pending; a token walks the transitions; the current state turns accent." },
-	{ id: "web-stack", group: "system", title: "A request through the layers", type: "stack", issue: 17, story: "Layers rise; a packet travels down and back up." },
 	{ id: "checkout", group: "system", title: "A checkout request", type: "request-journey", issue: 19, story: "Regions and components appear; a dot hops the path; async edges are dashed." },
 	{ id: "one-scene", group: "change", title: "Per-medium authoring vs one scene", type: "before-after", issue: 3, story: "The left state shows, a divider sweeps, the right state builds, the difference is emphasised." },
 	{ id: "bake-vs-live", group: "change", title: "Baked SVG or live player?", type: "comparison", issue: 3, story: "Two columns; criteria rows fill; the deciding row is emphasised." },
@@ -78,8 +78,8 @@ export const STYLES = {
 		file: "diagrams/studio.json",
 		font: "Inter",
 		fontStack: 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
-		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#d97706" },
-		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#f59e0b" },
+		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#1d36a8", onAccent: "#ffffff", emphasis: "#d97706" },
+		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
 	neutral: {
 		name: "neutral",
@@ -87,8 +87,8 @@ export const STYLES = {
 		file: "styles/neutral.json",
 		font: "system-ui",
 		fontStack: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
-		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#d97706" },
-		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#f59e0b" },
+		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#1d36a8", onAccent: "#ffffff", emphasis: "#d97706" },
+		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
 	tidewater: {
 		name: "tidewater",
@@ -96,8 +96,8 @@ export const STYLES = {
 		file: "diagrams/tidewater.json",
 		font: "Inter",
 		fontStack: 'Inter, ui-sans-serif, system-ui, sans-serif',
-		light: { bg: "#ffffff", surface: "#eef6f5", ink: "#0b2a2e", muted: "#3f5f63", line: "#6f8c8e", accent: "#0f766e", onAccent: "#ffffff", emphasis: "#c2410c" },
-		dark: { bg: "#071a1c", surface: "#0f2a2d", ink: "#e6f4f2", muted: "#9cc0bd", line: "#4f7a7c", accent: "#0f766e", onAccent: "#ffffff", emphasis: "#fb923c" },
+		light: { bg: "#ffffff", surface: "#eef6f5", ink: "#0b2a2e", muted: "#3f5f63", line: "#6f8c8e", accent: "#0f3f3b", onAccent: "#ffffff", emphasis: "#ea580c" },
+		dark: { bg: "#071a1c", surface: "#0f2a2d", ink: "#e6f4f2", muted: "#9cc0bd", line: "#4f7a7c", accent: "#0f766e", onAccent: "#ffffff", emphasis: "#fdba74" },
 	},
 	ledger: {
 		name: "ledger",
@@ -105,8 +105,8 @@ export const STYLES = {
 		file: "diagrams/ledger.json",
 		font: "Source Serif 4",
 		fontStack: '"Source Serif 4", Georgia, serif',
-		light: { bg: "#faf7f0", surface: "#f0ebe0", ink: "#1c1917", muted: "#57534e", line: "#8c8478", accent: "#9a3412", onAccent: "#ffffff", emphasis: "#1d4ed8" },
-		dark: { bg: "#1a1714", surface: "#26221d", ink: "#f5f0e6", muted: "#b5ab9c", line: "#7d7468", accent: "#c2410c", onAccent: "#ffffff", emphasis: "#93c5fd" },
+		light: { bg: "#faf7f0", surface: "#f0ebe0", ink: "#1c1917", muted: "#57534e", line: "#8c8478", accent: "#5c200e", onAccent: "#ffffff", emphasis: "#3b82f6" },
+		dark: { bg: "#1a1714", surface: "#26221d", ink: "#f5f0e6", muted: "#b5ab9c", line: "#7d7468", accent: "#c2410c", onAccent: "#ffffff", emphasis: "#bfdbfe" },
 	},
 	blueprint: {
 		name: "blueprint",
@@ -114,7 +114,7 @@ export const STYLES = {
 		file: "diagrams/blueprint.json",
 		font: "JetBrains Mono",
 		fontStack: '"JetBrains Mono", ui-monospace, monospace',
-		light: { bg: "#eef4fb", surface: "#e1ecf8", ink: "#0b2545", muted: "#2f4a6b", line: "#5b7aa0", accent: "#1d4ed8", onAccent: "#ffffff", emphasis: "#c2410c" },
+		light: { bg: "#eef4fb", surface: "#e1ecf8", ink: "#0b2545", muted: "#2f4a6b", line: "#5b7aa0", accent: "#172554", onAccent: "#ffffff", emphasis: "#d9480f" },
 		dark: { bg: "#0b1f3a", surface: "#11294b", ink: "#e6f0ff", muted: "#a9c1e0", line: "#5f86b8", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
 };
@@ -155,7 +155,7 @@ export const DEFECTS = [
 	{
 		title: "A colour literal in frame()", rule: "G4", ruleName: "token-only colours", file: "diagrams/my-diagram.scene.mjs",
 		code: 'frame(t) {\n  return el("circle", { r: 8,\n    fill: "#2563eb" });   // literal\n}',
-		why: "A hex, rgb() or hsl() value in the output can’t follow light/dark or a brand style.",
+		why: "A hex, rgb(), hsl() or named colour (\"red\") in the output can’t follow light/dark or a brand style.",
 		fix: 'fill: tok("accent").',
 	},
 	{
@@ -185,12 +185,12 @@ export const RULES = [
 	["G3", "No number with 5 or more decimals"],
 	["G4", "No colour literals: tokens only"],
 	["G5", "No NaN, undefined or Infinity"],
-	["G6", "Settled step frames: render(at − 1 ms) = render(at)"],
+	["G6", "Settled step frames: at rest at the step, unchanged 45 ms after"],
 	["G7", "Something animates"],
 	["G8", "Holds the final frame"],
 	["G9", "Duration ≤ 12 s"],
 	["G10", "Every step label appears in the final frame"],
-	["G11", "No clock or randomness in frame()"],
+	["G11", "No clock or randomness in frame() or what it calls"],
 	["G12", "Style contrast, light and dark"],
 	["G13", "Builds in every format × locale"],
 ];

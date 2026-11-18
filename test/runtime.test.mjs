@@ -3,13 +3,14 @@ import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
-import { checkScene, wellFormed } from "../lib/check.mjs";
+import { checkScene, colourLiteral, findColourLiteral, wellFormed } from "../lib/check.mjs";
 import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
-import { easeIn, easeOut, easeStandard, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
+import { easeIn, easeOut, easeStandard, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
+import { maxFontSize } from "../runtime/parts.mjs";
 import { claimId, claimStylesheet, newPageState } from "../runtime/page.mjs";
 import * as motionMod from "../runtime/motion.mjs";
 import * as sceneMod from "../runtime/scene.mjs";
@@ -17,7 +18,7 @@ import * as styleMod from "../runtime/style.mjs";
 import * as svgMod from "../runtime/svg.mjs";
 import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
-import { checkContrast, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
+import { checkContrast, contrast, CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
 import { cubic, drawOn, esc, num, polyline } from "../runtime/svg.mjs";
 import { createScene } from "../runtime/types/index.mjs";
 import { wrapLabel } from "../runtime/wrap.mjs";
@@ -103,8 +104,49 @@ describe("wrapLabel", () => {
 });
 
 describe("styles", () => {
-	it("neutral passes WCAG contrast in light and dark", () => {
+	it("neutral passes WCAG contrast in light and dark, and styles/neutral.json is NEUTRAL", () => {
 		assert.deepEqual(checkContrast(NEUTRAL), []);
+		assert.deepEqual(JSON.parse(readFileSync(new URL("../styles/neutral.json", import.meta.url), "utf8")), JSON.parse(JSON.stringify(NEUTRAL)));
+	});
+	it("fails a style whose emphasis is 1.13:1 on accent", () => {
+		assert.deepEqual(checkContrast({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" } }), [
+			"blue light: emphasis on accent is 1.13:1, needs 3:1",
+			"blue dark: emphasis on accent is 1.13:1, needs 3:1",
+		]);
+	});
+	it("checks every pair the scene types draw, at 4.5 for text and 3 for shapes", () => {
+		const text = ["ink/bg", "ink/surface", "muted/bg", "muted/surface", "onAccent/accent"];
+		const shapes = ["line/bg", "accent/bg", "emphasis/bg", "emphasis/accent"];
+		assert.deepEqual(CONTRAST_PAIRS.map((p) => `${p.fg}/${p.bg}:${p.min}`), [...text.map((p) => `${p}:4.5`), ...shapes.map((p) => `${p}:3`)]);
+		for (const { fg, bg, use } of CONTRAST_PAIRS) {
+			assert.ok(use, `${fg} on ${bg} says where it is drawn`);
+			// The fg token painted in the bg colour: 1:1, in the theme changed only.
+			const problems = checkContrast({ name: "probe", light: { [fg]: NEUTRAL.light[bg] }, dark: {} });
+			assert.ok(problems.includes(`probe light: ${fg} on ${bg} is 1.00:1, needs ${fg === "onAccent" || ["ink", "muted"].includes(fg) ? 4.5 : 3}:1`), `${fg} on ${bg}: ${problems.join("; ")}`);
+			assert.ok(problems.every((p) => p.startsWith("probe light:")), "the dark theme is untouched");
+		}
+	});
+	it("leaves out each exempt pair, with a reason, though a passing style fails it", () => {
+		const raised = { name: "raised", dark: { surface: "#2b3242" } }; // a lighter dark surface: accent on it is 2.48:1
+		assert.deepEqual(checkContrast(raised), []);
+		for (const { fg, bg, why } of CONTRAST_EXEMPT) {
+			assert.ok(why.length > 20, `${fg} on ${bg} says why`);
+			assert.ok(!CONTRAST_PAIRS.some((p) => p.fg === fg && p.bg === bg), `${fg} on ${bg} is not checked`);
+			const failing = [NEUTRAL, normalizeStyle(raised)].flatMap((s) => ["light", "dark"].map((th) => contrast(s[th][fg], s[th][bg]))).filter((r) => r < 3);
+			assert.ok(failing.length > 0, `${fg} on ${bg}: some passing style is below 3:1 on it`);
+		}
+	});
+	it("checks the pairs a scene declares against the style, and refuses malformed ones", () => {
+		const pairs = [{ fg: "accent", bg: "surface", min: 3 }];
+		assert.deepEqual(checkContrast({ name: "raised", dark: { surface: "#2b3242" } }, pairs), ["raised dark: accent on surface is 2.48:1, needs 3:1"]);
+		assert.deepEqual(checkContrast(NEUTRAL, pairs), []);
+		assert.deepEqual(checkContrast(NEUTRAL, [{ fg: "brand", bg: "bg", min: 3 }, { fg: "ink", bg: "bg", min: 0 }]), [
+			'neutral: contrast pair 0 has unknown fg token "brand"',
+			"neutral: contrast pair 1 needs a min contrast between 1 and 21",
+		]);
+		const scene = { ...clipped, contrastPairs: pairs };
+		assert.deepEqual(checkScene(scene).problems, []);
+		assert.deepEqual(checkScene(scene, { style: { name: "raised", dark: { surface: "#2b3242" } } }).problems, ["contrast: raised dark: accent on surface is 2.48:1, needs 3:1"]);
 	});
 	it("rejects unknown tokens and non-hex colours", () => {
 		assert.throws(() => normalizeStyle({ light: { brand: "#000000" } }));
@@ -147,12 +189,14 @@ describe("scenes", () => {
 	});
 });
 
-// A scene with a clip path whose id follows the instance prefix, as the contract asks.
+// A scene with a clip path whose id follows the instance prefix, as the
+// contract asks. The bar grows to half by 0.8 s, holds through the first
+// step, and grows to full from 1.1 s to 1.9 s.
 const clipped = {
 	id: "clipped", width: 100, height: 40, duration: 2, title: "Clip", description: "A bar grows under a clip path.", stepLabelsInFrame: false,
 	steps: [{ at: 1, label: "Half", id: "half" }, { at: 2, label: "Full", id: "full" }],
 	frame: (t, { idPrefix }) => {
-		const w = Math.round(Math.min(t, 1) * 50 + Math.max(t - 1, 0) * 50);
+		const w = Math.round(50 * Math.min(t / 0.8, 1) + 50 * Math.min(Math.max((t - 1.1) / 0.8, 0), 1));
 		return `<defs><clipPath id="${idPrefix}-clip"><rect width="${w}" height="40"/></clipPath></defs><rect width="100" height="40" fill="var(--mk-accent)" clip-path="url(#${idPrefix}-clip)"/>`;
 	},
 };
@@ -184,6 +228,68 @@ describe("instance ids", () => {
 		assert.ok(all.filter((id) => id.endsWith("-clip")).length > 2);
 		assert.equal(wellFormed(svg), null);
 		assert.ok(!bake(clipped, { fps: 4, idPrefix: "other" }).includes('id="mk-bake'));
+	});
+});
+
+/**
+ * A probe scene: the settled `clipped` bar plus `extra(t)` markup.
+ * @param {(t: number) => string} extra
+ */
+const probe = (extra) => ({ ...clipped, id: "probe", frame: (t, ctx) => clipped.frame(t, ctx) + extra(t) });
+
+describe("gate probes", () => {
+	it("refuses named colours and other literal forms where a token is expected", () => {
+		for (const markup of ['<circle r="4" fill="red"/>', '<path d="M0 0" stroke="RebeccaPurple"/>', '<stop stop-color="white"/>', '<rect style="fill: navy"/>', '<feFlood flood-color="black"/>', '<rect fill="var(--brand)"/>', '<rect fill="var(--mk-accent, red)"/>', '<rect fill="oklch(70% 0.1 200)"/>', '<style>.x{stroke:teal}</style>']) {
+			const { problems } = checkScene(probe(() => markup));
+			assert.ok(problems.length > 0, markup);
+			for (const p of problems) assert.match(p, /^colour literal .* at t=[\d.]+ \(use tok\(\)\)$/, markup);
+		}
+		assert.equal(colourLiteral("red"), "red");
+		assert.equal(colourLiteral("var(--mk-accent) !important"), null);
+	});
+	it("accepts tokens, references and colourless keywords, and ignores text", () => {
+		const ok = '<g fill="none" stroke="currentColor" color="inherit"><rect fill="url(#probe-g) var(--mk-accent)" stroke="transparent"/><text fill="var(--mk-ink)">#1 red: rgb(0 0 0)</text><use href="#probe-g"/></g>';
+		assert.deepEqual(checkScene(probe(() => ok)).problems, []);
+		assert.equal(findColourLiteral('<rect style="fill: var(--mk-accent); stroke: none"/>'), null);
+	});
+	it("reads declarations, not selectors, in a stylesheet", () => {
+		assert.equal(findColourLiteral('<style>#face-node{fill:var(--mk-accent)} @media print{#abc .x{stroke:none}}</style>'), null);
+		assert.match(findColourLiteral('<style>#face-node{fill:#abcdef}</style>') ?? "", /fill/);
+	});
+	it("rejects a fontSize that would stall the fit search", () => {
+		for (const fontSize of [1e20, Infinity, NaN, 3]) {
+			assert.throws(() => maxFontSize({ fontSize }, 16, "x"), /fontSize must be/);
+		}
+		assert.equal(maxFontSize({}, 16, "x"), 16);
+		assert.equal(maxFontSize({ fontSize: 20 }, 16, "x"), 20);
+	});
+	it("catches the clock or randomness read in a helper the frame calls", () => {
+		const originals = [Date, Date.now, performance.now, Math.random];
+		const year = () => new Date().getUTCFullYear();
+		const jitter = () => (Math.random() < 0.5 ? 1 : 2);
+		const later = () => (performance.now() > 1e8 ? "late" : "early");
+		for (const helper of [year, jitter, later]) {
+			const scene = probe(() => `<text fill="var(--mk-ink)">${helper()}</text>`);
+			assert.ok(!/Date|random|performance/.test(scene.frame.toString()), "the frame's own source is clean");
+			const { problems } = checkScene(scene);
+			assert.ok(problems.some((p) => /reads the clock or randomness/.test(p)), `${helper.name}: ${problems.join("; ")}`);
+		}
+		// The globals are restored afterwards: the same functions, not stand-ins.
+		assert.deepEqual([Date, Date.now, performance.now, Math.random], originals);
+	});
+	it("catches a slow fade passing through a step, which the 1 ms look-back misses", () => {
+		// 0.23 at 0.9 s, 0.25 at 1 s (the step), 0.28 at 1.1 s.
+		const fade = (t) => `<circle r="4" fill="var(--mk-emphasis)" opacity="${num(0.25 + 0.25 * (Math.min(Math.max(t, 0.2), 1.8) - 1), 3)}"/>`;
+		const scene = probe(fade);
+		assert.equal(renderSvg(scene, 0.999), renderSvg(scene, 1), "invisible over 1 ms after rounding");
+		const { problems } = checkScene(scene);
+		assert.deepEqual(problems, ['step "Half" at 1.000s is not settled: the frame 15 ms after differs (something is still moving)']);
+		// An eased motion that comes to rest at the step, and the next beat 50 ms later, are settled.
+		const beat = (t) => `<circle r="4" fill="var(--mk-emphasis)" opacity="${num(0.2 + 0.3 * progress(t, 0.6, 0.4, easeStandard) + 0.3 * progress(t, 1.05, 0.4, easeStandard), 3)}"/>`;
+		assert.deepEqual(checkScene(probe(beat)).problems, []);
+		// A linear one that stops abruptly at the step still moves 1 ms before it.
+		const abrupt = (t) => `<circle r="4" fill="var(--mk-emphasis)" opacity="${num(0.2 + 0.6 * Math.min(Math.max((t - 0.6) / 0.4, 0), 1), 3)}"/>`;
+		assert.deepEqual(checkScene(probe(abrupt)).problems, ['step "Half" at 1.000s is not settled: the frame 1 ms before differs (something is still moving)']);
 	});
 });
 
@@ -280,6 +386,14 @@ describe("buildHtml", () => {
 		assert.ok(script.includes("\\u003c/script>"));
 		assert.match(script, /MotionKitRuntime\.validateScene\(/);
 		assert.match(script, /MotionKitRuntime\.mountPlayer\(/);
+	});
+	it("bundles the page-link helpers, so a built page can bind scroll and hover", async () => {
+		const loaded = await loadScene(fileURLToPath(new URL("../examples/order-flow.json", import.meta.url)), { format: "wide", locale: "en" });
+		const html = buildHtml(loaded, { style: normalizeStyle("neutral"), format: "wide", locale: "en" });
+		const script = html.slice(html.lastIndexOf("<script>") + "<script>".length, html.lastIndexOf("(function () {"));
+		const ctx = vm.createContext({});
+		vm.runInContext(script, ctx);
+		for (const name of ["scrollSteps", "linkSteps"]) assert.equal(typeof ctx.MotionKitRuntime[name], "function", name);
 	});
 });
 

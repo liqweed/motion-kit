@@ -10,6 +10,7 @@
  *   motion-kit icon   <scene> --out <repo>  [--size 512] [--style S] [--no-png]   project icon set (assets/, .idea/)
  *   motion-kit vendor <dir> [--adapter page|slidev|astro|element]
  *   motion-kit formats | types
+ *   motion-kit --version                      print the version
  *
  * <scene> is a spec (.json, any registered type) or a custom module (.mjs).
  * --options O passes scene options to a custom module's factory, unchanged:
@@ -57,6 +58,7 @@ const { values: a, positionals } = parseArgs({
 		"no-scrubber": { type: "boolean", default: false },
 		"no-heading": { type: "boolean", default: false },
 		help: { type: "boolean", short: "h" },
+		version: { type: "boolean", short: "v" },
 	},
 });
 const [cmd, ...args] = positionals;
@@ -71,6 +73,10 @@ function need(v, what) {
 }
 
 async function main() {
+	if (a.version) {
+		console.log(VERSION);
+		return;
+	}
 	if (!cmd || a.help) {
 		const src = readFileSync(fileURLToPath(import.meta.url), "utf8");
 		console.log(src.slice(src.indexOf("/**") + 3, src.indexOf("*/")).replace(/^ \* ?/gm, ""));
@@ -104,7 +110,7 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const sopts = await sceneOpts(file);
 			const loaded = await loadScene(file, sopts);
-			const r = checkScene(loaded.scene);
+			const r = checkScene(loaded.scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			const html = buildHtml(loaded, { style, ...where, options: sopts.options, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
 			if (/<\/script/i.test(html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>")))) fail("bundled code contains </script>");
@@ -118,7 +124,7 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const sopts = await sceneOpts(file);
 			const { scene } = await loadScene(file, sopts);
-			const r = checkScene(scene);
+			const r = checkScene(scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			if (a.png && !(await rasterizer())) fail("--png needs @resvg/resvg-js or Chrome");
 			// The contact sheet's phone row shows the tall layout, as a phone does.
@@ -168,7 +174,7 @@ async function main() {
 		case "icon": {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file, { ...where, format: format ?? "1:1" }));
-			const r = checkScene(scene);
+			const r = checkScene(scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			const png = !a["no-png"];
 			if (png && !(await rasterizer())) fail("icon PNG needs @resvg/resvg-js or Chrome (or pass --no-png)");

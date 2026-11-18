@@ -1,7 +1,7 @@
 ---
 title: motion-kit — product requirements
 status: draft
-last_updated: 2026-11-16
+last_updated: 2026-11-17
 ---
 
 # motion-kit — product requirements
@@ -62,7 +62,8 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 - **Determinism**: same inputs ⇒ byte-identical frames and reproducible
   manifests.
 - **Data over code**: common diagram shapes are spec-driven scene types
-  (`sequence`, `hub-spoke`); custom modules are the escape hatch.
+  (`sequence`, `hub-spoke`, `timeline`, `stack`); custom modules are the
+  escape hatch.
 - **Fail loudly, never ship broken pictures**: layouts that don't fit, unknown
   tokens/types/formats and gate violations throw.
 - **Accessible by default**: pause control, reduced motion, screen-reader step
@@ -103,14 +104,14 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 [`spec/technique.md` §11](spec/technique.md#11-the-gate):
 
 - Deterministic bytes at 121 sampled times; well-formed markup.
-- No numbers with ≥ 5 decimals; no colour literals; no `NaN`/`undefined`/`Infinity`.
-- Settled step frames (`frame(at − 1 ms) === frame(at)`).
+- No numbers with ≥ 5 decimals; no colour literals (named colours included); no `NaN`/`undefined`/`Infinity`.
+- Settled step frames: at rest 1 ms before `at`, unchanged for 45 ms after it.
 - Something animates; the final frame holds after `duration`.
 - Duration ≤ 12 s (the docs say ≤ ~8–10 s; see Discrepancies in the spec).
 - Every step label visible in the final frame, unless the scene opts out.
 - Ids come from the instance prefix: two renders with different prefixes share none.
-- No clock or randomness in `frame()`'s source.
-- Style contrast (WCAG 4.5:1 text, 3:1 shapes, both themes) for the style in use.
+- No clock or randomness in `frame()` or the helpers it calls (rendered under stubbed clocks).
+- Style contrast (WCAG 4.5:1 text, 3:1 shapes, both themes) for the style in use, for every token pair the scene types draw and the pairs a scene declares.
 - Layout/label fit per format × locale, through scene construction.
 
 **What a human approves**: the story (storyboard contact sheet), the look
@@ -157,8 +158,9 @@ Proposed (not yet tracked — see open questions):
 
 ## 9. Assumptions
 
-- The canonical clone lives at `~/workspace/motion-kit`; the plugin copy is a
-  fallback without `node_modules` (`README.md:81-82`).
+- The skills find the CLI through `MOTION_KIT_HOME`, then the npm package via
+  `npx`, then the plugin copy, which has no `node_modules` and so renders no
+  PNG or video (README, "Install the skills").
 - Early consumers are the maintainer's own repos (decks, websites); Craft is
   a primary destination (`skills/animated-diagram/references/targets.md`).
 
@@ -189,8 +191,7 @@ Proposed (not yet tracked — see open questions):
    gate rules?
 10. **Success measures.** Which of §8's proposed measures are worth tracking,
     and where?
-11. **Public release (decided: MIT, open source).** Still open: the npm
-    package name (`motion-kit` is taken; `package.json` stays `private` until
-    this is settled), the skills' hard-coded clone path
-    (`~/workspace/motion-kit`), and a public docs site. Tracked in
-    [`roadmap.md`](roadmap.md) (#5, #6, #2).
+11. **Public release (decided: MIT, open source).** Settled: the package is
+    `@liqweed/motion-kit` on npm, the skills no longer assume a clone path,
+    and motion-kit.dev is live. The website epic is tracked in
+    [`roadmap.md`](roadmap.md) (#2).

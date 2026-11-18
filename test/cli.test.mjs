@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative, sep } from "node:path";
 import { after, describe, it } from "node:test";
 import { rasterizer } from "../lib/raster.mjs";
 import { hasFfmpeg, probe } from "../lib/video.mjs";
@@ -51,6 +51,11 @@ export default ({ locale }) => ({ labels: DICT[locale] });
 `;
 
 describe("cli", () => {
+	it("--version prints the package version", () => {
+		const { version } = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+		assert.equal(run("--version").trim(), version);
+		assert.equal(run("-v").trim(), version);
+	});
 	it("vendor includes the full MIT licence with every adapter", () => {
 		const license = readFileSync(new URL("../LICENSE", import.meta.url), "utf8");
 		for (const adapter of ["page", "astro", "slidev", "element"]) {
@@ -64,6 +69,7 @@ describe("cli", () => {
 		run("vendor", dir, "--adapter", "element");
 		assert.ok(existsSync(join(dir, "adapter/motion-diagram.mjs")));
 		assert.ok(existsSync(join(dir, "runtime/player.mjs")));
+		assert.ok(existsSync(join(dir, "runtime/links.mjs")));
 		assert.ok(existsSync(join(dir, "runtime/types/index.mjs")));
 		assert.match(readFileSync(join(dir, "MOTION_KIT_VERSION"), "utf8"), /adapter element/);
 	});
@@ -77,7 +83,7 @@ describe("cli", () => {
 		cpSync(`${EX}custom-pulse.scene.mjs`, join(dir, "scenes/pulse.scene.mjs"));
 		writeFileSync(join(dir, "scenes/labelled.scene.mjs"), LABELLED);
 		writeFileSync(join(dir, "scenes/labels.mjs"), DICT);
-		writeFileSync(join(dir, "brand.json"), JSON.stringify({ name: "brand", light: { accent: "#7c2d12" }, dark: { accent: "#2563eb" } }));
+		writeFileSync(join(dir, "brand.json"), JSON.stringify({ name: "brand", light: { accent: "#6b2510" }, dark: { accent: "#2563eb" } }));
 		writeFileSync(join(dir, "low.json"), JSON.stringify({ name: "low", light: { accent: "#9ca3af" } }));
 		const gate = join(dir, "check.mjs");
 
@@ -128,6 +134,21 @@ describe("cli", () => {
 		const out = run("check", `${EX}order-flow.json`, `${EX}smart-home.json`);
 		assert.equal((out.match(/✓/g) ?? []).length, 2 * 6 * 2);
 	});
+	it("check --style fails emphasis on accent, and the pairs a scene declares", () => {
+		const dir = join(tmp, "contrast");
+		mkdirSync(dir);
+		writeFileSync(join(dir, "blue.json"), JSON.stringify({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" }, dark: { accent: "#2563eb", emphasis: "#fbbf24" } }));
+		let r = node(CLI, "check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /✗ style: blue light: emphasis on accent is 1\.13:1, needs 3:1/);
+		// A lighter dark surface passes the shared pairs but not custom-pulse's bar on its track.
+		writeFileSync(join(dir, "raised.json"), JSON.stringify({ name: "raised", dark: { surface: "#2b3242" } }));
+		r = node(CLI, "check", `${EX}order-flow.json`, `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "raised.json"));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /✓ .*order-flow\.json · 16:9/);
+		assert.match(r.out, /✗ .*custom-pulse\.scene\.mjs · 16:9 · en\n {2}- contrast: raised dark: accent on surface is 2\.48:1, needs 3:1/);
+		assert.doesNotMatch(r.out, /✗ style:/);
+	});
 	it("export writes standalone steps, QC frames and a reproducible manifest", () => {
 		const dir = join(tmp, "exp");
 		run("export", `${EX}order-flow.json`, "-o", dir, "--qc", "-l", "nl");
@@ -138,6 +159,47 @@ describe("cli", () => {
 		run("export", `${EX}order-flow.json`, "-o", join(tmp, "exp2"), "--qc", "-l", "nl");
 		const m2 = JSON.parse(readFileSync(join(tmp, "exp2", "manifest.json"), "utf8"));
 		assert.deepEqual(m2, m);
+	});
+	it("re-exporting into a folder replaces the previous export and leaves other files alone", () => {
+		const dir = join(tmp, "re-export");
+		run("export", `${EX}order-flow.json`, "-o", dir, "--qc", "-l", "nl");
+		writeFileSync(join(dir, "notes.txt"), "mine");
+		const r = spawnSync(process.execPath, [CLI, "export", `${EX}order-flow.json`, "-o", dir, "-l", "en"], { encoding: "utf8" });
+		assert.equal(r.status, 0, r.stderr);
+		assert.match(r.stderr, /left 1 file\(s\) in .* that no export wrote: notes\.txt/);
+		const m = JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8"));
+		assert.equal(m.locale, "en");
+		const listed = new Set(["manifest.json", "index.html", ...m.files.flatMap((f) => [f.svg, f.png].filter(Boolean))]);
+		const present = readdirSync(dir, { recursive: true, withFileTypes: true }).filter((d) => d.isFile()).map((d) => relative(dir, join(d.parentPath, d.name)).split(sep).join("/"));
+		assert.deepEqual(present.filter((p) => !listed.has(p)), ["notes.txt"]);
+		assert.equal(present.length, listed.size + 1);
+		assert.equal(readFileSync(join(dir, "notes.txt"), "utf8"), "mine");
+	});
+	it("the manifest says whether the source differs from the commit it names", () => {
+		const repo = join(tmp, "repo");
+		mkdirSync(repo);
+		// Inside a git hook (pre-push runs the gate) GIT_DIR and friends name
+		// this repository; drop them so git works on the temporary one.
+		const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_")));
+		const git = (...args) => execFileSync("git", ["-c", "user.name=test", "-c", "user.email=test@example.com", "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", ...args], { cwd: repo, env, stdio: "pipe" });
+		const spec = join(repo, "flow.json");
+		const manifest = (name) => {
+			run("export", spec, "-o", join(tmp, name), "-f", "16:9");
+			const m = JSON.parse(readFileSync(join(tmp, name, "manifest.json"), "utf8"));
+			return { commit: m.sourceCommit, dirty: m.sourceDirty };
+		};
+		cpSync(`${EX}order-flow.json`, spec);
+		assert.deepEqual(manifest("git-none"), { commit: null, dirty: null }, "outside a repository");
+		git("init", "-q");
+		git("add", "flow.json");
+		git("commit", "-q", "-m", "flow");
+		const head = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: repo, env, encoding: "utf8" }).trim();
+		assert.deepEqual(manifest("git-clean"), { commit: head, dirty: false });
+		writeFileSync(spec, readFileSync(spec, "utf8").replace("The customer places", "A customer places"));
+		assert.deepEqual(manifest("git-dirty"), { commit: head, dirty: true }, "modified since the commit");
+		writeFileSync(join(repo, "other.txt"), "unrelated");
+		git("checkout", "--", "flow.json");
+		assert.deepEqual(manifest("git-other"), { commit: head, dirty: false }, "other files do not count");
 	});
 	it("export's phone row shows the tall layout", () => {
 		const dir = join(tmp, "exp-phone");
