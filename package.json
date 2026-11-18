@@ -57,7 +57,8 @@
 		"bench:player": "node scripts/bench-player.mjs",
 		"snapshots:update": "node scripts/update-snapshots.mjs",
 		"gate:core": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check",
-		"gate": "npm run -s gate:core && npm run -s site"
+		"gate": "npm run -s gate:core && npm run -s site",
+		"skills:design": "DISABLE_TELEMETRY=1 npx -y skills@1.9.0 experimental_install -a claude-code -a codex"
 	},
 	"optionalDependencies": {
 		"@resvg/resvg-js": "^2.6.2"

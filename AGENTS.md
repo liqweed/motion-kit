@@ -125,3 +125,37 @@ priority and size as labels, areas as `area:*` labels, all listed in
 `.config/label-taxonomy.yaml`. File issues with `/jig:file-issue`. `.claude/settings.json`
 offers the plugin to Claude Code users who trust this folder. If the skills
 are not listed, install the plugin and start a new session.
+
+## Design skills (optional, not committed)
+
+`skills-lock.json` names a set of third-party design skills, each pinned to an
+upstream commit and a content hash. The skills themselves are **not** in the
+repository. Their licences travel with their own repositories, and
+contributors get nothing installed unless they ask. To fetch them into this
+checkout, run:
+
+```bash
+npm run skills:design   # into .agents/skills/ (Codex) with symlinks in .claude/skills/ (Claude Code); both git-ignored
+```
+
+Run it again in each new worktree.
+
+| Skill | Source | Use it for |
+|---|---|---|
+| `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) (Apache-2.0) | Critique, audit, polish and typeset **`website/`** (motion-kit.dev) |
+| `emil-design-eng`, `animate`, `choreograph`, `review-animations`, `improve-animations`, `remove-animations`, `animation-performance`, `animation-vocabulary`, `learn-taste` | [emilkowalski/skills](https://github.com/emilkowalski/skills) (MIT) | A second opinion on motion in the player and the website, and names for effects |
+
+When they disagree with this repository, the repository wins:
+
+- The scene rules above, `skills/animated-diagram/references/` and
+  `npm run check` decide how a scene moves. Emil Kowalski's numbers (under
+  300 ms, non-uniform stagger) are about interface feedback, not explanatory
+  diagrams.
+- A skill's finding against a scene type becomes an issue, not an edit.
+- `impeccable` is for `website/`. Scene styles stay neutral; brand styles
+  live in the consuming repository.
+
+Only the skills are fetched, not Impeccable's edit and Stop hooks.
+`.impeccable/config.json` turns its telemetry off, and its per-machine state
+is git-ignored. To move to a newer upstream version, run
+`npx skills update -p` and commit only the rewritten `skills-lock.json`.
