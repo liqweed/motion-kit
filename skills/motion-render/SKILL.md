@@ -14,7 +14,7 @@ The plugin copy alone has neither, so prefer `npx` there.
 
 ```bash
 PLUGIN="$(cd -P "<this skill's base directory>" && cd ../.. && pwd -P)" # -P: the base may be a symlink to a clone
-V="$(node -p "require('$PLUGIN/package.json').version")"
+V="$(node -p "require(process.argv[1] + '/package.json').version" "$PLUGIN")"
 if [ -n "${MOTION_KIT_HOME:-}" ]; then
   MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
 elif npx -y "@liqweed/motion-kit@$V" --help >/dev/null 2>&1; then
