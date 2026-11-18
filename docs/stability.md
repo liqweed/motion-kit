@@ -47,7 +47,7 @@ Two kinds of change are not breaking, even though output differs:
 - Custom scene modules: a default export `(opts) => scene`, called with
   `{ ...options, format, locale, kit }`, with optional exported `locales` for gate coverage.
 - The spec format of each registered scene type (`sequence`, `hub-spoke`, `timeline`,
-  `stack`, `state-machine`, `request-journey`).
+  `stack`, `state-machine`, `request-journey`, `flowchart`).
 - Style data: `{ name?, font?, radius?, stroke?, light: {token: "#rrggbb"}, dark: {…} }` and the
   token names in `TOKENS`.
 
@@ -110,11 +110,13 @@ what changed. A vendored copy records its version in `MOTION_KIT_VERSION`;
 compare it with the latest:
 
 ```bash
-head -1 src/motion-kit/MOTION_KIT_VERSION        # motion-kit 0.4.0
-npm view @liqweed/motion-kit version             # 0.5.0
+npx @liqweed/motion-kit outdated src/motion-kit   # exit 1 and the re-vendor command when behind
 ```
 
-To be told, watch the repository on GitHub with **Releases** selected. To
+It reads `MOTION_KIT_VERSION`, asks npm for the `latest` version (or the
+mirror in `npm_config_registry`), and exits 0 when current, 1 when behind and
+2 when it cannot tell. Run it on a schedule in CI to be told; or watch the
+repository on GitHub with **Releases** selected. To
 update, read the changelog entries in between, re-vendor from the new version,
 and run the vendored gate:
 

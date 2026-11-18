@@ -1,0 +1,15 @@
+---
+title: How a pull request lands
+---
+%% Source of examples/pull-request.json:
+%%   node cli/motion-kit.mjs import examples/pull-request.mmd --out examples/pull-request.json
+flowchart TD
+  accDescr: A pull request runs CI and review; a failed build or requested changes loop back until it merges and is released.
+  open([Open a PR]) --> ci{CI passes?}
+  ci -- No --> fix[Fix the build]
+  fix --> ci
+  ci -- Yes --> review{Approved?}
+  review -->|Changes| revise[Revise]
+  revise --> review
+  review -->|Yes| merge[Merge]
+  merge --> release([Release])

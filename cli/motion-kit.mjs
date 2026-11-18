@@ -8,7 +8,9 @@
  *   motion-kit bake   <scene> --out x.svg    [--fps 15] [--theme ...] [--style S]
  *   motion-kit video  <scene> --out x.mp4|.gif|.webm [--fps 30] [--scale 2] [--hold 1.5] [--sheet sheet.png]
  *   motion-kit icon   <scene> --out <repo>  [--size 512] [--style S] [--no-png]   project icon set (assets/, .idea/)
+ *   motion-kit import <flow.mmd|-> [--out spec.json] [--id ID] [--title T] [--description D]   Mermaid flowchart → spec
  *   motion-kit vendor <dir> [--adapter page|slidev|astro|element]
+ *   motion-kit outdated <dir>                 is a vendored copy behind npm's latest? (exit 1 when it is)
  *   motion-kit formats | types
  *   motion-kit --version                      print the version
  *
@@ -16,9 +18,14 @@
  * --options O passes scene options to a custom module's factory, unchanged:
  * inline JSON ('{"view":"short"}'), a .json file, or an .mjs module whose
  * default export is the options or ({ format, locale }) => options.
+ *
+ * import: a chain becomes a `sequence` spec; a chart with branches, joins,
+ * link labels or dotted links becomes a `flowchart` spec, laid out here once.
+ * Without --out the spec goes to stdout; with it, the spec is also checked in
+ * every format. Unsupported Mermaid syntax fails with its line.
  */
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { bake, bakeStats } from "../runtime/bake.mjs";
@@ -26,6 +33,8 @@ import { FORMATS } from "../runtime/scene.mjs";
 import { SCENE_TYPES } from "../runtime/types/index.mjs";
 import { checkScene } from "../lib/check.mjs";
 import { checkFiles } from "../lib/gate.mjs";
+import { mermaidToSpec } from "../lib/mermaid.mjs";
+import { compareVersions, latestVersion, PACKAGE, vendoredVersion } from "../lib/outdated.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { writeIconSet } from "../lib/icon.mjs";
 import { exportSteps } from "../lib/export.mjs";
@@ -53,6 +62,9 @@ const { values: a, positionals } = parseArgs({
 		hold: { type: "string", default: "1.5" },
 		sheet: { type: "string" },
 		adapter: { type: "string", default: "page" },
+		id: { type: "string" },
+		title: { type: "string" },
+		description: { type: "string" },
 		size: { type: "string", default: "512" },
 		"no-png": { type: "boolean", default: false },
 		"no-scrubber": { type: "boolean", default: false },
@@ -188,6 +200,33 @@ async function main() {
 			if (files.includes(".idea/icon.svg")) console.log("note: if .idea/ is git-ignored, add  !.idea/icon*.svg  after it to commit the IDE icon");
 			return;
 		}
+		case "import": {
+			const file = need(args[0], "<flow.mmd> (or - for stdin)");
+			const source = readFileSync(file === "-" ? 0 : file, "utf8");
+			const id = a.id ?? (file === "-" ? "flowchart" : basename(file).replace(/\.[^.]*$/, "").replace(/[^\w-]+/g, "-").replace(/^[^A-Za-z]+/, "") || "flowchart");
+			let result;
+			try {
+				result = mermaidToSpec(source, { id, title: a.title, description: a.description });
+			} catch (e) {
+				fail(`import ${file}: ${e instanceof Error ? e.message : e}`);
+			}
+			for (const w of result.warnings) console.error(`motion-kit: import ${file}: ${w}`);
+			const json = `${JSON.stringify(result.spec, null, "\t")}\n`;
+			if (!a.out) {
+				process.stdout.write(json);
+				return;
+			}
+			mkdirSync(dirname(resolve(a.out)), { recursive: true });
+			writeFileSync(a.out, json);
+			const { spec } = result;
+			console.log(`wrote ${a.out}: ${spec.type} "${spec.id}", ${spec.nodes.length} nodes${spec.edges ? `, ${spec.edges.length} links` : ""}`);
+			const bad = await checkFiles([a.out], { formats: a.format, locales: a.locale, style });
+			if (bad) {
+				console.error(`motion-kit: ${a.out} does not pass the gate in every format; shorten labels, split the chart, or ship only the formats that pass (--format)`);
+				process.exit(1);
+			}
+			return;
+		}
 		case "vendor": {
 			const dir = resolve(need(args[0], "<dir>"));
 			mkdirSync(dir, { recursive: true });
@@ -200,6 +239,26 @@ async function main() {
 			writeFileSync(join(dir, "check.mjs"), VENDOR_CHECK);
 			writeFileSync(join(dir, "MOTION_KIT_VERSION"), `motion-kit ${VERSION}\nadapter ${a.adapter}\nvendored from liqweed/motion-kit; do not edit here, re-vendor instead.\n`);
 			console.log(`vendored runtime + ${a.adapter} adapter (motion-kit ${VERSION}) into ${dir}`);
+			return;
+		}
+		case "outdated": {
+			const dir = need(args[0], "<dir>");
+			let vendored;
+			let latest;
+			try {
+				vendored = vendoredVersion(resolve(dir));
+				latest = await latestVersion();
+			} catch (e) {
+				console.error(`motion-kit: outdated: ${e instanceof Error ? e.message : e}`);
+				process.exit(2);
+			}
+			if (compareVersions(vendored.version, latest) < 0) {
+				console.log(`${dir}: motion-kit ${vendored.version} is vendored; ${latest} is the latest release.`);
+				console.log(`re-vendor: npx ${PACKAGE}@${latest} vendor ${dir} --adapter ${vendored.adapter}`);
+				console.log(`changes: https://github.com/liqweed/motion-kit/blob/main/CHANGELOG.md`);
+				process.exit(1);
+			}
+			console.log(`${dir}: motion-kit ${vendored.version} is up to date (latest ${latest}).`);
 			return;
 		}
 		default:

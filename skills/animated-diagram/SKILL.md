@@ -53,8 +53,11 @@ from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
    Write the spec, then render the step contact sheet and show it:
    `motion-kit export spec.json -o <scratch>/sb --png --qc` → open `index.html`
    or show the PNGs. Get a yes on the *story* before polishing.
-3. **Build.** Spec-driven types first (`sequence`, `hub-spoke`, `timeline`, `stack`). Only write a
-   custom scene module when no type fits (`references/custom-scenes.md`).
+3. **Build.** Spec-driven types first (`sequence`, `hub-spoke`, `timeline`, `stack`,
+   `state-machine`, `request-journey`, `flowchart`). The user has a Mermaid
+   flowchart? `motion-kit import flow.mmd --out flow.json` writes the spec
+   (layout computed once). Only write a custom scene module when no type fits
+   (`references/custom-scenes.md`).
 4. **Gate.** `motion-kit check spec.json` must pass in every format/locale
    shipped: deterministic, settled steps, rounded numbers, token-only colours,
    escaped labels, labels fit, holds the final frame.
@@ -84,12 +87,14 @@ from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
 mk() { node "$MK/cli/motion-kit.mjs" "$@"; }
 mk types; mk formats
 mk check diagram.json                                  # all formats × locales
+mk import flow.mmd -o flow.json                        # Mermaid flowchart → sequence or flowchart spec, then checked
 mk check flow.scene.mjs -l en -l nl --options labels.mjs   # a custom module, with its text from the caller
 mk build diagram.json -o diagram.html -f wide -l nl    # Craft Page / standalone
 mk export diagram.json -o out/ --png --qc              # slides + review sheet
 mk bake diagram.json -o diagram.svg -f wide            # zero-JS animated SVG
 mk video diagram.json -f 9:16 -o reel.mp4 --sheet sheet.png
 mk vendor <repo>/components/motion-kit --adapter slidev   # or astro / page / element
+mk outdated <repo>/components/motion-kit                # newer release on npm? exit 1 + the re-vendor command
 node <repo>/components/motion-kit/check.mjs flow.scene.mjs -l en -l nl --style brand.json --options labels.mjs  # the vendored gate, same checks
 ```
 

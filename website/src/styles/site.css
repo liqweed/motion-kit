@@ -2,8 +2,8 @@
 :root {
 	--bg: #ffffff; --surface: #f5f6f8; --ink: #111827; --muted: #4b5563; --line: #8b929c; --hair: #e3e6ea;
 	--accent: #1d36a8; --onAccent: #ffffff; --link: #1d4ed8; --emph: #d97706; --mark: #dbe6fd;
-	--display: "Space Grotesk", Inter, ui-sans-serif, system-ui, sans-serif;
-	--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+	--display: "Space Grotesk Variable", "Space Grotesk", "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif;
+	--mono: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 	--ease: cubic-bezier(0.4, 0, 0.2, 1);
 	color-scheme: light dark;
 }
@@ -21,7 +21,7 @@
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
 h1, h2, h3, p { margin: 0; text-wrap: pretty; }
 h1, h2 { font-family: var(--display); letter-spacing: -0.03em; }
 pre { margin: 0; }
@@ -50,7 +50,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .head > p { flex: 1 1 min(320px, 100%); font-size: 17px; line-height: 1.6; color: var(--muted); }
 .h2 { font-size: clamp(32px, 5vw, 46px); line-height: 1.04; font-weight: 700; }
 .kicker { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; }
-.kicker span { margin-left: 6px; font: 600 13px Inter, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.kicker span { margin-left: 6px; font: 600 13px "Inter Variable", Inter, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .dm { display: inline-block; width: 10px; height: 10px; transform: rotate(45deg); border-radius: 2px; background: var(--accent); margin-right: 6px; flex: none; }
 .lede { font-size: 17px; line-height: 1.6; color: var(--muted); }
 .mono { font-family: var(--mono); }
@@ -112,7 +112,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .dark-card pre { color: #e5e7eb; }
 
 /* ---- live players */
-.mk-player { --mk-font: Inter, ui-sans-serif, system-ui, sans-serif; }
+.mk-player { --mk-font: "Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif; }
 .mk-stage:focus-visible { outline: 3px solid var(--mk-emphasis, var(--emph)); outline-offset: 2px; border-radius: 8px; }
 .mk-controls { margin-top: 12px; }
 .mk-btn { border-radius: 999px; }
@@ -162,7 +162,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .readout { font: 13px var(--mono); color: #9aa3b2; }
 .proof { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; padding-top: 28px; border-top: 1px solid #262c38; }
 .proof div { display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.5; color: #9aa3b2; }
-.proof b { display: flex; align-items: center; gap: 10px; font: 650 16px Inter, sans-serif; color: #f3f4f6; }
+.proof b { display: flex; align-items: center; gap: 10px; font: 650 16px "Inter Variable", Inter, sans-serif; color: #f3f4f6; }
 .proof b::before { content: ""; width: 8px; height: 8px; transform: rotate(45deg); border-radius: 2px; background: #2563eb; flex: none; }
 .stage-dark .mk-player { --mk-line: #6b7280; }
 
@@ -234,7 +234,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); gap: 18px; }
 .card { border: 1px solid var(--hair); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--bg); }
 .surface-card { background: var(--surface); border-radius: 16px; }
-.card h3 { font: 650 16px Inter, sans-serif; flex: 1 1 auto; }
+.card h3 { font: 650 16px "Inter Variable", Inter, sans-serif; flex: 1 1 auto; }
 .card .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
 .card .meta .type { font: 12px var(--mono); color: var(--muted); }
 .card .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: auto; }
@@ -273,7 +273,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .exports { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr)); gap: 12px; }
 .export { border: 1px solid var(--hair); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .export header { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
-.export h3 { font: 650 15px Inter, sans-serif; }
+.export h3 { font: 650 15px "Inter Variable", Inter, sans-serif; }
 .export header span { font-size: 12px; color: var(--muted); }
 .matrix { overflow-x: auto; }
 .matrix table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
@@ -288,7 +288,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 /* ---- docs */
 .docs { max-width: 1280px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-wrap: wrap; gap: 32px 48px; align-items: flex-start; }
 .docs-nav { flex: 1 1 200px; max-width: 240px; display: flex; flex-direction: column; gap: 20px; font-size: 15px; }
-.docs-nav h2 { font: 600 12px Inter, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.docs-nav h2 { font: 600 12px "Inter Variable", Inter, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
 .docs-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .docs-nav a { display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 0 8px; border-radius: 8px; text-decoration: none; color: var(--ink); }
 .docs-nav a::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 2px; border: 1.5px solid var(--line); }

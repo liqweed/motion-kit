@@ -124,8 +124,9 @@ and declared locales are checked unless explicitly narrowed. Run the gate
 before the Astro build, then inspect the page at desktop and phone sizes in
 light/dark, with JavaScript off and with reduced motion.
 
-For upgrades, check `MOTION_KIT_VERSION` against the package's release notes,
-choose the version to adopt, then run
+For upgrades, `npx @liqweed/motion-kit outdated src/motion-kit` compares
+`MOTION_KIT_VERSION` with the latest release (exit 1 when behind; a scheduled
+CI job can run it). Read the release notes, choose the version to adopt, then run
 `npx @liqweed/motion-kit@<version> vendor src/motion-kit --adapter astro`.
 Review the vendor diff, rerun the gate and Astro build, and inspect your scenes.
 Never keep custom edits inside `src/motion-kit`; re-vendoring overwrites them.

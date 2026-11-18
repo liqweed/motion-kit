@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
@@ -272,4 +272,71 @@ it("export hashes include the runtime and render settings", () => {
 	const b = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
 	assert.equal(a.runtimeHash, b.runtimeHash);
 	assert.notEqual(a.inputHash, b.inputHash);
+});
+
+describe("import", () => {
+	it("writes a spec from a Mermaid flowchart and checks it in every format", () => {
+		const out = join(tmp, "import", "pr.json");
+		const r = node(CLI, "import", join(EX, "pull-request.mmd"), "--out", out, "--id", "pull-request");
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /flowchart "pull-request", 7 nodes, 8 links/);
+		assert.match(r.out, /✓ .*pr\.json · tall/);
+		assert.equal(readFileSync(out, "utf8"), readFileSync(join(EX, "pull-request.json"), "utf8"));
+	});
+	it("prints to stdout without --out, reads stdin from -, and fails on unsupported syntax", () => {
+		const mmd = join(tmp, "chain.mmd");
+		writeFileSync(mmd, "graph LR\nA --> B --> C\n");
+		assert.equal(JSON.parse(run("import", mmd)).type, "sequence");
+		assert.equal(JSON.parse(run("import", mmd)).id, "chain");
+		const piped = spawnSync(process.execPath, [CLI, "import", "-", "--id", "piped"], { input: "graph TD\nA --> B\nA --> C\n", encoding: "utf8" });
+		assert.equal(piped.status, 0, piped.stderr);
+		assert.equal(JSON.parse(piped.stdout).type, "flowchart");
+		writeFileSync(mmd, "graph TD\nsubgraph s\nA --> B\nend\n");
+		const bad = node(CLI, "import", mmd);
+		assert.equal(bad.status, 1);
+		assert.match(bad.out, /line 2: "subgraph" is not supported/);
+	});
+});
+
+describe("outdated", () => {
+	/** Serve `latest` from a local registry; run the CLI against it. @param {string} version @param {string} dir */
+	const outdated = async (version, dir) => {
+		const { createServer } = await import("node:http");
+		const server = createServer((req, res) => {
+			if (req.url !== "/@liqweed%2Fmotion-kit/latest") {
+				res.writeHead(404).end();
+				return;
+			}
+			res.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ version }));
+		});
+		await new Promise((ok) => server.listen(0, "127.0.0.1", () => ok(undefined)));
+		const { port } = /** @type {import("node:net").AddressInfo} */ (server.address());
+		try {
+			const r = await new Promise((ok) => {
+				const child = spawn(process.execPath, [CLI, "outdated", dir], { env: { ...process.env, npm_config_registry: `http://127.0.0.1:${port}/` } });
+				let out = "";
+				child.stdout.on("data", (d) => (out += d));
+				child.stderr.on("data", (d) => (out += d));
+				child.on("close", (status) => ok({ status, out }));
+			});
+			return /** @type {{ status: number, out: string }} */ (r);
+		} finally {
+			server.close();
+		}
+	};
+	it("exits 1 with the re-vendor command when npm has a newer version, 0 when current", async () => {
+		const dir = join(tmp, "vendored-outdated");
+		run("vendor", dir, "--adapter", "astro");
+		const current = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")).version;
+		const behind = await outdated("99.0.0", dir);
+		assert.equal(behind.status, 1, behind.out);
+		assert.match(behind.out, new RegExp(`${current.replace(/\./g, "\\.")} is vendored; 99\\.0\\.0 is the latest`));
+		assert.match(behind.out, /npx @liqweed\/motion-kit@99\.0\.0 vendor .* --adapter astro/);
+		const same = await outdated(current, dir);
+		assert.equal(same.status, 0, same.out);
+		assert.match(same.out, /is up to date/);
+		const missing = await outdated(current, join(tmp, "nowhere"));
+		assert.equal(missing.status, 2);
+		assert.match(missing.out, /no MOTION_KIT_VERSION/);
+	});
 });

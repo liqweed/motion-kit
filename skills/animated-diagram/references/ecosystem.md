@@ -9,8 +9,8 @@ Checked Nov 2026. Re-verify licences before commercial use.
 | **GSAP** (incl. DrawSVG, MorphSVG, MotionPath, SplitText) | free incl. commercial since 3.13 (not for competing no-code builders) | Rich page motion, morphing, text splitting | Paused timelines are seekable (`tl.seek(t)`), so determinism holds. ~70 KB must be inlined for Craft Pages. Use for website polish; keep explainers in motion-kit |
 | **Motion Canvas / Revideo** | MIT | Hand-crafted technical explainer *videos* with generator timelines | Good for one-off videos; no live-page reuse |
 | **Manim CE** | MIT | Mathematics and science visuals, equations | Python; video only |
-| **Mermaid** | MIT | Static diagrams from text; quick structure | Use as *input notation* (flowchart/state), then lay out and animate in motion-kit |
-| **ELK.js / dagre** | EPL-2.0 / MIT | Automatic layout of larger graphs | Run at build time in Node, store coordinates in the spec |
+| **Mermaid** | MIT | Static diagrams from text; quick structure | Flowcharts import directly: `motion-kit import flow.mmd` (layout at build time). State diagrams: write a `state-machine` spec |
+| **ELK.js / dagre** | EPL-2.0 / MIT | Automatic layout of graphs larger than a scene's 12 nodes | `motion-kit import` has its own small layered layout; for more, run one at build time in Node and store coordinates in the spec |
 | **Lottie / Rive** | MIT runtimes | Designer-authored animation assets | Embed as media; not data-driven |
 | **resvg-js** | MPL-2.0 | SVG → PNG without a browser | motion-kit's rasterizer |
 

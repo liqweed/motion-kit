@@ -102,7 +102,8 @@ node cli/motion-kit.mjs vendor <repo>/components/motion-kit --adapter slidev   #
 
 Copies `runtime/`, the adapter, the gate (`lib/check.mjs`, `lib/gate.mjs`,
 `lib/load.mjs`) and `LICENSE`; writes `check.mjs` and `MOTION_KIT_VERSION`.
-Don't edit vendored files; change motion-kit and re-vendor. Vendoring keeps
+Don't edit vendored files; change motion-kit and re-vendor.
+`motion-kit outdated <dir>` tells you when a newer release exists. Vendoring keeps
 consumer CI self-contained (no install step, no network): the vendored gate
 runs the same checks as `motion-kit check`.
 
@@ -195,8 +196,10 @@ Pull requests here are reviewed with the help of
 free. Thank you, CodeRabbit, for the support.
 
 See the [Astro consumer guide](docs/guides/astro.md) for dictionaries, server
-rendering, styles, page helpers, CI and upgrades. The six built-in scene types
-include [state-machine and request-journey](skills/animated-diagram/references/scene-types.md).
+rendering, styles, page helpers, CI and upgrades. The seven built-in scene types
+include [state-machine, request-journey and flowchart](skills/animated-diagram/references/scene-types.md);
+`motion-kit import flow.mmd --out flow.json` turns a Mermaid flowchart into a
+spec, laid out once at build time.
 The [spec playground](https://motion-kit.dev/playground/) checks, plays and
 shares a JSON spec directly in the browser.
 

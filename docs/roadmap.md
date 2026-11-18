@@ -12,13 +12,7 @@ order they should land, and how to tell they are done. Product intent is in
 [`prd.md`](prd.md); the contract is in [`spec/technique.md`](spec/technique.md).
 Shipped work is in [`CHANGELOG.md`](../CHANGELOG.md), not here.
 
-## Next
-
-| Issue | Remaining work | Done when |
-|---|---|---|
-| [#11] | Import Mermaid flowcharts as specs, with build-time layout. | Linear input becomes a valid sequence; branching input passes in every format; unsupported syntax is named in errors. |
-
-## Later: the website
+## Next: the website
 
 These serve motion-kit's own reach; the first consuming site needs none of
 them (inference).
@@ -112,8 +106,9 @@ Candidates only; none is filed.
 | An accessibility check (WCAG 2.1 AA) on a built player page, with JavaScript on and off, light and dark, and reduced motion. | The defects a consumer found in the player (step text, target size, stage semantics, duplicate ids) were fixed one by one; nothing keeps them fixed except unit tests. |
 | A frame-time budget, checked in CI on the benchmark scene. | `npm run bench:player` measures the live player at 6x CPU slowdown but enforces nothing and needs a local Chromium. A budget would make "fast enough on a mid-range phone" a checked promise. The value is the maintainer's call. |
 | A cross-browser smoke test of the player in Firefox and WebKit. | The visibility observer, the in-place updates and the scroll helper were checked only in Chromium. |
-| A way for vendoring consumers to learn that a new version exists. | PRD §10 question 7. `MOTION_KIT_VERSION` records the vendored version, but nothing compares it with the latest release. |
-| The site follow-ups [#23] left open: self-hosted fonts instead of Google Fonts, and a redirect from `www.motion-kit.dev`. | [#23] lists both as not done. |
+| A redirect from `www.motion-kit.dev` to `motion-kit.dev`. | Left open by [#23]. It needs a DNS record and a redirect rule in the Cloudflare account, outside the repository; `www` answers with an error today. |
+| Mermaid state diagrams as `state-machine` specs. | Out of scope for [#11]'s flowchart import. A state diagram names no path, so the import would need one from the user. |
+| Larger imported flowcharts. | `motion-kit import` stops at 12 nodes and 20 links, the `flowchart` type's bounds; bigger charts must be split by hand. |
 
 ## Not planned
 

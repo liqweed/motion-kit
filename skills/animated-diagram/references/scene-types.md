@@ -138,6 +138,65 @@ separate enclosures with the same name. Hops with `async: true` stay dashed,
 including after activation. Return paths are ordinary hops in the opposite
 direction. See `examples/checkout.json`.
 
+### `flowchart`: a process with branches and joins
+
+Usually imported from Mermaid rather than written by hand:
+
+```bash
+motion-kit import flow.mmd --out flow.json   # also checks flow.json in every format
+```
+
+```json
+{ "type": "flowchart", "id": "pull-request",
+  "title": "…", "description": "…",
+  "direction": "down",                       // "up", "right", "left"
+  "nodes": [ { "id": "ci", "label": "CI passes?", "shape": "decision", "rank": 1, "pos": 0.25 }, … ],
+  "edges": [ { "from": "ci", "to": "fix", "label": "No" },
+             { "from": "a", "to": "d", "via": [[1, 0.75]] },
+             { "from": "login", "to": "auth", "dashed": true }, … ] }
+```
+
+2–12 nodes, 1–20 edges. The layout is stored in the spec: `rank` is a node's
+layer along the flow (whole numbers), `pos` its place across the flow in node
+pitches (nodes on one rank ≥ 1 apart), and an edge spanning several ranks has
+one `via` waypoint per rank between. The importer computes these once at build
+time (`lib/layout.mjs`, a layered layout); the scene type only scales them to
+each format, so the runtime never lays a graph out. Shapes: `box` (default),
+`round`, `pill`, `decision`. Edges may carry a short one-line `label`, be
+`dashed`, or have no arrowhead (`"arrow": false`). Nodes may carry `detail`.
+
+Storyboard: the chart appears rank by rank in pending colours → nodes fill
+accent one at a time in flow order (rank, then across), each incoming connector
+drawing on in accent just before its node fills → an emphasis outline marks the
+node just reached. A connector that points back (a retry loop) turns accent
+while its source fills. Steps = one per node; step ids are the node ids.
+`direction` is the flow in wide formats; 9:16 and `tall` flow downward, and a
+format falls back to the other axis when the preferred one does not fit. Throws
+when labels, edge labels or connectors would collide: shorter labels, fewer
+ranks or a larger format. See `examples/pull-request.mmd` and its spec.
+
+### Importing Mermaid
+
+`motion-kit import <file.mmd | ->` turns a Mermaid flowchart into a spec
+(stdout, or `--out`; `--id`, `--title`, `--description` override what the
+chart says). A plain chain (each node one link in and one out, no link labels,
+no dotted links) becomes a `sequence`; anything else becomes a `flowchart`.
+
+- Read: `flowchart`/`graph` with `TB`/`TD`/`BT`/`LR`/`RL`; `[box]`, `(round)`,
+  `([pill])`, `{decision}`, `{{decision}}`; quoted labels, `<br>`, `#quot;`
+  codes; `-->`, `---`, `-.->`, `-.-`, `==>`, `===` with `|text|` or
+  `-- text -->` labels; chains and `&` groups; `accTitle`, `accDescr`, a
+  front-matter `title`. The title and description become the scene's
+  accessible name and description; without `accDescr` the description lists
+  every link in words.
+- Ignored with a warning (colours come from the motion-kit style): `classDef`,
+  `class`, `style`, `linkStyle`, `:::name`, `%%{init}%%`, front-matter `config`.
+- Errors naming the line: subgraphs and `direction`, `click`, other shapes
+  (circle, database, subroutine, parallelogram, …), `@{ shape }`, two-way,
+  circle and cross links, `~~~`, link ids, self-loops, markdown strings, HTML
+  in labels, and more than 12 nodes or 20 links. Sequence, state and ER
+  diagrams are not converted.
+
 ## Storyboards for types not built yet
 
 Build these as custom scenes (`custom-scenes.md`) first. Promote one to a type
@@ -149,7 +208,7 @@ once it has been used twice.
 | `comparison` | option A vs B on criteria | two columns appear → criteria rows fill one at a time → the deciding row emphasised |
 | `funnel` / `data-flow` | volume or data narrowing/merging | sources appear → streams draw on and merge → result fills |
 
-Auto-layout for larger graphs: lay out with ELK.js or dagre once (Node, at
-build time), store coordinates in the spec, then animate. Mermaid flowchart or
-state syntax can serve as input notation (parse nodes/edges, recompute layout).
-Don't convert sequence or ER diagrams lossily.
+Auto-layout happens at build time, never in `frame()`: `motion-kit import`
+lays out Mermaid flowcharts as `flowchart` specs (above). State diagrams are
+not imported yet; write a `state-machine` spec. Don't convert sequence or ER
+diagrams lossily.
