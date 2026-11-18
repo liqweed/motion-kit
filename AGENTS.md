@@ -125,3 +125,28 @@ priority and size as labels, areas as `area:*` labels, all listed in
 `.config/label-taxonomy.yaml`. File issues with `/jig:file-issue`. `.claude/settings.json`
 offers the plugin to Claude Code users who trust this folder. If the skills
 are not listed, install the plugin and start a new session.
+
+## Design skills (vendored)
+
+`.agents/skills/` holds third-party design skills for contributors. Codex
+reads them from there; Claude Code reads them through the symlinks in
+`.claude/skills/`. `skills-lock.json` pins each one to a commit. Restore them
+with `npx skills experimental_install`, and update them with
+`npx skills update -p`. Never edit a vendored copy by hand.
+
+| Skill | Source | Use it for |
+|---|---|---|
+| `impeccable` | [pbakaus/impeccable](https://github.com/pbakaus/impeccable) | Critique, audit, polish and typeset **`website/`** (motion-kit.dev) |
+| `emil-design-eng`, `animate`, `choreograph`, `review-animations`, `improve-animations`, `remove-animations`, `animation-performance`, `animation-vocabulary`, `learn-taste` | [emilkowalski/skills](https://github.com/emilkowalski/skills) | A second opinion on motion in the player and the website, and naming effects |
+
+These skills give generic web-UI advice. When they disagree with this repository, the repository wins:
+
+- The scene rules above, `skills/animated-diagram/references/` and `npm run check` decide how a scene moves. Emil's numbers (durations under 300 ms, non-uniform stagger) are about interface feedback, not explanatory diagrams.
+- A finding against a scene type becomes an issue, not an edit.
+- `impeccable` is for `website/`. It is not for scene styles, which stay neutral, with brand styles living in the consuming repository.
+
+Only the skills are installed, not Impeccable's edit and Stop hooks, so
+sessions that never ask for design work are not affected. To try the hooks
+locally, run `npx impeccable install --scope=project` and keep the hook
+entries out of commits. Impeccable's local state under `.impeccable/` is
+git-ignored.
