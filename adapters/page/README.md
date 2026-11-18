@@ -26,3 +26,8 @@ The page-link helpers (`scrollSteps`, `linkSteps`, from `runtime/links.mjs`)
 are bundled on the `MotionKitRuntime` global; bind them to the controller from
 the capture hook when you add text sections or `data-mk-step` terms around
 the diagram.
+
+The capture-hook key is `options.id ?? scene.id`; built-in scene ids include
+the format (for example `order-flow-16x9`). Page integrations should retain
+the returned controller. `controller.onStep(callback)` reports the current
+step immediately, then changed indices, and returns an unsubscribe function.

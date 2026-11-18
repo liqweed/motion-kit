@@ -93,9 +93,11 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none", optio
 	let nextId = 0;
 	const themeListeners = new Set();
 	const observers = [];
+	const reported = [];
 	const doc = makeDocument();
 	const context = vm.createContext({
 		performance: { now: () => now },
+		reportError: (e) => reported.push(e),
 		requestAnimationFrame(callback) { frames.set(++nextId, callback); return nextId; },
 		cancelAnimationFrame(id) { frames.delete(id); },
 		matchMedia: (query) => ({
@@ -114,7 +116,7 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none", optio
 	doc.body.appendChild(container);
 	const player = context.MotionKit.mountPlayer(container, sceneOverride, { animateSteps, autoplay, ...options });
 	return {
-		player, container, frames, context, themeListeners, doc, observers,
+		player, container, frames, context, themeListeners, doc, observers, reported,
 		get disconnected() { return observers[0].disconnected; },
 		show(e = entry(true)) { observers[0].callback([e]); },
 		mount(target, s = scene, o = {}) { return context.MotionKit.mountPlayer(target, s, { autoplay: "none", ...o }); },
@@ -443,4 +445,77 @@ it("themeCss follows the system unless a theme is fixed", () => {
 	assert.ok(!dark.includes("@media"));
 	assert.match(dark, /--mk-bg:#0f1115/);
 	assert.throws(() => themeCss("#d", { font: "x}</style><script>" }), /font must be/);
+});
+
+it("onStep follows seeking, playback and controls once per index and releases subscriptions", () => {
+	const { player, container, advance, frames } = setup();
+	const seen = [];
+	const unsubscribe = player.onStep((i) => seen.push(i));
+	assert.deepEqual(seen, [2]);
+	assert.equal(frames.size, 0, "subscribing does not start a polling loop");
+	player.seek(0);
+	player.seek(0.5);
+	player.playToStep(2);
+	advance(600);
+	advance(1000);
+	assert.deepEqual(seen, [2, 0, 1, 2]);
+	unsubscribe();
+	player.seekStep(1);
+	assert.deepEqual(seen, [2, 0, 1, 2]);
+	player.onStep((i) => seen.push(i));
+	player.destroy();
+	player.seekStep(0);
+	assert.deepEqual(seen, [2, 0, 1, 2, 1]);
+	assert.throws(() => setup().player.seek(NaN), /finite/);
+});
+
+it("a throwing step listener is reported, the others still run and playback keeps going", () => {
+	const { player, advance, frames, reported } = setup();
+	const seen = [];
+	const boom = new Error("listener failed");
+	let armed = false;
+	player.onStep(() => { if (armed) throw boom; });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	assert.deepEqual(seen, [2]);
+	player.seek(0);
+	player.playToStep(1);
+	advance(100);
+	assert.equal(frames.size, 1, "the next frame is still scheduled");
+	advance(1000);
+	assert.ok(reported.length === 2 && reported.every((e) => e === boom));
+	assert.equal(seen.at(-1), 1);
+});
+
+it("a listener that destroys the player stops the dispatch to later listeners", () => {
+	const { player } = setup();
+	const seen = [];
+	let armed = false;
+	player.onStep(() => { if (armed) player.destroy(); });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	player.seek(0);
+	assert.deepEqual(seen, [2]);
+});
+
+it("a listener that seeks supersedes the outer dispatch: later listeners never see the stale step", () => {
+	const { player } = setup();
+	const seen = [];
+	let armed = false;
+	player.onStep((i) => { if (armed && i === 0) { armed = false; player.seekStep(1); } });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	player.seek(0);
+	assert.deepEqual(seen, [2, 1]);
+});
+
+it("nested seeks that return to the original step still supersede the outer dispatch", () => {
+	const { player } = setup();
+	const seen = [];
+	let armed = false;
+	player.onStep((i) => { if (armed && i === 0) { armed = false; player.seekStep(1); player.seekStep(0); } });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	player.seek(0);
+	assert.deepEqual(seen, [2, 1, 0]);
 });

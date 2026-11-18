@@ -103,7 +103,7 @@ describe("cli", () => {
 		writeFileSync(join(dir, "scenes/broken.json"), "{ not json");
 		r = node(gate, join(dir, "scenes/missing.scene.mjs"), join(dir, "scenes/broken.json"), join(dir, "scenes/order-flow.json"), "--format", "16:9");
 		assert.equal(r.status, 1);
-		assert.match(r.out, /✗ .*missing\.scene\.mjs · 16:9 · en/);
+		assert.match(r.out, /✗ .*missing\.scene\.mjs: Cannot find module/);
 		assert.match(r.out, /✗ .*broken\.json: /);
 		assert.equal((r.out.match(/✓ .*order-flow\.json/g) ?? []).length, 2);
 	});
@@ -249,4 +249,27 @@ describe("cli", () => {
 		assert.equal(p.height, 720);
 		assert.ok(p.duration > 5 && p.duration < 9, `duration ${p.duration}`);
 	});
+});
+
+it("bake and video reject an invalid scene before writing any output", () => {
+	const file = join(tmp, "invalid.scene.mjs");
+	writeFileSync(file, `export default () => ({ id: "bad", title: "Bad", description: "Bad", width: 100, height: 100, duration: 13, steps: [{at: 13,label: "Bad"}], frame: () => '<text fill="red">Bad</text>' });`);
+	for (const command of ["bake", "video"]) {
+		const out = join(tmp, `refused.${command === "bake" ? "svg" : "mp4"}`);
+		const result = node(CLI, command, file, "-o", out);
+		assert.equal(result.status, 1);
+		assert.match(result.out, /scene fails the gate/);
+		assert.equal(existsSync(out), false);
+	}
+});
+
+it("export hashes include the runtime and render settings", () => {
+	const out = join(tmp, "hash-settings");
+	run("export", join(EX, "order-flow.json"), "-o", out);
+	const a = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
+	assert.match(a.runtimeHash, /^[a-f0-9]{64}$/);
+	run("export", join(EX, "order-flow.json"), "-o", out, "--theme", "dark");
+	const b = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
+	assert.equal(a.runtimeHash, b.runtimeHash);
+	assert.notEqual(a.inputHash, b.inputHash);
 });

@@ -1,0 +1,104 @@
+{
+	"type": "request-journey",
+	"id": "checkout",
+	"title": {
+		"en": "A checkout request",
+		"nl": "Een betaalverzoek"
+	},
+	"description": {
+		"en": "The browser calls the shop, which asks for payment and queues a receipt.",
+		"nl": "De browser roept de winkel aan, die betaling vraagt en een ontvangstbewijs klaarzet."
+	},
+	"components": [
+		{
+			"id": "browser",
+			"label": {
+				"en": "Browser",
+				"nl": "Browser"
+			},
+			"region": {
+				"en": "Customer",
+				"nl": "Klant"
+			}
+		},
+		{
+			"id": "shop",
+			"label": {
+				"en": "Shop API",
+				"nl": "Winkel-API"
+			},
+			"region": {
+				"en": "Shop",
+				"nl": "Winkel"
+			}
+		},
+		{
+			"id": "payment",
+			"label": {
+				"en": "Payment API",
+				"nl": "Betaal-API"
+			},
+			"region": {
+				"en": "Provider",
+				"nl": "Aanbieder"
+			}
+		},
+		{
+			"id": "queue",
+			"label": {
+				"en": "Receipt queue",
+				"nl": "Bonnenwachtrij"
+			},
+			"region": {
+				"en": "Shop",
+				"nl": "Winkel"
+			}
+		}
+	],
+	"hops": [
+		{
+			"id": "submit",
+			"from": "browser",
+			"to": "shop",
+			"label": {
+				"en": "Submit order",
+				"nl": "Bestelling sturen"
+			}
+		},
+		{
+			"id": "pay",
+			"from": "shop",
+			"to": "payment",
+			"label": {
+				"en": "Request payment",
+				"nl": "Betaling vragen"
+			}
+		},
+		{
+			"id": "paid",
+			"from": "payment",
+			"to": "shop",
+			"label": {
+				"en": "Payment accepted",
+				"nl": "Betaling aanvaard"
+			}
+		},
+		{
+			"id": "enqueue",
+			"from": "shop",
+			"to": "queue",
+			"label": {
+				"en": "Queue receipt",
+				"nl": "Bon klaarzetten"
+			},
+			"async": true
+		}
+	],
+	"initial": "browser",
+	"path": [
+		"submit",
+		"pay",
+		"paid",
+		"enqueue"
+	]
+}

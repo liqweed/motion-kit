@@ -109,3 +109,17 @@ export default function make({ format = "1:1", kit }) {
 Every command supports this, `motion-kit build` included (it bundles the whole
 runtime and passes it as `kit`). A module that imports instead must use
 relative imports to a vendored runtime.
+
+## Declared locales and narrative steps
+
+Export `const locales = ["en", "nl"]` alongside the default factory so both
+CLI and vendored checks test every shipped locale. Without a declaration the
+check uses `en`; explicit `--locale` flags override the declaration.
+`localize()` accepts shared plain strings or an exact locale translation;
+a missing dictionary entry throws. It never silently selects another language.
+
+A scene whose step labels narrate actions rather than name visible objects
+sets `stepLabelsInFrame: false`. Those labels still belong in the player's
+controls and accessible transcript; G10 otherwise requires each label in the
+final frame. `frame(t, { idPrefix, style })` also receives the normalized style
+when called through `renderSvg`; custom shape styling is opt-in.

@@ -168,7 +168,7 @@ for inline specs, styles, lifecycle and error handling.
 
 Deterministic bytes · settled step frames · rounded numbers · token-only colours ·
 escaped labels · labels fit their budget in every locale · holds the final frame ·
-≤ ~8–10 s · no clock or randomness in scenes · ids from the instance prefix. See
+hard limit 12 s (aim for ≤ 8 s) · no clock or randomness in scenes · ids from the instance prefix. See
 `skills/animated-diagram/references/technique.md`.
 
 ## Contributing, changes and stability
@@ -193,3 +193,15 @@ for related tools and when to use them instead.
 Pull requests here are reviewed with the help of
 [CodeRabbit](https://coderabbit.ai), which supports open source projects for
 free. Thank you, CodeRabbit, for the support.
+
+See the [Astro consumer guide](docs/guides/astro.md) for dictionaries, server
+rendering, styles, page helpers, CI and upgrades. The six built-in scene types
+include [state-machine and request-journey](skills/animated-diagram/references/scene-types.md).
+The [spec playground](https://motion-kit.dev/playground/) checks, plays and
+shares a JSON spec directly in the browser.
+
+Localized dictionaries must contain the requested locale; plain strings are
+shared. Custom modules can export `locales = ["en", "nl"]` for gate coverage.
+Narrative scenes may set `stepLabelsInFrame: false`; otherwise every step label
+must appear in the final frame. `controller.onStep(callback)` observes changes
+without polling and returns an unsubscribe function.

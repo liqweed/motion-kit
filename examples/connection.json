@@ -1,0 +1,80 @@
+{
+	"type": "state-machine",
+	"id": "connection",
+	"title": {
+		"en": "A connection recovers",
+		"nl": "Een verbinding herstelt"
+	},
+	"description": {
+		"en": "Connect, retry after failure, then disconnect.",
+		"nl": "Verbinden, opnieuw proberen na uitval en verbreken."
+	},
+	"states": [
+		{
+			"id": "offline",
+			"label": {
+				"en": "Offline",
+				"nl": "Offline"
+			}
+		},
+		{
+			"id": "connecting",
+			"label": {
+				"en": "Connecting",
+				"nl": "Verbinden"
+			}
+		},
+		{
+			"id": "online",
+			"label": {
+				"en": "Online",
+				"nl": "Online"
+			}
+		}
+	],
+	"transitions": [
+		{
+			"id": "connect",
+			"from": "offline",
+			"to": "connecting",
+			"label": {
+				"en": "Connect",
+				"nl": "Verbinden"
+			}
+		},
+		{
+			"id": "retry",
+			"from": "connecting",
+			"to": "connecting",
+			"label": {
+				"en": "Retry",
+				"nl": "Opnieuw proberen"
+			}
+		},
+		{
+			"id": "ready",
+			"from": "connecting",
+			"to": "online",
+			"label": {
+				"en": "Connected",
+				"nl": "Verbonden"
+			}
+		},
+		{
+			"id": "close",
+			"from": "online",
+			"to": "offline",
+			"label": {
+				"en": "Disconnect",
+				"nl": "Verbreken"
+			}
+		}
+	],
+	"initial": "offline",
+	"path": [
+		"connect",
+		"retry",
+		"ready",
+		"close"
+	]
+}

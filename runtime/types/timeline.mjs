@@ -1,3 +1,4 @@
+/** @import { Style } from "../style.mjs" */
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /**
@@ -25,7 +26,7 @@
 import { easeOut, easeStandard, lerp, progress, springSettleTime, springStep } from "../motion.mjs";
 import { FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { tok } from "../style.mjs";
+import { NEUTRAL, tok } from "../style.mjs";
 import { drawOn, el, fade, num, text, translate } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
 
@@ -310,7 +311,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 	const line = (a, b, attrs) =>
 		el("path", { d: L.dir === "h" ? `M${num(a)} ${num(ax.y0)} H${num(b)}` : `M${num(ax.x0)} ${num(a)} V${num(b)}`, fill: "none", "stroke-linecap": "round", ...attrs });
 
-	function milestone(t, it, k) {
+	function milestone(t, it, k, style) {
 		const p = L.at(k);
 		const b = beat(k);
 		const drop = progress(t, b + 0.05, DROP, easeOut);
@@ -325,10 +326,10 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 			const y1 = p.y + s * L.stem;
 			const len = Math.abs(y1 - y0);
 			const dash = drawOn(len, progress(t, b + 0.15, LABEL, easeStandard));
-			if (dash) out.push(el("path", { d: `M${num(p.x)} ${num(y0)} V${num(y1)}`, stroke: tok("line"), "stroke-width": 1.5, fill: "none", ...dash }));
+			if (dash) out.push(el("path", { d: `M${num(p.x)} ${num(y0)} V${num(y1)}`, stroke: tok("line"), "stroke-width": style.stroke * 0.75, fill: "none", ...dash }));
 		}
 		const dy = (1 - drop) * -14;
-		const dot = (fill, stroke) => el("circle", { cx: p.x, cy: p.y, r: DOT, fill, stroke, "stroke-width": 2 });
+		const dot = (fill, stroke) => el("circle", { cx: p.x, cy: p.y, r: DOT, fill, stroke, "stroke-width": style.stroke });
 		out.push(
 			fade(drop, { transform: Math.abs(dy) > 0.004 ? translate(0, dy) : undefined }, fade(1 - active, {}, dot(tok("surface"), tok("line"))), fade(active, {}, dot(tok("accent"), tok("accent")))),
 		);
@@ -353,7 +354,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 		return out.join("");
 	}
 
-	function nowMarker(t) {
+	function nowMarker(t, style) {
 		if (!now || !L.nowAt || !L.nowPill) return "";
 		const shown = progress(t, nowStart, NOW_FADE, easeOut);
 		if (shown <= 0) return "";
@@ -364,25 +365,26 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 		return fade(
 			shown,
 			{ transform: Math.abs(dy) > 0.004 ? translate(0, dy) : undefined },
-			el("rect", { x, y, width: w, height: h, rx: h / 2, fill: tok("bg"), stroke: tok("emphasis"), "stroke-width": 2.5 }),
+			el("rect", { x, y, width: w, height: h, rx: h / 2, fill: tok("bg"), stroke: tok("emphasis"), "stroke-width": style.stroke * 1.25 }),
 			text({ x: x + w / 2, y: L.nowAt.y, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fs, "font-weight": 600, fill: tok("ink") }, now.label),
 		);
 	}
 
-	function frame(t) {
+	/** @param {number} t @param {{style?: Style}} [ctx] */
+	function frame(t, { style = NEUTRAL } = {}) {
 		const out = [];
 		// Axis: pending line draws on; an arrowhead at its end shows the direction of time.
 		const axisDash = drawOn(axisLen, progress(t, 0, AXIS, easeStandard));
-		if (axisDash) out.push(line(start, L.dir === "h" ? ax.x1 : ax.y1, { stroke: tok("line"), "stroke-width": 2, ...axisDash }));
+		if (axisDash) out.push(line(start, L.dir === "h" ? ax.x1 : ax.y1, { stroke: tok("line"), "stroke-width": style.stroke, ...axisDash }));
 		const head = progress(t, AXIS - 0.15, 0.2, easeOut);
 		if (head > 0) {
 			const d = L.dir === "h" ? `M${num(ax.x1 - 9)} ${num(ax.y1 - 6)} L${num(ax.x1)} ${num(ax.y1)} L${num(ax.x1 - 9)} ${num(ax.y1 + 6)}` : `M${num(ax.x1 - 6)} ${num(ax.y1 - 9)} L${num(ax.x1)} ${num(ax.y1)} L${num(ax.x1 + 6)} ${num(ax.y1 - 9)}`;
-			out.push(el("path", { d, fill: "none", stroke: tok("line"), "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: head }));
+			out.push(el("path", { d, fill: "none", stroke: tok("line"), "stroke-width": style.stroke, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: head }));
 		}
 		const end = accentEnd(t);
-		if (end - start > 0.5) out.push(line(start, end, { stroke: tok("accent"), "stroke-width": 3 }));
-		items.forEach((it, k) => out.push(milestone(t, it, k)));
-		out.push(nowMarker(t));
+		if (end - start > 0.5) out.push(line(start, end, { stroke: tok("accent"), "stroke-width": style.stroke * 1.5 }));
+		items.forEach((it, k) => out.push(milestone(t, it, k, style)));
+		out.push(nowMarker(t, style));
 		return out.join("");
 	}
 

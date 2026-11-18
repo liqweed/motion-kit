@@ -1,0 +1,97 @@
+{
+	"type": "state-machine",
+	"id": "player-states",
+	"title": {
+		"en": "The player, as states",
+		"nl": "De speler als toestanden"
+	},
+	"description": {
+		"en": "Play, pause, resume and finish. Replay returns to playing.",
+		"nl": "Afspelen, pauzeren, hervatten en afronden. Opnieuw keert terug naar afspelen."
+	},
+	"states": [
+		{
+			"id": "ready",
+			"label": {
+				"en": "Ready",
+				"nl": "Gereed"
+			}
+		},
+		{
+			"id": "playing",
+			"label": {
+				"en": "Playing",
+				"nl": "Speelt"
+			}
+		},
+		{
+			"id": "paused",
+			"label": {
+				"en": "Paused",
+				"nl": "Gepauzeerd"
+			}
+		},
+		{
+			"id": "finished",
+			"label": {
+				"en": "Finished",
+				"nl": "Afgerond"
+			}
+		}
+	],
+	"transitions": [
+		{
+			"id": "play",
+			"from": "ready",
+			"to": "playing",
+			"label": {
+				"en": "Play",
+				"nl": "Afspelen"
+			}
+		},
+		{
+			"id": "pause",
+			"from": "playing",
+			"to": "paused",
+			"label": {
+				"en": "Pause",
+				"nl": "Pauzeren"
+			}
+		},
+		{
+			"id": "resume",
+			"from": "paused",
+			"to": "playing",
+			"label": {
+				"en": "Resume",
+				"nl": "Hervatten"
+			}
+		},
+		{
+			"id": "finish",
+			"from": "playing",
+			"to": "finished",
+			"label": {
+				"en": "Finish",
+				"nl": "Afronden"
+			}
+		},
+		{
+			"id": "replay",
+			"from": "finished",
+			"to": "playing",
+			"label": {
+				"en": "Replay",
+				"nl": "Opnieuw"
+			}
+		}
+	],
+	"initial": "ready",
+	"path": [
+		"play",
+		"pause",
+		"resume",
+		"finish",
+		"replay"
+	]
+}

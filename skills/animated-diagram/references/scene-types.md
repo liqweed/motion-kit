@@ -83,6 +83,61 @@ for `down`, bottom → top for `up`). Layout: one column of layers with the rail
 on the right in every format; labels take one line, two when needed. Throws
 when the layers do not fit: fewer layers, shorter labels or a larger format.
 
+### `state-machine`: states and explicit transitions
+
+```json
+{ "type": "state-machine", "id": "connection",
+  "title": "A connection", "description": "Connect and disconnect.",
+  "states": [{ "id": "off", "label": "Offline" }, { "id": "on", "label": "Online" }],
+  "transitions": [
+    { "id": "connect", "from": "off", "to": "on", "label": "Connect" },
+    { "id": "close", "from": "on", "to": "off", "label": "Disconnect" }
+  ],
+  "initial": "off", "path": ["connect", "close"] }
+```
+
+2–8 states, 1–12 transitions and 1–10 narrated transitions in `path`.
+State and transition ids are required and unique within their list. `initial`
+names a state. Each path edge must start where the previous one ended; branches,
+cycles, repeated transitions and self-transitions are supported. The path is
+explicit: the runtime never decides which branch to take. All states appear
+pending, the initial state fills, then a single token follows the path while
+the current state fills accent. Completed edges retain their accent.
+
+Layouts use a column in reading order with separate connector lanes outside
+the labels; each fixed format centers the fitted graph, and strips grow to
+fit. Labels auto-fit to two lines at 14 px or above. Oversized graphs and labels
+fail with a remedy. `fontSize` sets the optional maximum.
+
+Steps are the initial state (`initial`), then one per path entry (`visit-1`,
+`visit-2`, …). Transition labels and optional `detail` sentences appear in
+controls, captions and the accessible transcript; they are narrative steps
+(`stepLabelsInFrame: false`), not labels drawn on every edge. State labels stay
+visible in every settled frame. Labels, title, description and details accept
+localized strings. See `examples/player-states.json` and `connection.json`.
+
+### `request-journey`: a request crossing components
+
+Uses the same explicit walk, timing, bounds and step ids as `state-machine`,
+with `components` instead of `states` and `hops` instead of `transitions`:
+
+```json
+{ "type": "request-journey", "id": "request",
+  "title": "Queue a job", "description": "The API queues work asynchronously.",
+  "components": [
+    { "id": "api", "label": "API", "region": "Service" },
+    { "id": "queue", "label": "Queue", "region": "Worker" }
+  ],
+  "hops": [{ "id": "send", "from": "api", "to": "queue", "label": "Enqueue", "async": true }],
+  "initial": "api", "path": ["send"] }
+```
+
+A component's optional localized `region` names its boundary, shown as a
+one-line heading above a dashed enclosure. Components sharing a region keep
+separate enclosures with the same name. Hops with `async: true` stay dashed,
+including after activation. Return paths are ordinary hops in the opposite
+direction. See `examples/checkout.json`.
+
 ## Storyboards for types not built yet
 
 Build these as custom scenes (`custom-scenes.md`) first. Promote one to a type
@@ -92,8 +147,6 @@ once it has been used twice.
 |---|---|---|
 | `before-after` | what changes | left state fully shown → a divider sweeps → right state builds; differences highlighted with the emphasis colour |
 | `comparison` | option A vs B on criteria | two columns appear → criteria rows fill one at a time → the deciding row emphasised |
-| `state-machine` | states and transitions | all states (pending) → a token walks a path of transitions, the current state accent |
-| `request-journey` | a request crossing system components | components in regions/boundaries → a dot travels the path, each hop lights, async edges dashed |
 | `funnel` / `data-flow` | volume or data narrowing/merging | sources appear → streams draw on and merge → result fills |
 
 Auto-layout for larger graphs: lay out with ELK.js or dagre once (Node, at

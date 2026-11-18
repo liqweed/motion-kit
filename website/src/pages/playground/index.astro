@@ -1,0 +1,33 @@
+---
+import Base from "../../layouts/Base.astro";
+import Header from "../../components/Header.astro";
+import { FORMATS } from "../../../../runtime/scene.mjs";
+import spec from "../../../../examples/player-states.json";
+---
+<Base title="Spec playground · motion-kit" description="Edit a motion-kit JSON spec, check it, play it and share it.">
+	<Header page="playground" />
+	<main id="main" class="section">
+		<div class="wrap">
+			<h1 class="h2">Try a scene</h1>
+			<p class="lede">Paste a JSON spec, then render it. The same scene gate runs here and in the CLI. Share keeps the spec in the URL; no upload or account is needed.</p>
+			<noscript>This editor needs JavaScript. You can also save a spec and run motion-kit check locally.</noscript>
+			<form id="playground-form" class="playground-grid">
+				<div class="spec-editor">
+					<label for="spec-source">Scene spec (JSON)</label>
+					<textarea id="spec-source" spellcheck="false" maxlength="32000" rows="23">{JSON.stringify(spec, null, 2)}</textarea>
+					<div class="group">
+						<label for="spec-format">Format</label>
+						<select id="spec-format">{Object.keys(FORMATS).map((f) => <option value={f} selected={f === "tall"}>{f}</option>)}</select>
+						<label for="spec-locale">Locale</label>
+						<input id="spec-locale" value="en" maxlength="35" size="8" required pattern="[a-z]{2,3}(-[A-Za-z0-9]{2,8})*" />
+					</div>
+					<div class="group"><button class="pill" type="submit">Render scene</button><button class="pill ghost" type="button" id="spec-share">Share link</button><a id="spec-link" hidden>Open shared scene</a></div>
+					<p id="spec-status" role="status" aria-live="polite"></p>
+					<pre id="spec-error" role="alert" hidden></pre>
+				</div>
+				<section aria-label="Scene preview"><div id="spec-preview"></div></section>
+			</form>
+		</div>
+	</main>
+	<script src="../../scripts/playground.mjs"></script>
+</Base>

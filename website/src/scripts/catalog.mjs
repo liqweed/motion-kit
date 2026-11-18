@@ -30,6 +30,9 @@ export const GROUPS = [
  */
 /** @type {LiveExample[]} */
 export const LIVE = [
+	{"id": "player-states", "group": "process", "title": "The player, as states", "type": "state-machine", "file": "examples/player-states.json", "kind": "spec", "steps": 6},
+	{"id": "checkout", "group": "system", "title": "A checkout request", "type": "request-journey", "file": "examples/checkout.json", "kind": "spec", "steps": 5},
+	{"id": "connection", "group": "system", "title": "A connection recovers", "type": "state-machine", "file": "examples/connection.json", "kind": "spec", "steps": 5},
 	{ id: "order-flow", group: "process", title: "How an order reaches the customer", type: "sequence", file: "examples/order-flow.json", kind: "spec", steps: 6 },
 	{ id: "release-pipeline", group: "process", title: "From commit to published media", type: "sequence", file: "examples/release-pipeline.json", kind: "spec", steps: 5 },
 	{ id: "agent-loop", group: "process", title: "An agent goes from brief to checked diagram", type: "sequence", file: "examples/agent-loop.json", kind: "spec", steps: 6 },
@@ -46,8 +49,6 @@ export const LIVE = [
  */
 /** @type {PlannedExample[]} */
 export const PLANNED = [
-	{ id: "player-states", group: "process", title: "The live player, as states", type: "state-machine", issue: 18, story: "States wait as pending; a token walks the transitions; the current state turns accent." },
-	{ id: "checkout", group: "system", title: "A checkout request", type: "request-journey", issue: 19, story: "Regions and components appear; a dot hops the path; async edges are dashed." },
 	{ id: "one-scene", group: "change", title: "Per-medium authoring vs one scene", type: "before-after", issue: 3, story: "The left state shows, a divider sweeps, the right state builds, the difference is emphasised." },
 	{ id: "bake-vs-live", group: "change", title: "Baked SVG or live player?", type: "comparison", issue: 3, story: "Two columns; criteria rows fill; the deciding row is emphasised." },
 	{ id: "gate-funnel", group: "data", title: "Everything goes through the gate", type: "funnel", issue: 3, story: "Sources appear, streams merge, the result fills." },

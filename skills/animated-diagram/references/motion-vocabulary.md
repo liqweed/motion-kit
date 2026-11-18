@@ -18,7 +18,7 @@
 | State fill (pending → active) | 200–300 ms |
 | Travel between nodes | 350–500 ms |
 | Pause between beats | ≥ 50 ms, so step frames settle |
-| Whole explainer | ≤ ~8 s, then hold |
+| Whole explainer | aim for ≤ 8 s, then hold; gate limit 12 s |
 
 ## Springs, without breaking random access (derived)
 

@@ -47,11 +47,7 @@ const fmt = phone ? "tall" : "wide";
 		const build = (n, keepStep, rebuilding) => {
 			const spec = { ...base, spokes: base.spokes.slice(0, n) };
 			const sc = createScene(spec, { format: fmt });
-			// Release the previous player: the player has no dispose, so drop its
-			// capture-hook registration. An explicit theme means it adds no
-			// media-query listener that would pin the detached DOM.
-			current?.pause();
-			for (const k of Object.keys(globalThis.__motionKit ?? {})) if (k.startsWith(`${sc.id}-`)) delete globalThis.__motionKit[k];
+			current?.destroy();
 			const { controller } = mount(stage, sc, { style: styleFor("studio"), theme: themeOpt() ?? (prefersDark() ? "dark" : "light"), autoplay: "none" });
 			if (rebuilding) {
 				if (keepStep >= 0) controller.seekStep(Math.min(keepStep, sc.steps.length - 1));

@@ -133,3 +133,37 @@ describe("stack", () => {
 		assert.throws(() => createScene(wordy, { format: "16:9" }), /do not fit format 16:9/);
 	});
 });
+
+describe("graph walks", () => {
+	for (const name of ["player-states", "checkout", "connection"]) {
+		it(`${name} passes every format and locale, including reverse and self transitions`, () => {
+			for (const scene of gateAll(example(name), LOCALES)) {
+				assert.equal(scene.steps.length, example(name).path.length + 1);
+				for (const step of scene.steps) {
+					const svg = renderSvg(scene, step.at);
+					assert.equal((svg.match(/<rect[^>]*fill="var\(--mk-accent\)"/g) ?? []).length, 1);
+					assert.equal((svg.match(/fill="var\(--mk-emphasis\)"/g) ?? []).length, 1);
+				}
+			}
+		});
+	}
+	it("rejects disconnected, missing, ambiguous and oversized paths", () => {
+		const spec = example("connection");
+		assert.throws(() => createScene({ ...spec, initial: "absent" }), /initial must name/);
+		assert.throws(() => createScene({ ...spec, path: ["retry"] }), /expected offline/);
+		assert.throws(() => createScene({ ...spec, path: ["missing"] }), /unknown edge/);
+		assert.throws(() => createScene({ ...spec, path: Array(11).fill("connect") }), /1–10/);
+		assert.throws(() => createScene({ ...spec, states: [spec.states[0], spec.states[0]] }), /unique/);
+		assert.throws(() => createScene({ ...spec, transitions: [{ ...spec.transitions[0], to: "missing" }] }), /unknown from\/to/);
+		assert.throws(() => createScene({ ...spec, states: spec.states.map((s) => ({ ...s, label: "x".repeat(80) })) }, { format: "tall" }), /shorter labels or a larger format/);
+	});
+	it("draws async edges dashed and escapes localized node labels", () => {
+		const spec = example("checkout");
+		spec.components[0].label = "<script>&";
+		const scene = createScene(spec);
+		const svg = renderSvg(scene, scene.duration);
+		assert.match(svg, /stroke-dasharray="5 4"/);
+		assert.match(svg, /&lt;script&gt;&amp;/);
+		assert.doesNotMatch(svg, /<script>/);
+	});
+});

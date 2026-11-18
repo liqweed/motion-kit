@@ -1,7 +1,7 @@
 ---
 title: motion-kit — public API and stability
 status: draft
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 ---
 
 # motion-kit — public API and stability
@@ -41,14 +41,14 @@ Two kinds of change are not breaking, even though output differs:
 ### Scenes
 
 - The scene contract: `{ id, width, height, duration, title, description,
-  steps: [{ at, label, detail?, id? }], frame(t, { idPrefix }), stepLabelsInFrame?,
+  steps: [{ at, label, detail?, id? }], frame(t, { idPrefix, style }), stepLabelsInFrame?,
   contrastPairs? }`
   and its rules (spec §1–§8).
 - Custom scene modules: a default export `(opts) => scene`, called with
-  `{ ...options, format, locale, kit }`.
+  `{ ...options, format, locale, kit }`, with optional exported `locales` for gate coverage.
 - The spec format of each registered scene type (`sequence`, `hub-spoke`, `timeline`,
-  `stack`).
-- Style data: `{ name?, font?, light: {token: "#rrggbb"}, dark: {…} }` and the
+  `stack`, `state-machine`, `request-journey`).
+- Style data: `{ name?, font?, radius?, stroke?, light: {token: "#rrggbb"}, dark: {…} }` and the
   token names in `TOKENS`.
 
 ### Runtime exports
@@ -63,7 +63,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
 | `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` (and its optional pair list), `CONTRAST_PAIRS`, `CONTRAST_EXEMPT` |
 | `runtime/patch.mjs` | `patchMarkup` |
-| `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `destroy`, `time`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
+| `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `onStep`, `destroy`, `time`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
 | `runtime/links.mjs` | `scrollSteps` and `linkSteps` (their options, the `data-mk-step` attribute, the `aria-current="step"` marks, the returned dispose function), `stepRef`, `sectionSteps`, `activeSection`, `scrollMove` |
 | `runtime/bake.mjs` | `bake`, `bakeStats` |
 

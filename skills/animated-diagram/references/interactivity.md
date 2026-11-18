@@ -184,3 +184,21 @@ animate, reduced })` (`"play"`, `"seek"` or null).
 - Don't hide information only in hover states; touch devices have no hover.
 - Test: keyboard only, a screen reader pass (VoiceOver: the step list is read),
   phone width, reduced motion, dark mode.
+
+## Step notifications
+
+`controller.onStep(index => { … })` calls immediately with the current settled
+step index, then once whenever it changes through playback, seek, scrubber,
+buttons or keyboard. The index is `-1` before the first step. It returns an
+unsubscribe function; `destroy()` releases every subscription. `scrollSteps`
+and `linkSteps` subscribe when available so marks also follow player controls.
+No polling or extra animation loop is needed. Callbacks should observe state,
+not seek the player recursively.
+
+For outside drivers, use the returned controller or the adapter element's
+`.controller` after `motion-ready`. `seek(t)` is public, requires a finite time,
+clamps to the scene, pauses playback and cancels pending autoplay. Mount with
+`autoplay: "none"`; honor reduced motion in the driver. Visibility pauses the
+player's clock, not explicit seeks. Capture tools may use
+`globalThis.__motionKit[options.id ?? scene.id]`; default scene ids contain the
+format suffix, while Astro generates an instance key unless given `id`.

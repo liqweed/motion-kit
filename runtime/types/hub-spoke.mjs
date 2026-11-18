@@ -1,3 +1,4 @@
+/** @import { Style } from "../style.mjs" */
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /**
@@ -19,7 +20,7 @@
 import { easeOut, easeStandard, progress, window01 } from "../motion.mjs";
 import { boxNode, FONT_MIN, maxFontSize, rectEdge } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { tok } from "../style.mjs";
+import { NEUTRAL, tok } from "../style.mjs";
 import { drawOn, el, pointOnLine } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
 
@@ -163,25 +164,26 @@ export function hubSpoke(spec, { format = "16:9", locale = "en" } = {}) {
 	}
 	const pathD = (link) => link.pts.map((p, i) => `${i === 0 ? "M" : "L"}${Math.round(p.x * 100) / 100} ${Math.round(p.y * 100) / 100}`).join(" ");
 
-	function frame(t) {
+	/** @param {number} t @param {{style?: Style}} [ctx] */
+	function frame(t, { style = NEUTRAL } = {}) {
 		const out = [];
 		const sEnter = (i) => progress(t, spokeEnter(i), ENTER, easeOut);
 		links.forEach((link, i) => {
 			const shown = sEnter(i);
 			if (shown > 0) {
-				out.push(el("path", { d: pathD(link), fill: "none", stroke: tok("line"), "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: shown }));
+				out.push(el("path", { d: pathD(link), fill: "none", stroke: tok("line"), "stroke-width": style.stroke, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: shown }));
 			}
 			const ls = dirIn ? linkStartIn(i) : linkStart(i);
 			const p = progress(t, ls, LINK, easeStandard);
 			const dash = drawOn(link.len, p);
 			if (dash) {
-				out.push(el("path", { d: pathD(link), fill: "none", stroke: tok("accent"), "stroke-width": 3, "stroke-linecap": "round", "stroke-linejoin": "round", ...dash }));
+				out.push(el("path", { d: pathD(link), fill: "none", stroke: tok("accent"), "stroke-width": style.stroke * 1.5, "stroke-linecap": "round", "stroke-linejoin": "round", ...dash }));
 			}
 		});
-		out.push(boxNode({ ...L.hub, lines: hubLines, fontSize: fs + 1, enter: progress(t, hubEnter, ENTER, easeOut), active: progress(t, HUB_ON, FILL, easeStandard), weight: 600 }));
+		out.push(boxNode({ radius: style.radius, strokeWidth: style.stroke, ...L.hub, lines: hubLines, fontSize: fs + 1, enter: progress(t, hubEnter, ENTER, easeOut), active: progress(t, HUB_ON, FILL, easeStandard), weight: 600 }));
 		spokes.forEach((s, i) => {
 			const fill = dirIn ? fillStartIn(i) : spokeFill(i);
-			out.push(boxNode({ ...L.spokes[i], lines: s.lines, fontSize: fs, enter: sEnter(i), active: progress(t, fill, FILL, easeStandard) }));
+			out.push(boxNode({ radius: style.radius, strokeWidth: style.stroke, ...L.spokes[i], lines: s.lines, fontSize: fs, enter: sEnter(i), active: progress(t, fill, FILL, easeStandard) }));
 		});
 		// Emphasis dot riding the active link; gone by the step's time.
 		links.forEach((link, i) => {

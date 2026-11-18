@@ -67,7 +67,7 @@ from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
 ## Hard rules
 
 - Plays once and holds the final frame (loops only for ambient status displays).
-- One entrance ≤ 600 ms, siblings staggered 80–150 ms, whole scene ≤ ~8 s.
+- Motion guidance (reviewed, not mechanically timed): one entrance ≤ 600 ms, siblings staggered 80–150 ms, aim for a whole scene ≤ 8 s. The gate’s hard duration limit is 12 s.
 - No bounce/elastic, no parallax, no ambient motion inside an explainer.
 - Every motion must answer "what does this help the viewer understand?".
 - Skeleton first, then fill: show the whole structure, then walk through it.
