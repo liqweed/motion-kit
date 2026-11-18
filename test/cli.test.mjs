@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, sep } from "node:path";
 import { after, describe, it } from "node:test";
@@ -285,12 +285,28 @@ describe("import", () => {
 		assert.equal(readFileSync(out, "utf8"), readFileSync(join(EX, "pull-request.json"), "utf8"));
 	});
 	it("keeps an existing spec when the gate rejects the import", () => {
-		const out = join(tmp, "import", "keep.json");
+		const out = join(tmp, "import-keep", "keep.json");
+		mkdirSync(dirname(out), { recursive: true });
 		writeFileSync(out, "previous\n");
 		const r = node(CLI, "import", join(EX, "pull-request.mmd"), "--out", out, "--format", "nope");
-		assert.notEqual(r.status, 0);
+		assert.equal(r.status, 1, r.out);
+		assert.match(r.out, /nope/);
 		assert.equal(readFileSync(out, "utf8"), "previous\n");
 		assert.equal(readdirSync(dirname(out)).filter((f) => f.includes("candidate")).length, 0);
+	});
+	it("refuses an output path the CLI could not load as a spec, and keeps a private spec private", () => {
+		const dir = join(tmp, "import-out");
+		mkdirSync(dir, { recursive: true });
+		const mod = node(CLI, "import", join(EX, "pull-request.mmd"), "--out", join(dir, "flow.mjs"));
+		assert.equal(mod.status, 1, mod.out);
+		assert.match(mod.out, /scene module path/);
+		assert.deepEqual(readdirSync(dir), []);
+		const priv = join(dir, "priv.json");
+		writeFileSync(priv, "previous\n", { mode: 0o600 });
+		chmodSync(priv, 0o600);
+		const r = node(CLI, "import", join(EX, "pull-request.mmd"), "--out", priv, "--id", "pull-request");
+		assert.equal(r.status, 0, r.out);
+		assert.equal(statSync(priv).mode & 0o777, 0o600);
 	});
 	it("prints to stdout without --out, reads stdin from -, and fails on unsupported syntax", () => {
 		const mmd = join(tmp, "chain.mmd");

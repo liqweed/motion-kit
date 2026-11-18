@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { compareVersions, isAdapterName, latestVersion, shellQuote, vendoredVersion } from "../lib/outdated.mjs";
@@ -25,6 +25,13 @@ it("reads npm's latest dist-tag and reports failures", async () => {
 	assert.equal(await latestVersion({ registry: "https://mirror.test/", fetch: fake({ version: "1.2.3" }) }), "1.2.3");
 	await assert.rejects(latestVersion({ registry: "https://mirror.test", fetch: fake({}, 404) }), /answered 404/);
 	await assert.rejects(latestVersion({ registry: "https://mirror.test", fetch: fake({ version: "x" }) }), /names no version/);
+	await assert.rejects(latestVersion({ registry: "https://mirror.test", fetch: async () => new Response("<html>oops secret</html>") }), (/** @type {Error} */ e) => /not JSON$/.test(e.message) && !/secret|oops/.test(e.message));
+	await assert.rejects(latestVersion({ registry: "https://mirror.test/npm/#settings", fetch: fake({}) }), /query or fragment/);
+	await assert.rejects(latestVersion({ registry: "https://mirror.test/npm?x=1", fetch: fake({}) }), /query or fragment/);
+	/** @type {string[]} */
+	const seen = [];
+	await latestVersion({ registry: "https://mirror.test/npm/", fetch: /** @type {typeof fetch} */ (async (url) => { seen.push(String(url)); return new Response(JSON.stringify({ version: "1.0.0" })); }) });
+	assert.deepEqual(seen, ["https://mirror.test/npm/@liqweed%2Fmotion-kit/latest"]);
 	await assert.rejects(latestVersion({ registry: "https://mirror.test", fetch: async () => { throw new Error("offline"); } }), /cannot reach the npm registry at https:\/\/mirror.test$/);
 });
 
@@ -36,15 +43,20 @@ it("rejects registry credentials without echoing them", async () => {
 	assert.doesNotMatch(unreachable.message, /token|abc|boom/);
 });
 
-it("validates the adapter and quotes the re-vendor command", () => {
+it("validates the adapter and quotes the re-vendor command", (t) => {
 	assert.ok(isAdapterName("page") && isAdapterName("my-adapter_2"));
 	assert.ok(!isAdapterName("../x") && !isAdapterName("a;b") && !isAdapterName("$(x)"));
 	assert.equal(shellQuote("/tmp/ok-dir"), "/tmp/ok-dir");
 	assert.equal(shellQuote("/tmp/a b"), "'/tmp/a b'");
 	assert.equal(shellQuote("it's"), `'it'\\''s'`);
 	const dir = mkdtempSync(join(tmpdir(), "mk-outdated-"));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	writeFileSync(join(dir, "MOTION_KIT_VERSION"), "motion-kit 1.0.0\nadapter ../../etc\n");
 	assert.throws(() => vendoredVersion(dir), /invalid adapter/);
+	writeFileSync(join(dir, "MOTION_KIT_VERSION"), "motion-kit 1.0.0\nadapter my adapter\n");
+	assert.throws(() => vendoredVersion(dir), /invalid adapter/);
+	writeFileSync(join(dir, "MOTION_KIT_VERSION"), "motion-kit 1.0.0\n");
+	assert.equal(vendoredVersion(dir).adapter, "page");
 	writeFileSync(join(dir, "MOTION_KIT_VERSION"), "motion-kit 1.0.0\nadapter slidev\n");
 	assert.deepEqual(vendoredVersion(dir), { version: "1.0.0", adapter: "slidev" });
 });

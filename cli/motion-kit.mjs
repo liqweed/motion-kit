@@ -22,9 +22,9 @@
  * import: a chain becomes a `sequence` spec; a chart with branches, joins,
  * link labels or dotted links becomes a `flowchart` spec, laid out here once.
  * Without --out the spec goes to stdout; with it, the spec is also checked in
- * every format. Unsupported Mermaid syntax fails with its line.
+ * every format (or only the --format ones). Unsupported Mermaid syntax fails with its line.
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -216,19 +216,28 @@ async function main() {
 				process.stdout.write(json);
 				return;
 			}
-			mkdirSync(dirname(resolve(a.out)), { recursive: true });
+			const dest = resolve(a.out);
+			if (isModule(dest)) fail(`import: --out ${a.out} is a scene module path, so check and build would not load it as a spec; use a .json path`);
+			mkdirSync(dirname(dest), { recursive: true });
 			// Gate a candidate beside the destination; an existing spec is replaced only once it passes.
-			const candidate = `${resolve(a.out)}.candidate-${process.pid}.json`;
-			writeFileSync(candidate, json);
+			// Created exclusively (a planted symlink cannot redirect the write) and never more readable than the file it replaces.
+			const candidate = `${dest}.candidate-${process.pid}.json`;
+			let mode = 0o666;
+			try {
+				mode = statSync(dest).mode & 0o777;
+			} catch {}
+			let created = false;
 			let bad;
 			try {
+				writeFileSync(candidate, json, { flag: "wx", mode });
+				created = true;
 				bad = await checkFiles([candidate], { formats: a.format, locales: a.locale, style });
-				if (!bad) renameSync(candidate, a.out);
+				if (!bad) renameSync(candidate, dest);
 			} finally {
-				rmSync(candidate, { force: true });
+				if (created) rmSync(candidate, { force: true });
 			}
 			if (bad) {
-				console.error(`motion-kit: the import does not pass the gate in every format, so ${a.out} was not written; shorten labels, split the chart, or ship only the formats that pass (--format)`);
+				console.error(`motion-kit: the import does not pass the gate (every format, or only those named by --format), so ${a.out} was not written; shorten labels, split the chart, or ship only the formats that pass (--format)`);
 				process.exit(1);
 			}
 			const { spec } = result;
@@ -237,11 +246,11 @@ async function main() {
 		}
 		case "vendor": {
 			const dir = resolve(need(args[0], "<dir>"));
+			if (!isAdapterName(a.adapter) || !existsSync(join(ROOT, "adapters", a.adapter))) fail(`unknown adapter "${a.adapter}" (page, slidev, astro or element)`);
+			const adapter = join(ROOT, "adapters", a.adapter);
 			mkdirSync(dir, { recursive: true });
 			cpSync(join(ROOT, "LICENSE"), join(dir, "LICENSE"));
 			cpSync(join(ROOT, "runtime"), join(dir, "runtime"), { recursive: true });
-			if (!isAdapterName(a.adapter) || !existsSync(join(ROOT, "adapters", a.adapter))) fail(`unknown adapter "${a.adapter}" (page, slidev, astro or element)`);
-			const adapter = join(ROOT, "adapters", a.adapter);
 			cpSync(adapter, join(dir, "adapter"), { recursive: true });
 			mkdirSync(join(dir, "lib"), { recursive: true });
 			for (const f of ["check.mjs", "gate.mjs", "load.mjs"]) cpSync(join(ROOT, "lib", f), join(dir, "lib", f));
@@ -251,11 +260,11 @@ async function main() {
 			return;
 		}
 		case "outdated": {
-			const dir = need(args[0], "<dir>");
+			const dir = resolve(need(args[0], "<dir>"));
 			let vendored;
 			let latest;
 			try {
-				vendored = vendoredVersion(resolve(dir));
+				vendored = vendoredVersion(dir);
 				latest = await latestVersion();
 			} catch (e) {
 				console.error(`motion-kit: outdated: ${e instanceof Error ? e.message : e}`);

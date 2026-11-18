@@ -143,7 +143,7 @@ direction. See `examples/checkout.json`.
 Usually imported from Mermaid rather than written by hand:
 
 ```bash
-motion-kit import flow.mmd --out flow.json   # also checks flow.json in every format
+motion-kit import flow.mmd --out flow.json   # also checks flow.json in every format (or only the --format ones)
 ```
 
 ```json
