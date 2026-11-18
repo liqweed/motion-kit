@@ -508,3 +508,14 @@ it("a listener that seeks supersedes the outer dispatch: later listeners never s
 	player.seek(0);
 	assert.deepEqual(seen, [2, 1]);
 });
+
+it("nested seeks that return to the original step still supersede the outer dispatch", () => {
+	const { player } = setup();
+	const seen = [];
+	let armed = false;
+	player.onStep((i) => { if (armed && i === 0) { armed = false; player.seekStep(1); player.seekStep(0); } });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	player.seek(0);
+	assert.deepEqual(seen, [2, 1, 0]);
+});

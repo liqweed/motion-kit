@@ -273,6 +273,9 @@ export function mountPlayer(container, scene, options = {}) {
 	/** @type {Set<(index: number) => void>} */
 	const stepListeners = new Set();
 	let lastStep = -2;
+	// Bumped on every published step change, so a dispatch knows a newer one ran even
+	// when nested seeks came back to its own step.
+	let publication = 0;
 	let t = 0;
 	let playing = false;
 	let raf = 0;
@@ -304,12 +307,13 @@ export function mountPlayer(container, scene, options = {}) {
 		if (ui.playLabel) ui.playLabel.textContent = playing ? labels.pause : t >= scene.duration ? labels.replay : labels.play;
 		if (idx !== lastStep) {
 			lastStep = idx;
+			const mine = ++publication;
 			// One throwing listener must not skip the rest or stop the clock: report it
 			// out of band (reportError, else a rethrow on a microtask) and carry on.
 			for (const listener of [...stepListeners]) {
 				// A listener may destroy the player, or seek: a nested draw has then already
 				// told everyone about the newer step, so this stale dispatch ends.
-				if (destroyed || lastStep !== idx) break;
+				if (destroyed || publication !== mine) break;
 				try { listener(idx); } catch (e) { reportListenerError(e); }
 			}
 		}
