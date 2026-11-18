@@ -21,7 +21,7 @@
  * every format; layers get taller (up to a limit) where the format has room.
  */
 import { easeOut, easeStandard, lerp, progress } from "../motion.mjs";
-import { FONT_MIN } from "../parts.mjs";
+import { FONT_MIN, maxFontSize } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { tok } from "../style.mjs";
 import { drawOn, el, fade, num, text, translate } from "../svg.mjs";
@@ -126,7 +126,7 @@ export function stack(spec, { format = "16:9", locale = "en" } = {}) {
 	});
 
 	// Largest font (≤ max) at which every label wraps; one line before two.
-	const maxFs = spec.fontSize ?? (f.height > 0 ? 22 : 16);
+	const maxFs = maxFontSize(spec, f.height > 0 ? 22 : 16, name);
 	let L;
 	let lines;
 	let why = "";

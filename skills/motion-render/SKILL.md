@@ -13,7 +13,7 @@ skills), then the plugin copy two levels above this skill. PNG and video need
 The plugin copy alone has neither, so prefer `npx` there.
 
 ```bash
-PLUGIN="$(cd "<this skill's base directory>/../.." && pwd)"
+PLUGIN="$(cd -P "<this skill's base directory>" && cd ../.. && pwd -P)" # -P: the base may be a symlink to a clone
 V="$(node -p "require('$PLUGIN/package.json').version")"
 if [ -n "${MOTION_KIT_HOME:-}" ]; then
   MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }

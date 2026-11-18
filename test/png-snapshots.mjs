@@ -14,7 +14,7 @@
  */
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { crc32, deflateSync, inflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
 import { slug } from "../lib/export.mjs";
 import { loadScene, loadStyle } from "../lib/load.mjs";
 import { renderSvg } from "../runtime/scene.mjs";
@@ -146,6 +146,24 @@ export function diffImage(expected, actual) {
 }
 
 const SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** CRC-32 table (node:zlib.crc32 needs Node 22.2; the floor is 22.0). */
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+	let c = n;
+	for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+	return c >>> 0;
+});
+
+/**
+ * @param {Uint8Array} bytes
+ * @param {number} [start] the CRC of the bytes before these
+ * @returns {number}
+ */
+function crc32(bytes, start = 0) {
+	let c = ~start >>> 0;
+	for (const b of bytes) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8);
+	return ~c >>> 0;
+}
 
 /**
  * Decode an 8-bit RGBA or RGB, non-interlaced PNG (what resvg writes).

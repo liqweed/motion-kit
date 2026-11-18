@@ -23,7 +23,7 @@
  * with labels on the right (9:16, tall).
  */
 import { easeOut, easeStandard, lerp, progress, springSettleTime, springStep } from "../motion.mjs";
-import { FONT_MIN, stateLabel } from "../parts.mjs";
+import { FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { tok } from "../style.mjs";
 import { drawOn, el, fade, num, text, translate } from "../svg.mjs";
@@ -277,7 +277,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 	if (!f.width) throw new Error(`unknown format "${format}"`);
 	const { items: raw, now } = readSpec(spec, locale);
 	const n = raw.length;
-	const maxFs = spec.fontSize ?? (f.height > 0 ? 22 : 16);
+	const maxFs = maxFontSize(spec, f.height > 0 ? 22 : 16, `timeline "${spec.id}"`);
 	const { L, items } = fit(f, raw, now, maxFs, `timeline "${spec.id}"`);
 
 	// Event k's beat; then the "now" beat.

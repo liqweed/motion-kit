@@ -182,10 +182,27 @@ export function scrollSteps(controller, sections, options = {}) {
 	const below = `${(1 - line) * 100}%`;
 	const observer = new IntersectionObserver(update, { root, rootMargin: `0px 0px -${below} 0px`, threshold: 0 });
 	for (const el of els) observer.observe(el);
+	// A jump that moves every section across the line without changing which
+	// are inside the observed area sends no notification, so scrolling asks
+	// again, at most once per frame.
+	const scroller = root && "addEventListener" in root ? root : globalThis;
+	const raf = globalThis.requestAnimationFrame?.bind(globalThis);
+	let queued = false;
+	const onScroll = () => {
+		if (queued || disposed) return;
+		if (!raf) return update();
+		queued = true;
+		raf(() => {
+			queued = false;
+			update();
+		});
+	};
+	scroller.addEventListener?.("scroll", onScroll, { passive: true });
 	return () => {
 		if (disposed) return;
 		disposed = true;
 		observer.disconnect();
+		scroller.removeEventListener?.("scroll", onScroll);
 		if (mark) for (const el of els) markCurrent(el, false);
 	};
 }

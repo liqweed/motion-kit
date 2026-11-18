@@ -177,7 +177,7 @@ try {
 	process.exitCode = failed ? 1 : 0;
 } finally {
 	// Chromium writes to its profile until it has exited.
-	const exited = proc.exitCode !== null ? Promise.resolve() : new Promise((resolve) => proc.once("exit", resolve));
+	const exited = proc.exitCode !== null || proc.signalCode !== null ? Promise.resolve() : new Promise((resolve) => proc.once("exit", resolve));
 	proc.kill();
 	await exited;
 	rmSync(profile, { recursive: true, force: true, maxRetries: 3 });

@@ -22,7 +22,7 @@ the CLI. Take the first that works:
    SVG `export` work; PNG and video do not.
 
 ```bash
-PLUGIN="$(cd "<this skill's base directory>/../.." && pwd)"
+PLUGIN="$(cd -P "<this skill's base directory>" && cd ../.. && pwd -P)" # -P: the base may be a symlink to a clone
 V="$(node -p "require('$PLUGIN/package.json').version")"
 if [ -n "${MOTION_KIT_HOME:-}" ]; then
   MK="$MOTION_KIT_HOME"; mk() { node "$MK/cli/motion-kit.mjs" "$@"; }

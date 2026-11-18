@@ -23,7 +23,9 @@ for (const { frame, scene } of await snapshotFrames()) {
 	const old = readSnapshot(path);
 	// Same pixels: keep the committed file, so a PNG encoder change alone
 	// leaves no diff.
-	if (old && decodePng(old).data.equals(decodePng(png).data)) {
+	const before = old && decodePng(old);
+	const after = before && decodePng(png);
+	if (before && after && before.width === after.width && before.height === after.height && before.data.equals(after.data)) {
 		unchanged++;
 		continue;
 	}

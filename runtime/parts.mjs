@@ -12,6 +12,21 @@ import { attrString, el, esc, fade, num, text, translate } from "./svg.mjs";
 import { tok } from "./style.mjs";
 
 export const FONT_MIN = 14; // smallest label size at 1× (viewBox units)
+export const FONT_MAX = 200; // largest `fontSize` a scene may ask for
+
+/**
+ * The largest label size a scene type tries: its `fontSize`, else `dflt`. The
+ * fit searches count down from it, so it must be a finite number in range.
+ * @param {{ fontSize?: number }} spec
+ * @param {number} dflt
+ * @param {string} name for the error
+ * @returns {number}
+ */
+export function maxFontSize(spec, dflt, name) {
+	const fs = spec.fontSize ?? dflt;
+	if (!Number.isFinite(fs) || fs < FONT_MIN || fs > FONT_MAX) throw new Error(`${name}: fontSize must be a number from ${FONT_MIN} to ${FONT_MAX}, got ${fs}`);
+	return fs;
+}
 
 /**
  * Optional icon: SVG path data drawn on a 24×24 grid with round strokes

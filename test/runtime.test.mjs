@@ -10,6 +10,7 @@ import { loadScene } from "../lib/load.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { easeIn, easeOut, easeStandard, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
+import { maxFontSize } from "../runtime/parts.mjs";
 import { claimId, claimStylesheet, newPageState } from "../runtime/page.mjs";
 import * as motionMod from "../runtime/motion.mjs";
 import * as sceneMod from "../runtime/scene.mjs";
@@ -251,7 +252,19 @@ describe("gate probes", () => {
 		assert.deepEqual(checkScene(probe(() => ok)).problems, []);
 		assert.equal(findColourLiteral('<rect style="fill: var(--mk-accent); stroke: none"/>'), null);
 	});
+	it("reads declarations, not selectors, in a stylesheet", () => {
+		assert.equal(findColourLiteral('<style>#face-node{fill:var(--mk-accent)} @media print{#abc .x{stroke:none}}</style>'), null);
+		assert.match(findColourLiteral('<style>#face-node{fill:#abcdef}</style>') ?? "", /fill/);
+	});
+	it("rejects a fontSize that would stall the fit search", () => {
+		for (const fontSize of [1e20, Infinity, NaN, 3]) {
+			assert.throws(() => maxFontSize({ fontSize }, 16, "x"), /fontSize must be/);
+		}
+		assert.equal(maxFontSize({}, 16, "x"), 16);
+		assert.equal(maxFontSize({ fontSize: 20 }, 16, "x"), 20);
+	});
 	it("catches the clock or randomness read in a helper the frame calls", () => {
+		const originals = [Date, Date.now, performance.now, Math.random];
 		const year = () => new Date().getUTCFullYear();
 		const jitter = () => (Math.random() < 0.5 ? 1 : 2);
 		const later = () => (performance.now() > 1e8 ? "late" : "early");
@@ -261,10 +274,8 @@ describe("gate probes", () => {
 			const { problems } = checkScene(scene);
 			assert.ok(problems.some((p) => /reads the clock or randomness/.test(p)), `${helper.name}: ${problems.join("; ")}`);
 		}
-		// The globals are restored afterwards.
-		assert.equal(typeof Date.now(), "number");
-		assert.ok(Date.now() > 1.7e12);
-		assert.notEqual(Math.random(), Math.random());
+		// The globals are restored afterwards: the same functions, not stand-ins.
+		assert.deepEqual([Date, Date.now, performance.now, Math.random], originals);
 	});
 	it("catches a slow fade passing through a step, which the 1 ms look-back misses", () => {
 		// 0.23 at 0.9 s, 0.25 at 1 s (the step), 0.28 at 1.1 s.

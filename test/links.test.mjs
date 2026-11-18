@@ -85,8 +85,11 @@ function fakeController() {
 
 function env({ reduced = false, io = true } = {}) {
 	const observers = [];
+	const listeners = new Map();
 	const context = vm.createContext({
 		innerHeight: 800,
+		addEventListener: (type, fn) => listeners.set(type, fn),
+		removeEventListener: (type, fn) => { if (listeners.get(type) === fn) listeners.delete(type); },
 		matchMedia: (query) => ({ matches: query.includes("reduced-motion") && reduced }),
 		...(io && {
 			IntersectionObserver: class {
@@ -97,7 +100,7 @@ function env({ reduced = false, io = true } = {}) {
 		}),
 	});
 	vm.runInContext(source, context);
-	return { links: context.MotionKit, observers };
+	return { links: context.MotionKit, observers, listeners };
 }
 
 /** Sections 400 px tall, back to back; `scrollTo(y)` moves them and notifies the observer. */
@@ -110,6 +113,23 @@ function story(observer, sections) {
 }
 
 describe("scrollSteps", () => {
+	it("follows a scroll jump that sends the observer no notification", () => {
+		const { links, observers, listeners } = env();
+		const c = fakeController();
+		const sections = [0, 1].map((i) => new FakeEl({}, 800 + i * 2200));
+		const dispose = links.scrollSteps(c, sections);
+		const scrolled = listeners.get("scroll");
+		assert.equal(typeof scrolled, "function");
+		for (const [i, s] of sections.entries()) s.top = 800 + i * 2200 - 1000; // section 0 at the line, no observer callback
+		scrolled();
+		assert.deepEqual(c.calls, [["seekStep", 0]]);
+		for (const [i, s] of sections.entries()) s.top = 800 + i * 2200 - 3000;
+		scrolled();
+		assert.equal(c.calls.at(-1)?.[1], 1, "the second section is active");
+		dispose();
+		assert.equal(listeners.has("scroll"), false);
+		assert.equal(observers[0].disconnected, true);
+	});
 	it("advances one settled step per section, scrolling down and up", () => {
 		const { links, observers } = env();
 		const c = fakeController();

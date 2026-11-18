@@ -17,7 +17,7 @@
  * Strings may be localized objects: { en: "...", nl: "..." }.
  */
 import { easeOut, easeStandard, progress } from "../motion.mjs";
-import { circleNode, FONT_MIN, stateLabel } from "../parts.mjs";
+import { circleNode, FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { tok } from "../style.mjs";
 import { drawOn, el, polyline, trimSegment } from "../svg.mjs";
@@ -126,7 +126,7 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 	const f = typeof format === "string" ? { name: format, ...FORMATS[format] } : format;
 	if (!f.width) throw new Error(`unknown format "${format}"`);
 	const n = nodes.length;
-	const maxFs = spec.fontSize ?? (f.height > 0 ? 22 : 16);
+	const maxFs = maxFontSize(spec, f.height > 0 ? 22 : 16, `sequence "${spec.id}"`);
 	let fitted;
 	try {
 		fitted = fit(f, nodes, locale, maxFs);
