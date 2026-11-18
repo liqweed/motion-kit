@@ -6,8 +6,8 @@
  */
 import { linkSteps, scrollSteps } from "../../../runtime/links.mjs";
 import { stepIndexAt } from "../../../runtime/scene.mjs";
-import { BRIEFS, DEFECTS, LIVE, PLANNED, STORY, STYLES, TRANSCRIPT } from "./catalog.mjs";
-import { liveCard, plannedCard } from "./cards.mjs";
+import { BRIEFS, DEFECTS, LIVE, PLANNED, STORY, STYLES, TRANSCRIPT, TYPES } from "./catalog.mjs";
+import { liveCard } from "./cards.mjs";
 import {
 	$, CONTRAST_PAIRS, chipGroup, initPage, contrastOf, contrastProblems, failNote, frameMarkup, h, loadScene, mount, onStep, reducedMotion, styleFor, themeOpt,
 } from "./site.mjs";
@@ -151,7 +151,7 @@ async function showStyle(name) {
 	const s = STYLES[name];
 	$("#style-file").textContent = s.file;
 	const obj = (o) => `{ ${Object.entries(o).map(([k, v]) => `"${k}": "${v}"`).join(",\n    ")} }`;
-	$("#style-json").textContent = `{\n  "name": "${s.name}",\n  "font": "${s.font}",\n  "radius": 10,\n  "stroke": 2,\n  "light": ${obj(s.light)},\n  "dark":  ${obj(s.dark)}\n}`;
+	$("#style-json").textContent = `{\n  "name": "${s.name}",\n  "font": "${s.font}",\n  "radius": 10,\n  "stroke": 2,${s.motion ? `\n  "motion": { "enter": [${s.motion.enter.join(", ")}], "move": [${s.motion.move.join(", ")}] },` : ""}\n  "light": ${obj(s.light)},\n  "dark":  ${obj(s.dark)}\n}`;
 	const rs = styleFor(name);
 	const rows = CONTRAST_PAIRS.map(([label, fg, bg, min]) => {
 		const cell = (theme) => {
@@ -207,8 +207,7 @@ showStyle("tidewater");
 /* ------------------------------------------------------- 05 gallery teaser */
 
 {
-	const live = ["order-flow", "smart-home", "release-pipeline"].map(find);
-	const planned = PLANNED.filter((p) => ["checkout", "one-scene", "player-states"].includes(p.id));
-	$("#teaser").append(...live.map((e) => liveCard(e, { format: wideFmt, surface: true })), ...planned.map(plannedCard));
-	$("#gal-lede").textContent = `${LIVE.length} diagrams run live today. ${PLANNED.length} more are storyboarded and wait for their scene types; they are marked “needs” and have no player.`;
+	const live = ["order-flow", "pull-request", "smart-home", "incident", "web-stack", "checkout"].map(find);
+	$("#teaser").append(...live.map((e) => liveCard(e, { format: wideFmt, surface: true })));
+	$("#gal-lede").textContent = `${LIVE.length} diagrams run live today, across ${TYPES.length} scene types and your own custom scenes. ${PLANNED.length} more are storyboarded and marked “needs”: their scene types are not built.`;
 }

@@ -44,7 +44,9 @@ const description = live
 					<p>Not built yet, so there is nothing to run, export or gate.</p>
 				</div>
 				<p class="lede">
-					Follow <a href={`${REPO}/issues/${planned.issue}`}>issue #{planned.issue}</a> for the scene type, or read its storyboard in
+					{planned.issue
+						? <>Follow <a href={`${REPO}/issues/${planned.issue}`}>issue #{planned.issue}</a> for the scene type</>
+						: <>No tracker item yet: it is a <a href={`${REPO}/blob/main/docs/roadmap.md#suggestions-with-no-issue-yet`}>roadmap suggestion</a></>}, or read its storyboard in
 					<a href={`${REPO}/blob/main/skills/animated-diagram/references/scene-types.md`}>scene-types.md</a>. Until then a one-off diagram can be a
 					<a href={`${REPO}/blob/main/skills/animated-diagram/references/custom-scenes.md`}>custom scene</a>.
 				</p>

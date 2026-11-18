@@ -46,13 +46,42 @@ export const LIVE = [
 ];
 
 /**
- * @typedef {{ id: string, group: string, title: string, type: string, issue: number, story: string }} PlannedExample
+ * `issue` is the tracker item for the type, once one exists; without it the
+ * card points at the roadmap's suggestions.
+ * @typedef {{ id: string, group: string, title: string, type: string, issue?: number, story: string }} PlannedExample
  */
 /** @type {PlannedExample[]} */
 export const PLANNED = [
-	{ id: "one-scene", group: "change", title: "Per-medium authoring vs one scene", type: "before-after", issue: 3, story: "The left state shows, a divider sweeps, the right state builds, the difference is emphasised." },
-	{ id: "bake-vs-live", group: "change", title: "Baked SVG or live player?", type: "comparison", issue: 3, story: "Two columns; criteria rows fill; the deciding row is emphasised." },
-	{ id: "gate-funnel", group: "data", title: "Everything goes through the gate", type: "funnel", issue: 3, story: "Sources appear, streams merge, the result fills." },
+	{ id: "one-scene", group: "change", title: "Per-medium authoring vs one scene", type: "before-after", story: "The left state shows, a divider sweeps, the right state builds, the difference is emphasised." },
+	{ id: "bake-vs-live", group: "change", title: "Baked SVG or live player?", type: "comparison", story: "Two columns; criteria rows fill; the deciding row is emphasised." },
+	{ id: "gate-funnel", group: "data", title: "Everything goes through the gate", type: "funnel", story: "Sources appear, streams merge, the result fills." },
+];
+
+/**
+ * What the scene types draw, in the order the site lists them. `example` is a
+ * LIVE entry of that type; test/site.test.mjs checks the list against the
+ * registry, so a new scene type cannot be left off the site.
+ * @typedef {{ type: string, use: string, example: string, cmd?: string }} TypeEntry
+ */
+/** @type {TypeEntry[]} */
+export const TYPES = [
+	{ type: "sequence", use: "Steps in order: a process, a pipeline, a build-up.", example: "order-flow" },
+	{ type: "flowchart", use: "A process with branches, joins and decisions. Import it from a Mermaid flowchart.", example: "pull-request", cmd: "motion-kit import flow.mmd --out flow.json" },
+	{ type: "hub-spoke", use: "What connects to a centre: a platform and its integrations.", example: "smart-home" },
+	{ type: "timeline", use: "What happened, and when: an incident, a project, a release history.", example: "incident" },
+	{ type: "stack", use: "What a request crosses: layers from the browser to the database.", example: "web-stack" },
+	{ type: "state-machine", use: "States, and the moves between them.", example: "player-states" },
+	{ type: "request-journey", use: "One request's path across systems, and back.", example: "checkout" },
+];
+
+/** Where one scene can go. */
+export const TARGETS = [
+	{ h: "Live player", p: "Scrubber, steps and captions on a web page, in an Astro island, a <motion-diagram> element or a Craft Page. It respects reduced motion." },
+	{ h: "Slidev", p: "One build step per click, from the same spec." },
+	{ h: "Step frames", p: "Settled SVG or PNG for slides, in light and dark and every format, with a QC contact sheet to review." },
+	{ h: "Baked SVG", p: "A zero-JS animated SVG that plays in a README or a chat preview, then holds." },
+	{ h: "Video", p: "MP4, WebM or GIF in 16:9, 4:3, 1:1 and 9:16." },
+	{ h: "Project icon", p: "The repository's icon set (assets/, .idea/) from a logo scene." },
 ];
 
 /** Formats the example page offers, with the width its stage may take. */
@@ -68,9 +97,10 @@ export const FORMAT_NAMES = Object.keys(FORMAT_STAGE);
 export const LOCALES = ["en", "nl"];
 
 /**
- * Styles the site can preview. Colours and font only: the "draw" block (node,
- * connector and emphasis skins) is not built, so nothing here pretends to be.
- * @typedef {{ name: string, note: string, file: string, font: string, fontStack: string, light: Record<string,string>, dark: Record<string,string> }} SiteStyle
+ * Styles the site can preview: colours, font and, for some, the motion curves.
+ * The "draw" block (node, connector and emphasis skins) is not built, so
+ * nothing here pretends to be.
+ * @typedef {{ name: string, note: string, file: string, font: string, fontStack: string, motion?: import("../../../runtime/motion.mjs").Motion, light: Record<string,string>, dark: Record<string,string> }} SiteStyle
  */
 /** @type {Record<string, SiteStyle>} */
 export const STYLES = {
@@ -96,6 +126,7 @@ export const STYLES = {
 		name: "tidewater",
 		note: "teal & rust",
 		file: "diagrams/tidewater.json",
+		motion: { enter: [0.16, 1, 0.3, 1], move: [0.23, 1, 0.32, 1] },
 		font: "Inter",
 		fontStack: '"Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif',
 		light: { bg: "#ffffff", surface: "#eef6f5", ink: "#0b2a2e", muted: "#3f5f63", line: "#6f8c8e", accent: "#0f3f3b", onAccent: "#ffffff", emphasis: "#ea580c" },
@@ -217,6 +248,7 @@ export const NEIGHBOURS = [
 
 export const INSTALLS = [
 	{ title: "Claude Code plugin", text: "Recommended. The animated-diagram, motion-render and project-logo skills, in every project.", cmd: "claude plugin marketplace add liqweed/motion-kit\nclaude plugin install motion-kit@motion-kit", primary: true },
+	{ title: "npm", text: "Run the CLI with no clone. PNG and video need the optional @resvg/resvg-js, which npx installs with it.", cmd: "npx @liqweed/motion-kit types\nnpx @liqweed/motion-kit check diagrams/order-flow.json\nnpx @liqweed/motion-kit import flow.mmd --out flow.json" },
 	{ title: "Clone and try", text: "Check, build and bake the examples yourself.", cmd: "git clone https://github.com/liqweed/motion-kit\ncd motion-kit\nnode cli/motion-kit.mjs check examples/order-flow.json\nnode cli/motion-kit.mjs bake examples/order-flow.json \\\n  -o out/order.svg -f wide" },
 	{ title: "Vendor into your repo", text: "Copies runtime/ and one adapter (slidev, astro or page). Your CI needs no install step.", cmd: "node cli/motion-kit.mjs vendor <repo>/src/motion-kit \\\n  --adapter astro" },
 ];
@@ -232,6 +264,7 @@ export const DOCS_NAV = [
 		{ label: "Step buttons and caption", href: `${REPO}/blob/main/skills/animated-diagram/references/interactivity.md` },
 		{ label: "Hover and focus linking", href: "/docs/", current: true },
 		{ label: "Scroll-driven steps", href: "/#scroll" },
+		{ label: "Astro", href: `${REPO}/blob/main/docs/guides/astro.md` },
 		{ label: "Scrubbing", href: `${REPO}/blob/main/skills/animated-diagram/references/interactivity.md` },
 		{ label: "Explorables", href: "/docs/#explore" },
 	] },
@@ -239,7 +272,10 @@ export const DOCS_NAV = [
 		{ label: "Player API", href: `${REPO}/blob/main/runtime/player.mjs` },
 		{ label: "Scene types", href: `${REPO}/blob/main/skills/animated-diagram/references/scene-types.md` },
 		{ label: "Formats", href: `${REPO}/blob/main/docs/spec/technique.md` },
-		{ label: "Styles and tokens", href: `${REPO}/blob/main/skills/animated-diagram/references/styles.md` },
+		{ label: "Styles, tokens and motion curves", href: `${REPO}/blob/main/skills/animated-diagram/references/styles.md` },
+		{ label: "Targets and adapters", href: `${REPO}/blob/main/skills/animated-diagram/references/targets.md` },
+		{ label: "What semver covers", href: `${REPO}/blob/main/docs/stability.md` },
+		{ label: "Roadmap", href: `${REPO}/blob/main/docs/roadmap.md` },
 	] },
 ];
 

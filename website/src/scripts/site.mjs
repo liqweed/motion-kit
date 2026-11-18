@@ -91,7 +91,7 @@ export async function loadScene(entry, { format = "wide", locale = "en" } = {}) 
 /** A site style as a runtime style object. @param {string} name */
 export function styleFor(name) {
 	const s = STYLES[name] ?? STYLES.studio;
-	return normalizeStyle({ name: s.name, font: s.fontStack, light: s.light, dark: s.dark });
+	return normalizeStyle({ name: s.name, font: s.fontStack, motion: s.motion, light: s.light, dark: s.dark });
 }
 
 /**
