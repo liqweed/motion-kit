@@ -152,3 +152,40 @@ export function splitEdge(t, start, duration, lag = 0.07, ease = easeStandard) {
 export function stagger(count, start, gap) {
 	return Array.from({ length: count }, (_, i) => start + i * gap);
 }
+
+/* ----------------------------------------------------- style curves */
+
+/**
+ * The two curves a style may name: `enter` for entrances, `move` for movement
+ * between two visible states, each as the four numbers of a CSS
+ * `cubic-bezier(x1, y1, x2, y2)`. The defaults are `easeOut` and `easeStandard`.
+ * @typedef {{ enter: readonly [number, number, number, number], move: readonly [number, number, number, number] }} Motion
+ */
+/** @type {Readonly<Motion>} */
+export const DEFAULT_MOTION = Object.freeze({
+	enter: Object.freeze(/** @type {[number, number, number, number]} */ ([0, 0, 0.2, 1])),
+	move: Object.freeze(/** @type {[number, number, number, number]} */ ([0.4, 0, 0.2, 1])),
+});
+
+/** @type {Map<string, { easeOut: (p: number) => number, easeStandard: (p: number) => number }>} */
+const easingCache = new Map();
+
+/**
+ * The entrance and movement curves of a style's `motion` (or the defaults).
+ * Scene types call this with `style.motion` once per frame, so a diagram moves
+ * on the page's own curve. The result is cached by curve; the endpoints stay
+ * fixed, so settled frames do not change.
+ * @param {Motion} [motion]
+ * @returns {{ easeOut: (p: number) => number, easeStandard: (p: number) => number }}
+ */
+export function easings(motion = DEFAULT_MOTION) {
+	if (motion === DEFAULT_MOTION) return { easeOut, easeStandard };
+	const key = `${motion.enter.join()}|${motion.move.join()}`;
+	let found = easingCache.get(key);
+	if (!found) {
+		if (easingCache.size >= 32) easingCache.clear();
+		found = { easeOut: cubicBezier(...motion.enter), easeStandard: cubicBezier(...motion.move) };
+		easingCache.set(key, found);
+	}
+	return found;
+}

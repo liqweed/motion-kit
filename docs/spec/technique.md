@@ -235,7 +235,7 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
   `accent`, `onAccent`, `emphasis`. Roles: see
   [`styles.md`](../../skills/animated-diagram/references/styles.md). Exactly one
   element at a time SHOULD carry `emphasis`.
-- A style is data: `{name, font, radius, stroke, light: {token: #rrggbb}, dark: {…}}`.
+- A style is data: `{name, font, radius, stroke, motion, light: {token: #rrggbb}, dark: {…}}`.
   `normalizeStyle` fills missing fields from `NEUTRAL`
   (`runtime/style.mjs:25-50,58-77`) and MUST throw on an unknown token or a
   non-`#rrggbb` value (`runtime/style.mjs:70-73`). If `dark` is absent, dark
@@ -560,6 +560,7 @@ Recorded 2026-11-18 for [#12](https://github.com/liqweed/motion-kit/issues/12):
 | Module locales | Modules MAY export `locales`; all declared locales MUST be checked by default. Undeclared modules retain `en` for compatibility. Explicit `--locale` overrides. |
 | Translations | A localized object MUST supply the exact requested locale. Plain strings are shared. Silent cross-language fallback is forbidden. |
 | Shape styles | Built-in scenes MUST use radius 0–24 (default 10) for rectangular node corners and stroke 1–4 (default 2) as their base width. Accent lines are 1.5×; timeline stems 0.75×. Circles, region borders and pills retain their shapes. Custom scenes MAY read normalized `style` from the frame context. |
+| Motion tokens | A style MAY set `motion.enter` (entrances) and `motion.move` (movement between visible states) as four numbers, a CSS `cubic-bezier(x1, y1, x2, y2)`, each from 0 to 1: no curve overshoots. Defaults: `(0, 0, .2, 1)` and `(.4, 0, .2, 1)`. Built-in scene types read them through `easings(style.motion)`; durations, delays and step times stay fixed, so a curve changes how a move travels and never when a step settles. Custom scenes MAY do the same. |
 | Vendored parity | CLI and vendored checks MUST call the same `lib/gate.mjs` and `lib/check.mjs`, including contrast, locales and caller options. |
 | Neutral contrast | Keep emphasis-on-accent at 3:1, the darker light accent and lighter dark emphasis. The site chrome follows the corresponding neutral tokens. |
 

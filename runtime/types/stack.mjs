@@ -21,7 +21,7 @@
  * Layout: one column of full-width layers with the rail on their right, in
  * every format; layers get taller (up to a limit) where the format has room.
  */
-import { easeOut, easeStandard, lerp, progress } from "../motion.mjs";
+import { lerp, progress, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { NEUTRAL, tok } from "../style.mjs";
@@ -169,7 +169,7 @@ export function stack(spec, { format = "16:9", locale = "en" } = {}) {
 	const stepAt = (k) => fillStart(k) + FILL;
 	const duration = stepAt(n - 1) + TAIL;
 
-	function packetY(t) {
+	function packetY(t, easeStandard) {
 		let y = stops[0];
 		for (let k = 0; k < n; k++) {
 			const p = progress(t, hopStart(k), HOP, easeStandard);
@@ -183,6 +183,7 @@ export function stack(spec, { format = "16:9", locale = "en" } = {}) {
 
 	/** @param {number} t @param {{style?: Style}} [ctx] */
 	function frame(t, { style = NEUTRAL } = {}) {
+		const { easeOut, easeStandard } = easings(style.motion);
 		const out = [];
 		const { railX } = fitted;
 		// Rail: draws on from the entry end while the layers rise; an arrowhead marks the exit.
@@ -194,7 +195,7 @@ export function stack(spec, { format = "16:9", locale = "en" } = {}) {
 			const s = direction === "down" ? -1 : 1;
 			out.push(el("path", { d: `M${num(railX - 6)} ${num(exitY + s * 9)} L${num(railX)} ${num(exitY)} L${num(railX + 6)} ${num(exitY + s * 9)}`, fill: "none", stroke: tok("line"), "stroke-width": style.stroke, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: head }));
 		}
-		const y = packetY(t);
+		const y = packetY(t, easeStandard);
 		if (Math.abs(y - entryY) > 0.5) out.push(vline(railX, entryY, y, { stroke: tok("accent"), "stroke-width": style.stroke * 1.5 }));
 		fitted.boxes.forEach((b, li) => {
 			const enter = progress(t, riseAt(li), RISE, easeOut);

@@ -23,7 +23,7 @@
  * below when they need the width (wide aspects and square); a vertical axis
  * with labels on the right (9:16, tall).
  */
-import { easeOut, easeStandard, lerp, progress, springSettleTime, springStep } from "../motion.mjs";
+import { lerp, progress, springSettleTime, springStep, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { NEUTRAL, tok } from "../style.mjs";
@@ -296,7 +296,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 	if (now && L.nowAt) stops.push({ to: along(L.nowAt), at: nowStart });
 	const axisLen = L.dir === "h" ? ax.x1 - ax.x0 : ax.y1 - ax.y0;
 
-	function accentEnd(t) {
+	function accentEnd(t, easeStandard) {
 		let end = start;
 		let from = start;
 		for (const s of stops) {
@@ -312,6 +312,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 		el("path", { d: L.dir === "h" ? `M${num(a)} ${num(ax.y0)} H${num(b)}` : `M${num(ax.x0)} ${num(a)} V${num(b)}`, fill: "none", "stroke-linecap": "round", ...attrs });
 
 	function milestone(t, it, k, style) {
+		const { easeOut, easeStandard } = easings(style.motion);
 		const p = L.at(k);
 		const b = beat(k);
 		const drop = progress(t, b + 0.05, DROP, easeOut);
@@ -355,6 +356,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 	}
 
 	function nowMarker(t, style) {
+		const { easeOut } = easings(style.motion);
 		if (!now || !L.nowAt || !L.nowPill) return "";
 		const shown = progress(t, nowStart, NOW_FADE, easeOut);
 		if (shown <= 0) return "";
@@ -372,6 +374,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 
 	/** @param {number} t @param {{style?: Style}} [ctx] */
 	function frame(t, { style = NEUTRAL } = {}) {
+		const { easeOut, easeStandard } = easings(style.motion);
 		const out = [];
 		// Axis: pending line draws on; an arrowhead at its end shows the direction of time.
 		const axisDash = drawOn(axisLen, progress(t, 0, AXIS, easeStandard));
@@ -381,7 +384,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 			const d = L.dir === "h" ? `M${num(ax.x1 - 9)} ${num(ax.y1 - 6)} L${num(ax.x1)} ${num(ax.y1)} L${num(ax.x1 - 9)} ${num(ax.y1 + 6)}` : `M${num(ax.x1 - 6)} ${num(ax.y1 - 9)} L${num(ax.x1)} ${num(ax.y1)} L${num(ax.x1 + 6)} ${num(ax.y1 - 9)}`;
 			out.push(el("path", { d, fill: "none", stroke: tok("line"), "stroke-width": style.stroke, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: head }));
 		}
-		const end = accentEnd(t);
+		const end = accentEnd(t, easeStandard);
 		if (end - start > 0.5) out.push(line(start, end, { stroke: tok("accent"), "stroke-width": style.stroke * 1.5 }));
 		items.forEach((it, k) => out.push(milestone(t, it, k, style)));
 		out.push(nowMarker(t, style));

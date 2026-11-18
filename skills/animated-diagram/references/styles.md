@@ -27,6 +27,7 @@ properties (light + dark); standalone exports resolve them to literals.
   "font": "Inter, ui-sans-serif, system-ui, sans-serif",
   "radius": 10,
   "stroke": 2,
+  "motion": { "enter": [0.16, 1, 0.3, 1], "move": [0.4, 0, 0.2, 1] },
   "light": { "accent": "#0a2a8a", "emphasis": "#05966a" },
   "dark":  { "accent": "#2563eb", "emphasis": "#a7f3d0" }
 }
@@ -43,6 +44,21 @@ default 2) sets the base line width, with accent lines at 1.5× and timeline
 stems at 0.75×. These settings affect live, SVG, PNG, bake and video rendering.
 Custom scenes receive the normalized style through `frame(t, { style })` and
 may use it explicitly; their own geometry is not rewritten.
+
+## Motion
+
+`motion` names the two curves the scene types use, as the four numbers of a CSS
+`cubic-bezier(x1, y1, x2, y2)`: `enter` for entrances and `move` for movement
+between two visible states (fills, hops, draw-on). Both default to the curves in
+`motion-vocabulary.md` (`0, 0, .2, 1` and `.4, 0, .2, 1`), so a style that sets
+neither moves as before. Use it to match the page the diagram sits on: a site
+that names `cubic-bezier(0.23, 1, 0.32, 1)` as its curve sets
+`"move": [0.23, 1, 0.32, 1]`.
+
+Every number is from 0 to 1, so no curve overshoots (no bounce); anything else
+throws. Only the shape of a move changes: durations, delays and the times of the
+steps do not, so step frames stay settled and the gate has nothing new to
+check. Custom scenes read `kit.easings(style.motion)` for the same two curves.
 
 ## Contrast
 

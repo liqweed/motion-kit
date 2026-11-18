@@ -17,7 +17,7 @@
  *     direction?: "out" | "in",              // default "out"
  *     fontSize?: number }
  */
-import { easeOut, easeStandard, progress, window01 } from "../motion.mjs";
+import { progress, window01, easings } from "../motion.mjs";
 import { boxNode, FONT_MIN, maxFontSize, rectEdge } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { NEUTRAL, tok } from "../style.mjs";
@@ -166,6 +166,7 @@ export function hubSpoke(spec, { format = "16:9", locale = "en" } = {}) {
 
 	/** @param {number} t @param {{style?: Style}} [ctx] */
 	function frame(t, { style = NEUTRAL } = {}) {
+		const { easeOut, easeStandard } = easings(style.motion);
 		const out = [];
 		const sEnter = (i) => progress(t, spokeEnter(i), ENTER, easeOut);
 		links.forEach((link, i) => {

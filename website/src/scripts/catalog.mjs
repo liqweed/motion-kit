@@ -211,6 +211,7 @@ export const NEIGHBOURS = [
 	{ tool: "Motion Canvas / Revideo", lic: "MIT", when: "Hand-crafted technical explainer videos with generator timelines.", fit: "Good for one-off videos; no live-page reuse." },
 	{ tool: "Manim CE", lic: "MIT", when: "Mathematics and science visuals, equations.", fit: "Python, video only." },
 	{ tool: "GSAP", lic: "free incl. commercial", when: "Rich page motion, morphing, text splitting.", fit: "Paused timelines are seekable. Use it for website polish; keep explainers in motion-kit." },
+	{ tool: "React effect libraries", lic: "Magic UI: MIT", when: "A few animated connectors, such as Magic UI's animated-beam or Aceternity's beams, on a page that already renders React.", fit: "The hub-spoke scene draws the same integrations picture without React, and the same spec also gives slide frames, a zero-JS baked SVG and video." },
 	{ tool: "Mermaid", lic: "MIT", when: "Static diagrams from text; quick structure.", fit: "Import flowcharts with motion-kit import; the layout is computed once at build time." },
 ];
 

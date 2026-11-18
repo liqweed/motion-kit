@@ -48,8 +48,8 @@ Two kinds of change are not breaking, even though output differs:
   `{ ...options, format, locale, kit }`, with optional exported `locales` for gate coverage.
 - The spec format of each registered scene type (`sequence`, `hub-spoke`, `timeline`,
   `stack`, `state-machine`, `request-journey`, `flowchart`).
-- Style data: `{ name?, font?, radius?, stroke?, light: {token: "#rrggbb"}, dark: {…} }` and the
-  token names in `TOKENS`.
+- Style data: `{ name?, font?, radius?, stroke?, motion?: { enter?, move? }, light: {token: "#rrggbb"}, dark: {…} }`
+  and the token names in `TOKENS`.
 
 ### Runtime exports
 

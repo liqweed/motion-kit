@@ -17,7 +17,7 @@
  *     fontSize?: number }
  * Strings may be localized objects: { en: "...", nl: "..." }.
  */
-import { easeOut, easeStandard, progress } from "../motion.mjs";
+import { progress, easings } from "../motion.mjs";
 import { circleNode, FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { NEUTRAL, tok } from "../style.mjs";
@@ -157,6 +157,7 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 
 	/** @param {number} t @param {{style?: Style}} [ctx] */
 	function frame(t, { style = NEUTRAL } = {}) {
+		const { easeOut, easeStandard } = easings(style.motion);
 		const enter = (k) => progress(t, k * ENTER_GAP, ENTER, easeOut);
 		const active = (k) => progress(t, fillStart(k), FILL, easeStandard);
 		const out = [];

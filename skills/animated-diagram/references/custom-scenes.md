@@ -122,4 +122,7 @@ A scene whose step labels narrate actions rather than name visible objects
 sets `stepLabelsInFrame: false`. Those labels still belong in the player's
 controls and accessible transcript; G10 otherwise requires each label in the
 final frame. `frame(t, { idPrefix, style })` also receives the normalized style
-when called through `renderSvg`; custom shape styling is opt-in.
+when called through `renderSvg`; custom shape styling is opt-in. So is the
+style's motion: `const { easeOut, easeStandard } = kit.easings(style.motion)` (or
+`easings` from `runtime/motion.mjs`) gives the curves its `motion` names, the
+neutral ones when it names none.
