@@ -1,3 +1,4 @@
+/** @import { Motion } from "./motion.mjs" */
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /**
@@ -10,12 +11,14 @@
  * viewers do not understand CSS variables.
  *
  * A style is plain data:
- *   { name, font, radius, stroke, light: {token: color}, dark: {token: color} }
+ *   { name, font, radius, stroke, motion, light: {token: color}, dark: {token: color} }
  */
+import { DEFAULT_MOTION } from "./motion.mjs";
 
 /**
- * A visual style: font, shape constants and one colour per token, per theme.
- * @typedef {{ name?: string, font: string, radius: number, stroke: number, light: Record<string, string>, dark: Record<string, string> }} Style
+ * A visual style: font, shape constants, the entrance and movement curves and
+ * one colour per token, per theme.
+ * @typedef {{ name?: string, font: string, radius: number, stroke: number, motion: Motion, light: Record<string, string>, dark: Record<string, string> }} Style
  */
 
 export const TOKENS = [
@@ -34,6 +37,7 @@ export const NEUTRAL = Object.freeze({
 	font: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
 	radius: 10,
 	stroke: 2,
+	motion: DEFAULT_MOTION,
 	light: Object.freeze({
 		bg: "#ffffff",
 		surface: "#f3f4f6",
@@ -61,6 +65,33 @@ export function tok(name) {
 	return `var(--mk-${name})`;
 }
 
+/**
+ * A style's `motion` with any missing curve taken from the defaults. A curve
+ * is four numbers, as in CSS `cubic-bezier(x1, y1, x2, y2)`: x between 0 and 1
+ * (CSS's own rule) and y between 0 and 1 too, because no motion-kit curve
+ * overshoots.
+ * @param {any} motion
+ * @param {string} name the style's name, for the error
+ * @returns {Motion}
+ */
+function normalizeMotion(motion, name) {
+	if (motion === undefined) return DEFAULT_MOTION;
+	if (!motion || typeof motion !== "object" || Array.isArray(motion)) throw new Error(`style "${name}": motion must be an object with enter and move curves`);
+	for (const key of Object.keys(motion)) {
+		if (key !== "enter" && key !== "move") throw new Error(`style "${name}": unknown motion curve "${key}" (known: enter, move)`);
+	}
+	const out = { enter: DEFAULT_MOTION.enter, move: DEFAULT_MOTION.move };
+	for (const key of /** @type {const} */ (["enter", "move"])) {
+		const c = motion[key];
+		if (c === undefined) continue;
+		if (!Array.isArray(c) || c.length !== 4 || !c.every((n) => Number.isFinite(n) && n >= 0 && n <= 1)) {
+			throw new Error(`style "${name}": motion.${key} must be four numbers from 0 to 1 (a cubic-bezier that does not overshoot), got ${JSON.stringify(c)}`);
+		}
+		out[key] = Object.freeze(/** @type {[number, number, number, number]} */ ([...c]));
+	}
+	return Object.freeze(out);
+}
+
 /** Fill in any missing fields from NEUTRAL and validate token names. */
 export function normalizeStyle(style) {
 	if (!style || style === "neutral") return NEUTRAL;
@@ -69,6 +100,7 @@ export function normalizeStyle(style) {
 		font: style.font ?? NEUTRAL.font,
 		radius: style.radius ?? NEUTRAL.radius,
 		stroke: style.stroke ?? NEUTRAL.stroke,
+		motion: normalizeMotion(style.motion, style.name ?? "custom"),
 		light: { ...NEUTRAL.light, ...(style.light ?? {}) },
 		dark: { ...NEUTRAL.dark, ...(style.dark ?? style.light ?? {}) },
 	};

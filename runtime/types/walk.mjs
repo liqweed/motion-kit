@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /** Small, explicitly narrated graphs. Layout is computed once, never in frame(). */
-import { easeOut, easeStandard, progress, lerp } from "../motion.mjs";
+import { progress, lerp, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize } from "../parts.mjs";
 import { FORMATS, localize } from "../scene.mjs";
 import { NEUTRAL, tok } from "../style.mjs";
@@ -117,6 +117,7 @@ export function walk(spec, { format = "16:9", locale = "en" } = {}) {
 	const duration = stepAt(route.length - 1) + 0.3;
 	/** @param {number} t @param {{style?: Style}} [ctx] */
 	function frame(t, { style = NEUTRAL } = {}) {
+		const { easeOut, easeStandard } = easings(style.motion);
 		const entrance = progress(t, 0, 0.5, easeOut);
 		const active = nodes.map(() => 0);
 		active[visits[0]] = progress(t, 0.5, 0.2, easeStandard);

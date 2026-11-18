@@ -8,7 +8,7 @@ import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
-import { easeIn, easeOut, easeStandard, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
+import { DEFAULT_MOTION, cubicBezier, easeIn, easeOut, easeStandard, easings, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
 import { maxFontSize } from "../runtime/parts.mjs";
 import { claimId, claimStylesheet, newPageState } from "../runtime/page.mjs";
@@ -420,5 +420,68 @@ describe("page state", () => {
 		const page = newPageState();
 		assert.equal(claimStylesheet(page), true);
 		assert.equal(claimStylesheet(page), false);
+	});
+});
+
+describe("style motion", () => {
+	const CUSTOM = { enter: [0.16, 1, 0.3, 1], move: [0.23, 1, 0.32, 1] };
+	const NAMES = ["order-flow", "smart-home", "incident", "web-stack", "checkout", "player-states", "pull-request"];
+	const load = (name) => createScene(JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), "utf8")));
+
+	it("defaults to the curves the runtime names, and fills in a missing one", () => {
+		assert.equal(NEUTRAL.motion, DEFAULT_MOTION);
+		assert.equal(easings(NEUTRAL.motion).easeOut, easeOut);
+		assert.equal(easings().easeStandard, easeStandard);
+		assert.deepEqual(normalizeStyle({ motion: { move: [0.2, 0, 0, 1] } }).motion, { enter: DEFAULT_MOTION.enter, move: [0.2, 0, 0, 1] });
+		const custom = easings(normalizeStyle({ motion: CUSTOM }).motion);
+		assert.equal(custom.easeOut, easings(normalizeStyle({ motion: CUSTOM }).motion).easeOut, "one curve is built once");
+		assert.ok(custom.easeOut(0.2) > easeOut(0.2), "a steeper curve is further along early");
+	});
+	it("rejects a curve that is not four numbers from 0 to 1, and unknown names", () => {
+		for (const motion of [{ enter: [0, 0, 1] }, { enter: [0, 0, 0.2, 1.2] }, { move: [0.4, -0.1, 0.2, 1] }, { move: [1.1, 0, 0.2, 1] }, { move: [0, 0, 0, NaN] }, { move: "ease" }, []]) {
+			assert.throws(() => normalizeStyle({ name: "bad", motion }), /motion/, JSON.stringify(motion));
+		}
+		assert.throws(() => normalizeStyle({ name: "bad", motion: { exit: [0, 0, 1, 1] } }), /unknown motion curve "exit"/);
+	});
+	it("moves every scene type on the style's curves between steps and leaves settled frames alone", () => {
+		for (const name of NAMES) {
+			const scene = load(name);
+			const style = { motion: CUSTOM };
+			let differs = false;
+			for (let t = 0.05; t < scene.duration; t += 0.05) differs ||= renderSvg(scene, t) !== renderSvg(scene, t, { style });
+			assert.ok(differs, `${name}: a custom curve changes some frame`);
+			for (const step of scene.steps) assert.equal(renderSvg(scene, step.at, { style }), renderSvg(scene, step.at), `${name}: step "${step.label}" is settled`);
+			assert.equal(renderSvg(scene, scene.duration, { style }), renderSvg(scene, scene.duration), `${name}: final frame`);
+			assert.deepEqual(checkScene(scene, { style }).problems, [], name);
+			assert.equal(renderSvg(scene, 0.7, { style }), renderSvg(scene, 0.7, { style }), `${name}: same t, same bytes`);
+		}
+	});
+	it("keeps every step settled, one millisecond before and after, for every permitted curve", () => {
+		// Linear, slow-ending, ease-in and steep-ending curves are the ones that still move at a fill's end.
+		const CURVES = [[0, 0, 1, 1], [0.4, 0, 0.9, 1], [0.42, 0, 1, 1], [0.1, 0.9, 0.9, 0.8], [0, 0, 0.58, 1], [0.23, 1, 0.32, 1]];
+		for (const curve of CURVES) {
+			const style = { motion: { enter: curve, move: curve } };
+			for (const name of NAMES) {
+				const scene = load(name);
+				assert.deepEqual(checkScene(scene, { style }).problems, [], `${name} on [${curve}]`);
+				for (const step of scene.steps) {
+					assert.equal(renderSvg(scene, step.at - 0.001, { style }), renderSvg(scene, step.at, { style }), `${name} "${step.label}" 1 ms before, on [${curve}]`);
+				}
+			}
+		}
+	});
+	it("holds a curve that does not settle by itself at 1 for the last 5 % of a move, and leaves a flat-ending one exact", () => {
+		const linear = easings({ enter: [0, 0, 1, 1], move: [0, 0, 1, 1] }).easeStandard;
+		assert.equal(linear(0), 0);
+		assert.ok(Math.abs(linear(0.5) - 0.5 / 0.95) < 1e-9, "the same curve, finished early");
+		for (const p of [0.95, 0.99, 0.995, 1]) assert.equal(linear(p), 1);
+		const ends = normalizeStyle({ motion: { enter: [0.16, 1, 0.3, 1], move: [0.23, 1, 0.32, 1] } }).motion;
+		assert.equal(easings(ends).easeStandard(0.97), cubicBezier(0.23, 1, 0.32, 1)(0.97), "a curve that ends flat is the CSS curve");
+	});
+	it("hands custom scenes the normalized motion", () => {
+		let seen;
+		const scene = sceneFromModule(() => ({ id: "m", width: 10, height: 10, duration: 1, title: "t", description: "d", steps: [{ at: 1, label: "s" }], frame: (t, ctx) => ((seen = ctx.style.motion), "") }));
+		renderSvg(scene, 0, { style: { motion: CUSTOM } });
+		assert.deepEqual(seen, CUSTOM);
 	});
 });

@@ -74,8 +74,9 @@ Export `const locales = ["en", "nl"]` from the module for automatic gate coverag
 Props must be serializable; pass a module path, not a built scene or function.
 
 A style object goes in `style={brand}`; CSS classes go in `class`. Styles can
-set `font`, node `radius`, base `stroke`, and the eight colour tokens in `light`
-and `dark`. Keep both theme maps and run contrast checks. Store the same object
+set `font`, node `radius`, base `stroke`, the entrance and movement curves in
+`motion`, and the eight colour tokens in `light` and `dark`. Keep both theme
+maps and run contrast checks. Store the same object
 in a JSON file so the CLI and the page use identical data.
 
 ## Link the surrounding page

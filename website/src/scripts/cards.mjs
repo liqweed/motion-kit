@@ -62,6 +62,8 @@ export function plannedCard(entry) {
 		h("div", { class: "storyboard" }, h("b", null, `type: ${entry.type}`), h("span", null, "Storyboard only: not built yet")),
 		h("div", { class: "meta" }, h("h3", null, entry.title), h("span", { class: "type" }, entry.type), h("span", { class: "badge needs" }, `needs: ${entry.type}`)),
 		h("p", { class: "story-line" }, entry.story),
-		h("div", { class: "actions" }, h("a", { class: "btn-sm", href: `/examples/${entry.id}/` }, "Open", h("span", { class: "sr" }, ` ${entry.title}`)), h("a", { href: `${REPO}/issues/${entry.issue}`, style: "font-size:14px" }, `Issue #${entry.issue}`)),
+		h("div", { class: "actions" }, h("a", { class: "btn-sm", href: `/examples/${entry.id}/` }, "Open", h("span", { class: "sr" }, ` ${entry.title}`)), entry.issue
+				? h("a", { href: `${REPO}/issues/${entry.issue}`, style: "font-size:14px" }, `Issue #${entry.issue}`)
+				: h("a", { href: `${REPO}/blob/main/docs/roadmap.md#suggestions-with-no-issue-yet`, style: "font-size:14px" }, "On the roadmap")),
 	);
 }

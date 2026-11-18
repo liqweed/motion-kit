@@ -26,7 +26,7 @@
  * shape: "box" (default) | "round" | "pill" | "decision".
  * Strings may be localized objects: { en: "...", nl: "..." }.
  */
-import { easeOut, easeStandard, progress } from "../motion.mjs";
+import { progress, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize, rectEdge } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
 import { NEUTRAL, tok } from "../style.mjs";
@@ -333,6 +333,7 @@ export function flowchart(spec, { format = "16:9", locale = "en" } = {}) {
 
 	/** @param {number} t @param {{ style?: Style }} [ctx] */
 	function frame(t, { style = NEUTRAL } = {}) {
+		const { easeOut, easeStandard } = easings(style.motion);
 		const enter = (/** @type {number} */ r) => progress(t, rankIndex(r) * ENTER_GAP, ENTER, easeOut);
 		const out = [];
 		const drawn = edges.map((_, i) => progress(t, backward[i] ? fillStart(edgeStep[i]) - 0.1 : drawStart(edgeStep[i]), backward[i] ? DRAW - 0.05 : DRAW, easeStandard));
