@@ -24,7 +24,7 @@
  * Without --out the spec goes to stdout; with it, the spec is also checked in
  * every format (or only the --format ones). Unsupported Mermaid syntax fails with its line.
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, cpSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -221,7 +221,8 @@ async function main() {
 			mkdirSync(dirname(dest), { recursive: true });
 			// Gate a candidate beside the destination; an existing spec is replaced only once it passes.
 			// Created exclusively (a planted symlink cannot redirect the write) and never more readable than the file it replaces.
-			const candidate = `${dest}.candidate-${process.pid}.json`;
+			// The name is short and fixed-length so a long destination basename cannot push it past the filesystem's limit.
+			const candidate = join(dirname(dest), `.import-${process.pid}-${Date.now().toString(36)}.json`);
 			let mode = 0o666;
 			try {
 				mode = statSync(dest).mode & 0o777;
@@ -229,8 +230,13 @@ async function main() {
 			let created = false;
 			let bad;
 			try {
-				writeFileSync(candidate, json, { flag: "wx", mode });
+				const fd = openSync(candidate, "wx", mode);
 				created = true;
+				try {
+					writeFileSync(fd, json);
+				} finally {
+					closeSync(fd);
+				}
 				bad = await checkFiles([candidate], { formats: a.format, locales: a.locale, style });
 				if (!bad) renameSync(candidate, dest);
 			} finally {

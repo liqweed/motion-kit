@@ -27,6 +27,8 @@ it("reads npm's latest dist-tag and reports failures", async () => {
 	await assert.rejects(latestVersion({ registry: "https://mirror.test", fetch: fake({ version: "x" }) }), /names no version/);
 	await assert.rejects(latestVersion({ registry: "https://mirror.test", fetch: async () => new Response("<html>oops secret</html>") }), (/** @type {Error} */ e) => /not JSON$/.test(e.message) && !/secret|oops/.test(e.message));
 	await assert.rejects(latestVersion({ registry: "https://mirror.test/npm/#settings", fetch: fake({}) }), /query or fragment/);
+	await assert.rejects(latestVersion({ registry: "http://mirror.test/", fetch: fake({}) }), /must use https/);
+	assert.equal(await latestVersion({ registry: "http://127.0.0.1:1/", fetch: /** @type {typeof fetch} */ (async () => new Response(JSON.stringify({ version: "1.0.0" }))) }), "1.0.0");
 	await assert.rejects(latestVersion({ registry: "https://mirror.test/npm?x=1", fetch: fake({}) }), /query or fragment/);
 	/** @type {string[]} */
 	const seen = [];
