@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-18
+
+### Added
+
+- Import a Mermaid flowchart with `motion-kit import flow.mmd --out flow.json`. A plain chain becomes a `sequence` spec; a chart with branches, joins, link labels or dotted links becomes a spec of the new `flowchart` type, laid out once at build time and checked in every format. Styling statements are ignored with a warning; subgraphs, `click`, unsupported shapes and link kinds fail with an error naming the line. **Consumer action:** none.
+- Build `flowchart` specs: 2–12 nodes with `box`, `round`, `pill` and `decision` shapes, labelled, dashed and arrowless links, back edges, and a stored layout (`rank`, `pos`, `via`) that every format scales without re-laying out the graph. **Consumer action:** none.
+- Check whether a vendored copy is behind the latest release with `motion-kit outdated <dir>`, which compares its `MOTION_KIT_VERSION` with npm and exits 1 when a newer version exists. **Consumer action:** advised at configuration. Run it in CI, or now and then, in repositories that vendor motion-kit.
+
 ## [0.6.0] - 2026-11-18
 
 ### Added
@@ -102,7 +110,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/liqweed/motion-kit/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/liqweed/motion-kit/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/liqweed/motion-kit/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/liqweed/motion-kit/compare/v0.3.0...v0.4.0
