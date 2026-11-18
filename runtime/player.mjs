@@ -307,6 +307,9 @@ export function mountPlayer(container, scene, options = {}) {
 			// One throwing listener must not skip the rest or stop the clock: report it
 			// out of band (reportError, else a rethrow on a microtask) and carry on.
 			for (const listener of [...stepListeners]) {
+				// A listener may destroy the player, or seek: a nested draw has then already
+				// told everyone about the newer step, so this stale dispatch ends.
+				if (destroyed || lastStep !== idx) break;
 				try { listener(idx); } catch (e) { reportListenerError(e); }
 			}
 		}

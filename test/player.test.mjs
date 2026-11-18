@@ -486,3 +486,25 @@ it("a throwing step listener is reported, the others still run and playback keep
 	assert.ok(reported.length === 2 && reported.every((e) => e === boom));
 	assert.equal(seen.at(-1), 1);
 });
+
+it("a listener that destroys the player stops the dispatch to later listeners", () => {
+	const { player } = setup();
+	const seen = [];
+	let armed = false;
+	player.onStep(() => { if (armed) player.destroy(); });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	player.seek(0);
+	assert.deepEqual(seen, [2]);
+});
+
+it("a listener that seeks supersedes the outer dispatch: later listeners never see the stale step", () => {
+	const { player } = setup();
+	const seen = [];
+	let armed = false;
+	player.onStep((i) => { if (armed && i === 0) { armed = false; player.seekStep(1); } });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	player.seek(0);
+	assert.deepEqual(seen, [2, 1]);
+});
