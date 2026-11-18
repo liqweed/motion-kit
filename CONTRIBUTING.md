@@ -91,8 +91,11 @@ files by hand.
     the App is a bypass actor. Fix the rule, then run the workflow again from the
     Actions tab.
   - The commit is there but there is no tag: its `gate` check failed or is still
-    running. The `tag-plan` job of the `changelog` workflow names it, and the tag
-    follows once the check passes.
+    running. The `tag-plan` job of the `changelog` workflow names it. If the check
+    is still running, the tag follows once it passes. If the check failed and a
+    later release commit was tagged first, the tag does not follow automatically,
+    since only versions newer than the newest release tag are tagged: tag the
+    commit by hand.
   - The tag is there but the version is not on npm: the Release run failed, see
     the next point.
 - Publishing uses npm trusted publishing, with no token. The header of
