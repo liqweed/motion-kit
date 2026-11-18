@@ -316,7 +316,8 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 
 Registered types: `sequence` (2–12 nodes), `hub-spoke` (2–10 spokes),
 `timeline` (2–8 events), `stack` (2–8 layers), `state-machine` and
-`request-journey` (2–8 nodes; graph bounds in §11.1). Fields and storyboards:
+`request-journey` (2–8 nodes; graph bounds in §11.1), and `flowchart` (2–12
+nodes, 1–20 edges, layout stored in the spec). Fields and storyboards:
 [`scene-types.md`](../../skills/animated-diagram/references/scene-types.md).
 Normative points:
 
@@ -571,6 +572,14 @@ and must implement their own reduced-motion policy.
 Registered graph walks are `state-machine` and `request-journey` (2–8 nodes,
 1–12 edges, 1–10 explicit path edges). Their fields, narrative steps, region
 boundaries and limits are in the [scene type reference](../../skills/animated-diagram/references/scene-types.md).
+
+A `flowchart` spec carries its layout: integer `rank` and `pos` ≥ 0 per node,
+one `via` waypoint per rank an edge crosses. The type MUST NOT lay a graph out;
+it scales the stored layout per format and MUST throw on overlapping nodes,
+waypoints through a node, self-loops, edges that skip ranks, and labels or
+connectors that collide in a format (`runtime/types/flowchart.mjs`). The
+layout is computed at build time by `motion-kit import` (`lib/mermaid.mjs`,
+`lib/layout.mjs`), deterministically: the same chart gives the same spec.
 
 Export manifests include `runtimeHash` (SHA-256 of sorted runtime module paths
 and contents); `inputHash` includes it, source, style, scene options, format,

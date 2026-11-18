@@ -1,4 +1,9 @@
 ---
+// Self-hosted fonts (OFL-1.1, bundled by Vite): no request leaves for a font CDN.
+import "@fontsource-variable/inter";
+import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/source-serif-4";
+import "@fontsource-variable/space-grotesk";
 import "../styles/site.css";
 import icon from "../../../assets/icon.svg?url";
 import Footer from "../components/Footer.astro";
@@ -25,9 +30,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 		<meta property="og:description" content={description} />
 		<meta property="og:type" content="website" />
 		<meta property="og:url" content={canonical} />
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Source+Serif+4:wght@400;600&family=Space+Grotesk:wght@500;600;700&display=swap" />
 		<script is:inline>document.documentElement.classList.remove("nojs")</script>
 	</head>
 	<body>

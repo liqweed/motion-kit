@@ -171,8 +171,10 @@ translations, shape styles and vendored parity) are resolved in
 [spec §11.1](spec/technique.md#111-gate-policy-decisions). The controller and
 capture-hook policy is in the [interaction reference](../skills/animated-diagram/references/interactivity.md#step-notifications); only its performance budget remains open.
 
-7. **Versioning and re-vendoring.** How do consumers learn a new version
-   exists? The compatibility promise is drafted in
+7. **Versioning and re-vendoring.** `motion-kit outdated <dir>` compares a
+   vendored copy with npm's latest release and exits 1 when it is behind, so
+   a scheduled CI job can tell a consumer. Open: whether motion-kit should
+   ship that CI job (or a bot) for consumers. The compatibility promise is in
    [`stability.md`](stability.md) (#7).
 9. **Logo capability scope.** Which outputs (favicon sizes, social avatars,
    monochrome) must `motion-kit icon` guarantee, and does the logo get its own

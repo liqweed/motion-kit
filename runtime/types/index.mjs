@@ -10,6 +10,7 @@
  * export is (opts) → scene (see examples/custom-*.scene.mjs).
  */
 import { validateScene } from "../scene.mjs";
+import { flowchart } from "./flowchart.mjs";
 import { hubSpoke } from "./hub-spoke.mjs";
 import { sequence } from "./sequence.mjs";
 import { stack } from "./stack.mjs";
@@ -23,6 +24,7 @@ export const SCENE_TYPES = {
 	stack,
 	"state-machine": walk,
 	"request-journey": walk,
+	flowchart,
 };
 
 export function createScene(spec, opts = {}) {

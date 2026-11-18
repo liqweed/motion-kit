@@ -1,0 +1,93 @@
+{
+	"type": "flowchart",
+	"id": "pull-request",
+	"title": "How a pull request lands",
+	"description": "A pull request runs CI and review; a failed build or requested changes loop back until it merges and is released.",
+	"direction": "down",
+	"nodes": [
+		{
+			"id": "open",
+			"label": "Open a PR",
+			"shape": "pill",
+			"rank": 0,
+			"pos": 0.25
+		},
+		{
+			"id": "ci",
+			"label": "CI passes?",
+			"shape": "decision",
+			"rank": 1,
+			"pos": 0.25
+		},
+		{
+			"id": "fix",
+			"label": "Fix the build",
+			"rank": 2,
+			"pos": 0
+		},
+		{
+			"id": "review",
+			"label": "Approved?",
+			"shape": "decision",
+			"rank": 2,
+			"pos": 1
+		},
+		{
+			"id": "revise",
+			"label": "Revise",
+			"rank": 3,
+			"pos": 0.75
+		},
+		{
+			"id": "merge",
+			"label": "Merge",
+			"rank": 3,
+			"pos": 1.75
+		},
+		{
+			"id": "release",
+			"label": "Release",
+			"shape": "pill",
+			"rank": 4,
+			"pos": 1.75
+		}
+	],
+	"edges": [
+		{
+			"from": "open",
+			"to": "ci"
+		},
+		{
+			"from": "ci",
+			"to": "fix",
+			"label": "No"
+		},
+		{
+			"from": "fix",
+			"to": "ci"
+		},
+		{
+			"from": "ci",
+			"to": "review",
+			"label": "Yes"
+		},
+		{
+			"from": "review",
+			"to": "revise",
+			"label": "Changes"
+		},
+		{
+			"from": "revise",
+			"to": "review"
+		},
+		{
+			"from": "review",
+			"to": "merge",
+			"label": "Yes"
+		},
+		{
+			"from": "merge",
+			"to": "release"
+		}
+	]
+}
