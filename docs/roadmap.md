@@ -25,7 +25,8 @@ repository's gates pass (`npm run gate`)"; the tables leave that out.
   this page (the skills' toolkit lookup, scroll and hover helpers, in-place
   live updates, the `timeline` and `stack` types, the stricter gate and
   contrast check, neutral's darker accent). Merging it opens the next release
-  pull request.
+  pull request, which a person merges to tag and publish; [#50] (in progress
+  in [#51]) makes the first merge release it directly.
 - **The first consuming site** (docomply.eu, an Astro static site in Dutch and
   English) has what it listed as needs, except two: continuous scroll-linked
   or layered 3D motion (an [open question](#open-questions)), and a Lighthouse
@@ -38,7 +39,8 @@ repository's gates pass (`npm run gate`)"; the tables leave that out.
 | Order | Issue | What and why | Done when | Priority |
 |---|---|---|---|---|
 | 1 | — | Confirm or revert neutral's new light accent (`#2563eb` → `#1d36a8`) and dark emphasis (`#f59e0b` → `#fbbf24`). The contrast check now requires emphasis on accent at 3:1, which a mid-tone accent on white cannot meet. The change also recolours the logo, and the website's own stylesheet still uses `#2563eb`. | The maintainer keeps the tokens and the site's `site.css` follows them, or lowers the rule (the pair or its threshold) and neutral goes back. | high |
-| 2 | [#12] | Decide the gate's open questions (see [Open questions](#the-gates-open-questions-12)), then make the code, the docs and the spec agree. Users rely on the gate's promise, and its documented and enforced rules still differ. | Each question has a recorded answer; spec discrepancies D1 to D4 and D7 are gone; the README, AGENTS and the skills state the same rules the gate enforces. | medium |
+| 2 | [#50] | Release on merge: a merged pull request with a `release` change note puts its release commit on `main`, so the tag, the npm publish and the GitHub release follow with no second merge. In progress in [#51]. | `changelog.release.push` is `direct` with `changelog.unreleased: wait`; the contributor docs and AGENTS describe the flow; the first release after the switch publishes with no manual step. | medium |
+| 3 | [#12] | Decide the gate's open questions (see [Open questions](#the-gates-open-questions-12)), then make the code, the docs and the spec agree. Users rely on the gate's promise, and its documented and enforced rules still differ. | Each question has a recorded answer; spec discrepancies D1 to D4 and D7 are gone; the README, AGENTS and the skills state the same rules the gate enforces. | medium |
 
 ## Next: more built scene types
 
@@ -193,3 +195,5 @@ unless the open question above decides otherwise.
 [#18]: https://github.com/liqweed/motion-kit/issues/18
 [#19]: https://github.com/liqweed/motion-kit/issues/19
 [#23]: https://github.com/liqweed/motion-kit/pull/23
+[#50]: https://github.com/liqweed/motion-kit/issues/50
+[#51]: https://github.com/liqweed/motion-kit/pull/51
