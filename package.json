@@ -1,6 +1,6 @@
 {
 	"name": "@liqweed/motion-kit",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"description": "Deterministic animated diagrams: scenes as pure functions of time, for live pages, slides, baked SVG and video.",
 	"keywords": [
 		"animation",
