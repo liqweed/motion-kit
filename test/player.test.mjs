@@ -93,9 +93,11 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none", optio
 	let nextId = 0;
 	const themeListeners = new Set();
 	const observers = [];
+	const reported = [];
 	const doc = makeDocument();
 	const context = vm.createContext({
 		performance: { now: () => now },
+		reportError: (e) => reported.push(e),
 		requestAnimationFrame(callback) { frames.set(++nextId, callback); return nextId; },
 		cancelAnimationFrame(id) { frames.delete(id); },
 		matchMedia: (query) => ({
@@ -114,7 +116,7 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none", optio
 	doc.body.appendChild(container);
 	const player = context.MotionKit.mountPlayer(container, sceneOverride, { animateSteps, autoplay, ...options });
 	return {
-		player, container, frames, context, themeListeners, doc, observers,
+		player, container, frames, context, themeListeners, doc, observers, reported,
 		get disconnected() { return observers[0].disconnected; },
 		show(e = entry(true)) { observers[0].callback([e]); },
 		mount(target, s = scene, o = {}) { return context.MotionKit.mountPlayer(target, s, { autoplay: "none", ...o }); },
@@ -465,4 +467,22 @@ it("onStep follows seeking, playback and controls once per index and releases su
 	player.seekStep(0);
 	assert.deepEqual(seen, [2, 0, 1, 2, 1]);
 	assert.throws(() => setup().player.seek(NaN), /finite/);
+});
+
+it("a throwing step listener is reported, the others still run and playback keeps going", () => {
+	const { player, advance, frames, reported } = setup();
+	const seen = [];
+	const boom = new Error("listener failed");
+	let armed = false;
+	player.onStep(() => { if (armed) throw boom; });
+	player.onStep((i) => seen.push(i));
+	armed = true;
+	assert.deepEqual(seen, [2]);
+	player.seek(0);
+	player.playToStep(1);
+	advance(100);
+	assert.equal(frames.size, 1, "the next frame is still scheduled");
+	advance(1000);
+	assert.ok(reported.length === 2 && reported.every((e) => e === boom));
+	assert.equal(seen.at(-1), 1);
 });

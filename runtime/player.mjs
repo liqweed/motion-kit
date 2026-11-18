@@ -289,6 +289,11 @@ export function mountPlayer(container, scene, options = {}) {
 	/** @type {IntersectionObserver | undefined} */
 	let visibilityObserver;
 
+	/** @param {unknown} e */
+	function reportListenerError(e) {
+		if (typeof reportError === "function") reportError(e);
+		else queueMicrotask(() => { throw e; });
+	}
 	function draw() {
 		// In place: nodes that persist keep their identity, only what changed is written.
 		patchMarkup(stage, renderSvg(scene, t, { style, idPrefix: prefix, live: true }));
@@ -299,7 +304,11 @@ export function mountPlayer(container, scene, options = {}) {
 		if (ui.playLabel) ui.playLabel.textContent = playing ? labels.pause : t >= scene.duration ? labels.replay : labels.play;
 		if (idx !== lastStep) {
 			lastStep = idx;
-			for (const listener of stepListeners) listener(idx);
+			// One throwing listener must not skip the rest or stop the clock: report it
+			// out of band (reportError, else a rethrow on a microtask) and carry on.
+			for (const listener of [...stepListeners]) {
+				try { listener(idx); } catch (e) { reportListenerError(e); }
+			}
 		}
 	}
 	/** @param {number} time */
