@@ -81,10 +81,15 @@ before adding a scene type or changing motion helpers.
   optional (`feat(slidev): …`).
 - Don't bump versions or edit `CHANGELOG.md` by hand: a PR that changes what
   ships (`changelog.release_paths` in `.config/jig.yaml`) adds a change note in
-  `changes/` (`/jig:changelog`), and CI opens a release PR that writes the
-  changelog and moves `version` in `package.json`, both `.claude-plugin/*.json`
-  and the lock file together (`npm run versions` checks). Merging it tags
-  `vX.Y.Z`, which publishes `@liqweed/motion-kit` to npm.
+  `changes/` (`/jig:changelog`). Merging a PR whose note has a `release` level
+  releases it with no second merge (`changelog.release.push: direct`): CI puts
+  one commit on `main` that writes the changelog and moves `version` in
+  `package.json`, both `.claude-plugin/*.json` and the lock file together
+  (`npm run versions` checks), tags `vX.Y.Z` once that commit passes the gate,
+  and the tag publishes `@liqweed/motion-kit` to npm. There is no release PR, so
+  treat a note's `release:` line as the decision to publish. A note without one
+  waits for the next release. If a release stalls, `CONTRIBUTING.md` says where
+  to look.
 
 ## Verifying visual changes
 

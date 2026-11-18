@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Run by the jig release step (changelog.after_version) after package.json's
 // version moves: copies it to the files that repeat it, changing only the
-// version string so the release pull request stays a one-line-per-file diff.
+// version string so the release commit stays a one-line-per-file diff.
 // `npm run versions` checks they agree.
 import { readFileSync, writeFileSync } from "node:fs";
 
