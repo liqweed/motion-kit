@@ -81,6 +81,29 @@ viewport and a 390 × 844 phone viewport at 3x; two runs per row, median.
   as before (`npm run bench:player`), so the cost is smaller than when this
   question was first asked.
 
+### A product walkthrough scene type, or leave demos to React tools
+
+docomply.eu's redesign brief says proof comes from "the product shown at
+work". The closest tool to motion-kit is Stageshow (benjitaylor/skills, MIT).
+It builds faux product UI as scripted beats on a virtual clock, rests on a
+static poster frame under reduced motion, and films to video. It shares
+motion-kit's idea of deterministic, clock-driven scenes, but it is a React kit
+with lucide icons. It cannot reach Slidev decks or a site without React.
+motion-kit already has its own versions of the beats (settled steps), the
+poster (the final frame) and the pause control. Stageshow's 10–16 s loops are
+excluded here (see [Not planned](#not-planned)).
+
+**Options.**
+
+- **a. Diagrams only.** Product demos are made in the host's own stack:
+  Stageshow where the host renders React, video elsewhere.
+- **b. A `walkthrough` scene type.** Panels, a cursor and a highlight, under
+  the same `frame(t)` contract and gate. One scene would then serve the site,
+  the decks and video. It moves motion-kit from explaining towards showing
+  (inference).
+- **c. A recipe, not a type.** A documented custom-scene pattern for a single
+  walkthrough, with no gate support for its layout.
+
 ### Performance of external playback drivers
 
 `seek(t)` and the controller are public APIs, and their autoplay, visibility
@@ -109,11 +132,16 @@ Candidates only; none is filed.
 | Candidate | Why |
 |---|---|
 | The Claude Design bundle's style skins and its three scene types with no issue: `before-after`, `comparison` and `funnel`. | The site shows them as "needs" cards. The skins (the node, connector and emphasis "draw" block) link to nothing; the types need their own tracker items. |
-| An accessibility check (WCAG 2.1 AA) on a built player page, with JavaScript on and off, light and dark, and reduced motion. | The defects a consumer found in the player (step text, target size, stage semantics, duplicate ids) were fixed one by one; nothing keeps them fixed except unit tests. |
+| An accessibility check (WCAG 2.1 AA) on a built player page, with JavaScript on and off, light and dark, and reduced motion. | The defects a consumer found in the player (step text, target size, stage semantics, duplicate ids) were fixed one by one; nothing keeps them fixed except unit tests. Impeccable's detector already covers the rendered half, contrast and text size (`npx impeccable detect <url>`), so the check can start from it (inference). |
+| Motion tokens in a style: the entrance and move easing curves, and perhaps a duration scale, alongside the colour tokens. | The scene types hard-code `easeOut` (`cubic-bezier(0, 0, 0.2, 1)`) and `easeStandard` (`cubic-bezier(0.4, 0, 0.2, 1)`) from `runtime/motion.mjs`. A style can recolour a scene but cannot change how it moves. A consuming site names its own curve in its design language: docomply.eu uses `cubic-bezier(0.4, 0, 0.2, 1)`, Emil Kowalski's skills `cubic-bezier(0.23, 1, 0.32, 1)` and Impeccable `cubic-bezier(0.16, 1, 0.3, 1)`. Today a diagram cannot match the page it sits on. Frames stay pure functions of `t` and settled steps do not change (inference). |
+| A "Not for" clause in the `animated-diagram` skill's description. | Other design skills claim the same requests. Stageshow (benjitaylor/skills) triggers on "a product demo or walkthrough animation, a hero or feature-card illustration". Emil Kowalski's `animate` and Impeccable's `animate` trigger on animating UI. Where several are installed, which one fires is unpredictable. Naming what the skill is not for (page and component micro-interactions, faux product-UI demos, decorative effects) routes those requests elsewhere. |
+| A recorded decision on where motion-kit's motion vocabulary departs from Emil Kowalski's `choreograph` and `review-animations` standards. | Those standards target interface feedback and forbid things motion-kit does on purpose. For example, `sequence` enters its nodes on a uniform `k * ENTER_GAP` stagger, and `choreograph` says "Uniform stagger is forbidden". An agent with those skills will "fix" what it sees unless `motion-vocabulary.md` says which rules apply to explanatory diagrams and why. |
+| A `website/DESIGN.md`, written after [#14] lands. | Impeccable and similar skills read `PRODUCT.md` and `DESIGN.md` as their context. Without them, every design session works out the site's rules again. Generate it from the landed site (`impeccable document`), then pin the house values: easing curve, press scale, heading case and typeface. Pointing `design_brief.design_language` in `.config/jig.yaml` at the same file makes design-brief-builder bind the same canon. |
+| A section on motion-kit.dev that sets motion-kit beside the effect libraries, such as Magic UI's `animated-beam` and Aceternity's beams. | Those React components are what a design engineer reaches for first when they want animated connectors. `hub-spoke` draws the same "integrations" picture, and also exports slide frames, baked SVG and video without a framework. Nothing on the site says so (inference). |
 | A frame-time budget, checked in CI on the benchmark scene. | `npm run bench:player` measures the live player at 6x CPU slowdown but enforces nothing and needs a local Chromium. A budget would make "fast enough on a mid-range phone" a checked promise. The value is the maintainer's call. |
 | A cross-browser smoke test of the player in Firefox and WebKit. | The visibility observer, the in-place updates and the scroll helper were checked only in Chromium. |
 | A way for vendoring consumers to learn that a new version exists. | PRD §10 question 7. `MOTION_KIT_VERSION` records the vendored version, but nothing compares it with the latest release. |
-| The site follow-ups [#23] left open: self-hosted fonts instead of Google Fonts, and a redirect from `www.motion-kit.dev`. | [#23] lists both as not done. |
+| The site follow-ups [#23] left open: self-hosted fonts instead of Google Fonts, and a redirect from `www.motion-kit.dev`. | [#23] lists both as not done. Pick the typeface before self-hosting it. The site loads Space Grotesk and Inter from Google Fonts (`website/src/layouts/Base.astro`), and Impeccable's detector flags both as overused, so the [#14] redesign may replace them. |
 
 ## Not planned
 
