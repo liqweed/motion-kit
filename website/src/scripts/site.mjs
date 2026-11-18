@@ -111,30 +111,9 @@ let playerCount = 0;
 /** Theme to pass a player: the explicit ?theme= override, else undefined (follow the OS). */
 export const themeOpt = () => (document.documentElement.dataset.theme === "light" || document.documentElement.dataset.theme === "dark" ? document.documentElement.dataset.theme : undefined);
 
-/**
- * Poll a controller for step changes. The runtime has no step-change event yet,
- * so this reads controller.time; it stops when `stop()` is called.
- * @param {any} controller
- * @param {(index: number) => void} cb
- */
+/** Subscribe to the runtime's step notifications. */
 export function onStep(controller, cb) {
-	let last = -2;
-	let raf = 0;
-	let on = true;
-	const tick = () => {
-		if (!on) return;
-		const i = stepIndexAt(controller.scene, controller.time);
-		if (i !== last) {
-			last = i;
-			cb(i);
-		}
-		raf = requestAnimationFrame(tick);
-	};
-	raf = requestAnimationFrame(tick);
-	return () => {
-		on = false;
-		cancelAnimationFrame(raf);
-	};
+	return controller.onStep(cb);
 }
 
 /**

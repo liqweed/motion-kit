@@ -13,6 +13,7 @@ import { validateScene } from "../scene.mjs";
 import { hubSpoke } from "./hub-spoke.mjs";
 import { sequence } from "./sequence.mjs";
 import { stack } from "./stack.mjs";
+import { walk } from "./walk.mjs";
 import { timeline } from "./timeline.mjs";
 
 export const SCENE_TYPES = {
@@ -20,6 +21,8 @@ export const SCENE_TYPES = {
 	"hub-spoke": hubSpoke,
 	timeline,
 	stack,
+	"state-machine": walk,
+	"request-journey": walk,
 };
 
 export function createScene(spec, opts = {}) {

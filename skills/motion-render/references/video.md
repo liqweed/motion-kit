@@ -6,7 +6,7 @@
 frame f → t = f/fps − lead → renderSvg(standalone, opaque bg) → PNG (resvg) → ffmpeg stdin
 ```
 
-- No browser, no per-frame files; identical consecutive frames are rasterized once.
+- No browser, no per-frame files; repeated timestamps (lead and final hold) reuse their PNG.
 - `--hold` (default 1.5 s) keeps the final frame readable; `lead` 0.25 s.
 - Encoders: MP4 `libx264 -preset slow -crf 18 -pix_fmt yuv420p -movflags +faststart`
   (even dimensions padded); WebM `libvpx-vp9 -crf 32`; GIF two-pass palette,

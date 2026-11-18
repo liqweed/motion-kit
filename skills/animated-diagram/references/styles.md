@@ -32,8 +32,17 @@ properties (light + dark); standalone exports resolve them to literals.
 }
 ```
 
-Missing tokens fall back to neutral. Colours must be `#rrggbb`. Unknown tokens
-throw.
+Missing tokens fall back to neutral within each theme. If the entire `dark`
+object is absent, the light overrides are also applied over neutral dark;
+provide both theme objects when they need different values. Colours must be
+`#rrggbb`; unknown tokens throw.
+
+`radius` (0–24, default 10) sets built-in rectangular node corners; circles,
+region borders and timeline pills retain their geometry. `stroke` (1–4,
+default 2) sets the base line width, with accent lines at 1.5× and timeline
+stems at 0.75×. These settings affect live, SVG, PNG, bake and video rendering.
+Custom scenes receive the normalized style through `frame(t, { style })` and
+may use it explicitly; their own geometry is not rewritten.
 
 ## Contrast
 

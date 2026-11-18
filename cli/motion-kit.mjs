@@ -145,6 +145,8 @@ async function main() {
 		case "bake": {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file));
+			const gate = checkScene(scene, { style });
+			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
 			const svg = bake(scene, { fps: Number(a.fps ?? 15), style, theme: a.theme, background: a.background });
 			const out = need(a.out, "--out");
 			writeFileSync(out, svg);
@@ -155,6 +157,8 @@ async function main() {
 		case "video": {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file));
+			const gate = checkScene(scene, { style });
+			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
 			const out = need(a.out, "--out");
 			const r = await renderVideo(scene, {
 				out,
@@ -209,7 +213,7 @@ const VENDOR_CHECK = `#!/usr/bin/env node
 //   node check.mjs <scene.json|scene.mjs …> [--format F]… [--locale L]… [--style style.json] [--options O]
 //
 // Every format unless --format; for a spec every locale its strings carry, for
-// a custom module "en", unless --locale. The style (neutral by default) must
+// a custom module its exported locales (default "en"), unless --locale. The style (neutral by default) must
 // pass the contrast check. --options passes scene options to custom modules:
 // a .json file, inline JSON, or an .mjs module exporting ({ format, locale }) => options.
 // Exits 1 if anything fails; a file that cannot be loaded fails on its own.

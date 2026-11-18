@@ -34,7 +34,7 @@ describe("site catalog", () => {
 		assert.equal(new Set(ids).size, ids.length);
 		for (const e of [...LIVE, ...PLANNED]) assert.ok(GROUPS.some((g) => g.key === e.group), `${e.id} group`);
 		assert.equal(findExample("order-flow")?.built, true);
-		assert.equal(findExample("checkout")?.built, false);
+		assert.equal(findExample("checkout")?.built, true);
 		assert.equal(findExample("nope"), null);
 	});
 	it("hero briefs, the story and the transcript line up with their scenes", () => {

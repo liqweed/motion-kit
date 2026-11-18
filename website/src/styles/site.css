@@ -1,7 +1,7 @@
 /* motion-kit.dev · site chrome. Tokens are the neutral diagram tokens plus link, hair and mark. */
 :root {
 	--bg: #ffffff; --surface: #f5f6f8; --ink: #111827; --muted: #4b5563; --line: #8b929c; --hair: #e3e6ea;
-	--accent: #2563eb; --onAccent: #ffffff; --link: #1d4ed8; --emph: #d97706; --mark: #dbe6fd;
+	--accent: #1d36a8; --onAccent: #ffffff; --link: #1d4ed8; --emph: #d97706; --mark: #dbe6fd;
 	--display: "Space Grotesk", Inter, ui-sans-serif, system-ui, sans-serif;
 	--mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 	--ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -10,12 +10,12 @@
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
 		--bg: #0f1115; --surface: #151922; --ink: #f3f4f6; --muted: #a7adb8; --line: #6b7280; --hair: #262c38;
-		--link: #8ab4ff; --emph: #f59e0b; --mark: #1e3a8a;
+		--accent: #2563eb; --link: #8ab4ff; --emph: #fbbf24; --mark: #1e3a8a;
 	}
 }
 :root[data-theme="dark"] {
 	--bg: #0f1115; --surface: #151922; --ink: #f3f4f6; --muted: #a7adb8; --line: #6b7280; --hair: #262c38;
-	--link: #8ab4ff; --emph: #f59e0b; --mark: #1e3a8a;
+	--accent: #2563eb; --link: #8ab4ff; --emph: #fbbf24; --mark: #1e3a8a;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -69,7 +69,7 @@ button { font: inherit; cursor: pointer; color: inherit; }
 .stage-dark .pill { background: #f3f4f6; color: #0b0e14; }
 
 /* dark "stage" bands: hero and footer, always dark */
-.stage-dark { --link: #8ab4ff; --emph: #f59e0b; --hair: #262c38; --muted: #a7adb8; --ink: #f3f4f6; --surface: #151922; --bg: #0f1115; --line: #6b7280;
+.stage-dark { --accent: #2563eb; --link: #8ab4ff; --emph: #fbbf24; --hair: #262c38; --muted: #a7adb8; --ink: #f3f4f6; --surface: #151922; --bg: #0f1115; --line: #6b7280;
 	background-color: #0b0e14; background-image: radial-gradient(circle at 1px 1px, #1f2632 1px, transparent 0); background-size: 24px 24px; color: #f3f4f6; }
 .stage-dark .site-header { border-bottom: 0; }
 .stage-dark a { color: #8ab4ff; }
@@ -343,3 +343,11 @@ button { font: inherit; cursor: pointer; color: inherit; }
 
 /* copy buttons need JS; without it the command is still selectable */
 .nojs .cmd button { display: none; }
+
+/* Spec playground */
+.playground-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: start; }
+.spec-editor { display: grid; gap: 14px; min-width: 0; }
+.spec-editor textarea { width: 100%; resize: vertical; font: 13px/1.6 var(--mono); padding: 16px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.spec-editor select, .spec-editor input { min-height: 44px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+#spec-error { white-space: pre-wrap; overflow-wrap: anywhere; border-left: 3px solid var(--emph); padding: 12px; }
+@media (max-width: 800px) { .playground-grid { grid-template-columns: 1fr; } }

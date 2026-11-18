@@ -1,7 +1,7 @@
 ---
 title: motion-kit — product requirements
 status: draft
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 ---
 
 # motion-kit — product requirements
@@ -166,26 +166,14 @@ Proposed (not yet tracked — see open questions):
 
 ## 10. Open questions
 
-1. **Duration budget.** Gate fails at > 12 s; README/AGENTS say ≤ ~8–10 s;
-   the skill says ≤ ~8 s. Which number is the requirement?
-2. **Gate coverage of `bake` and `video`.** `build` and `export` refuse a
-   failing scene; `bake` and `video` don't. Intentional?
-3. **Locales for custom modules.** `check` tests `.mjs` scenes only in `en`.
-   Should modules declare their locales?
-4. **Missing translations.** `localize()` silently falls back to another
-   language. Should a missing locale fail the gate?
-5. **Style `radius` / `stroke`.** Accepted and documented, unused by the scene
-   types. Wire them up or drop them?
-6. **Vendored gate parity.** The vendored `check.mjs` now runs the same code
-   as `motion-kit check` (`lib/gate.mjs`): modules, `--locale`, `--style` with
-   the contrast check, `--options` (#35). Is parity the rule from now on?
+The gate policy questions (duration, export gating, module locales, missing
+translations, shape styles and vendored parity) are resolved in
+[spec §11.1](spec/technique.md#111-gate-policy-decisions). The controller and
+capture-hook policy is in the [interaction reference](../skills/animated-diagram/references/interactivity.md#step-notifications); only its performance budget remains open.
+
 7. **Versioning and re-vendoring.** How do consumers learn a new version
    exists? The compatibility promise is drafted in
    [`stability.md`](stability.md) (#7).
-8. **Capture hook id.** Should the hook key be stable and documented? It is
-   format-suffixed (`options.id ?? scene.id`); the Astro adapter uses its `id`
-   prop or a per-page `mk-<scene.id>-<n>`, and page scripts reach its players
-   through the root element's `controller` (#41).
 9. **Logo capability scope.** Which outputs (favicon sizes, social avatars,
    monochrome) must `motion-kit icon` guarantee, and does the logo get its own
    gate rules?

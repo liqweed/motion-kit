@@ -72,6 +72,9 @@ export function normalizeStyle(style) {
 		light: { ...NEUTRAL.light, ...(style.light ?? {}) },
 		dark: { ...NEUTRAL.dark, ...(style.dark ?? style.light ?? {}) },
 	};
+	for (const [key, min, max] of [["radius", 0, 24], ["stroke", 1, 4]]) {
+		if (!Number.isFinite(out[key]) || out[key] < min || out[key] > max) throw new Error(`style "${out.name}": ${key} must be a number from ${min} to ${max}`);
+	}
 	// The font goes into CSS and markup: a family list never needs these characters.
 	if (typeof out.font !== "string" || /[<>{};\\]/.test(out.font)) throw new Error(`style "${out.name}": font must be a CSS font-family list, got ${JSON.stringify(out.font)}`);
 	for (const theme of ["light", "dark"]) {

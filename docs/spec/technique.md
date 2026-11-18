@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-17
+last_updated: 2026-11-18
 ---
 
 # motion-kit technique — normative specification
@@ -278,13 +278,14 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
   `runtime/types/hub-spoke.mjs:31`, `runtime/wrap.mjs:40-42`). Layouts SHOULD
   budget for Dutch/German being ~30 % longer than English.
 - Any string MAY be localized: `{en: "…", nl: "…"}`. `localize(value, locale)`
-  returns the plain string, the requested locale, else the first value, else ""
-  (`runtime/scene.mjs:33-40`).
+  returns a plain string unchanged or the exact requested translation. A missing
+  or empty translation throws; null/undefined optional copy returns "".
 - Labels are labels; sentences go in `detail`. Font size MUST NOT go below
   14 px at 1× (§3).
 - Every shipped locale × format MUST pass the gate. `check` derives locales
   from a `.json` spec's localized objects (keys `xx` or `xx-YY`)
-  (`cli/motion-kit.mjs:89,209-220`); see §12 D3 for modules.
+  (`lib/gate.mjs`). Modules export a non-empty unique `locales` array (default
+  `["en"]`); explicit `--locale` flags override either source.
 
 ## 8. Steps and settled frames
 
@@ -314,8 +315,8 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 ## 9. Scene types
 
 Registered types: `sequence` (2–12 nodes), `hub-spoke` (2–10 spokes),
-`timeline` (2–8 events) and `stack` (2–8 layers)
-(`runtime/types/index.mjs:18-23`). Fields and storyboards:
+`timeline` (2–8 events), `stack` (2–8 layers), `state-machine` and
+`request-journey` (2–8 nodes; graph bounds in §11.1). Fields and storyboards:
 [`scene-types.md`](../../skills/animated-diagram/references/scene-types.md).
 Normative points:
 
@@ -343,7 +344,7 @@ Every target goes through this one function. It MUST emit `<svg>` with
 | `theme` | `light`/`dark` for resolution or inline vars. |
 | `live` | Omits inline vars; the container supplies them. |
 | `background` | Paints a full-size `bg` rect behind the diagram. |
-| `idPrefix` | Prefix for every id in the output: `<title>`/`<desc>`, and the scene's own through `frame(t, { idPrefix })`. Made a safe id token (`safeId`: letters, digits, `_`, `-`). MUST be unique per page when several diagrams share it. |
+| `idPrefix` | Prefix for every id in the output: `<title>`/`<desc>`, and the scene's own through `frame(t, { idPrefix, style })`. Made a safe id token (`safeId`: letters, digits, `_`, `-`). MUST be unique per page when several diagrams share it. |
 
 ### 10.2 Live player (`runtime/player.mjs`)
 
@@ -535,7 +536,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G6 | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | First frame ≠ last frame. | `:61-63` | Something must animate. |
 | G8 | `render(duration + 5) === render(duration)`. | `:65` | Holds the final frame. |
-| G9 | `duration ≤ 12` s. | `:68` | Explainer budget (see §12 D1). |
+| G9 | `duration ≤ 12` s. | `:68` | Hard limit; authoring target ≤ 8 s. |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
 | G11 | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
 | G12 | Style passes WCAG contrast in both themes for every pair in `CONTRAST_PAIRS` (once per run) and for each scene's `contrastPairs` (per scene). | `lib/gate.mjs`, `lib/check.mjs` (rule 8), `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark, for the pairs actually drawn (§6). |
@@ -547,22 +548,36 @@ phone size, real-time playback, dark mode) is required by
 [`qc.md`](../../skills/animated-diagram/references/qc.md), and a human signs
 off.
 
+### 11.1 Gate policy decisions
+
+Recorded 2026-11-18 for [#12](https://github.com/liqweed/motion-kit/issues/12):
+
+| Question | Contract and reason |
+|---|---|
+| Duration | 12 s is the hard gate limit; ≤ 8 s is the design target. Keep valid existing scenes while making the two numbers explicit. |
+| Export coverage | CLI build, export, bake, video and icon MUST run the same scene and style gate before writing output. Library render primitives remain composable. |
+| Module locales | Modules MAY export `locales`; all declared locales MUST be checked by default. Undeclared modules retain `en` for compatibility. Explicit `--locale` overrides. |
+| Translations | A localized object MUST supply the exact requested locale. Plain strings are shared. Silent cross-language fallback is forbidden. |
+| Shape styles | Built-in scenes MUST use radius 0–24 (default 10) for rectangular node corners and stroke 1–4 (default 2) as their base width. Accent lines are 1.5×; timeline stems 0.75×. Circles, region borders and pills retain their shapes. Custom scenes MAY read normalized `style` from the frame context. |
+| Vendored parity | CLI and vendored checks MUST call the same `lib/gate.mjs` and `lib/check.mjs`, including contrast, locales and caller options. |
+| Neutral contrast | Keep emphasis-on-accent at 3:1, the darker light accent and lighter dark emphasis. The site chrome follows the corresponding neutral tokens. |
+
+The controller also exposes `onStep(callback) → unsubscribe`, with an immediate
+current index and subsequent changed indices (`-1` before the first step).
+Destroy releases subscribers. `seek(t)` requires a finite time, clamps it,
+pauses playback and cancels pending autoplay; external drivers use the controller
+and must implement their own reduced-motion policy.
+
+Registered graph walks are `state-machine` and `request-journey` (2–8 nodes,
+1–12 edges, 1–10 explicit path edges). Their fields, narrative steps, region
+boundaries and limits are in the [scene type reference](../../skills/animated-diagram/references/scene-types.md).
+
+Export manifests include `runtimeHash` (SHA-256 of sorted runtime module paths
+and contents); `inputHash` includes it, source, style, scene options, format,
+locale and rendering settings. Custom modules' arbitrary imported dependencies
+are not recursively hashed; inspect regenerated output when those change.
+
 ## 12. Discrepancies
 
-Recorded, not resolved. Each needs an owner decision.
-
-| # | Topic | Code says | Docs say |
-|---|---|---|---|
-| D1 | Duration budget | Gate fails only above **12 s** (`lib/check.mjs:68`). | "≤ ~8–10 s" (`README.md:98`, `AGENTS.md:47`); "≤ ~8 s" (`skills/animated-diagram/SKILL.md:50`, `motion-vocabulary.md:21`). |
-| D2 | Exporters refuse failing scenes | Only `build` and `export` run the gate; `bake` and `video` render any loadable scene (`cli/motion-kit.mjs:132-157`). | "Exporters refuse scenes that fail the gate" (`skills/motion-render/SKILL.md:17`). |
-| D3 | Every locale is checked | `.mjs` modules are checked in `en` only (`cli/motion-kit.mjs:89`), although `examples/custom-pulse.scene.mjs` ships `nl`. | "Labels fit … in every locale" (`README.md:97`, `AGENTS.md:48-49`). |
-| D4 | Missing copy | `localize` silently falls back to the first available language (`runtime/scene.mjs:36-39`). | "Missing label → throw" (`skills/animated-diagram/references/technique.md:111`). Only an empty *step* label throws. |
-| D5 | Gate rule G10 and `stepLabelsInFrame` | Enforced (`lib/check.mjs:70-77`). | Absent from the scene contract comment (`runtime/scene.mjs:4-12`), `custom-scenes.md`, and the rule lists in `README.md:94-99` and `AGENTS.md:38-49`. |
-| D6 | "Enforced by `motion-kit check`" | G1 and G11 only partly verify purity: no cross-call state detection, and a clock reference taken at import time escapes G11's stub; CSS-transition and "no earlier-frame state" rules are not checked. Escaping is guaranteed by `esc`/`text`, and only detected by G2 for `<` and `&`. | All 11 determinism rules listed as "enforced by `motion-kit check`" (`skills/animated-diagram/references/technique.md:23-39`). |
-| D7 | Style `radius` / `stroke` | Normalized (`runtime/style.mjs:63-64`) but never read; parts default to radius 10, stroke 2 (`runtime/parts.mjs:52,75`). | Documented as style fields (`styles.md:28-29`). |
-| D8 | Dark fallback | A style with no `dark` applies its **light** overrides to dark (`runtime/style.mjs:66`). | "Missing tokens fall back to neutral" (`styles.md:35`). |
-| D9 | Video frame reuse | PNGs are reused only when `t` repeats (lead and hold) (`lib/video.mjs:46`). | "Identical consecutive frames are rasterized once" (`skills/motion-render/references/video.md:9`). |
-| D10 | Capture-hook key | Key is `options.id ?? scene.id`, i.e. format-suffixed (`order-flow-16x9`); the Astro adapter uses its `id` prop or `mk-<scene.id>-<n>`; the Slidev adapter exposes none. | `window.__motionKit[sceneId]` / `[id]` (`adapters/page/README.md:22`, `interactivity.md`). |
-| D12 | Auto-fit maximum | Sequence 22 px, hub-spoke 20 px (`runtime/types/hub-spoke.mjs:97`). | "Fixed formats ≤ 22 px" without type distinction (`technique.md:90`); `formats.md:12` is correct. |
-| D13 | Timing budgets | `ENTRANCE_MAX` is exported but unused; stagger and entrance limits are not checked. | Listed as "Hard rules" (`skills/animated-diagram/SKILL.md:50`). |
-| D14 | Manifest reproducibility | `inputHash` covers the source file, style and scene options, not the runtime; a runtime change keeps the hash while frames change (only `version` hints at it) (`lib/export.mjs:66-70`). | "A stale export is easy to spot" (`skills/motion-render/SKILL.md:66-68`). |
+No known discrepancies remain from the November 2026 gate audit. The gate
+is sampled validation, not a proof of purity or visual quality.

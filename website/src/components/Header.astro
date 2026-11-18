@@ -4,10 +4,11 @@ import pkg from "../../../package.json";
 import { REPO } from "../scripts/catalog.mjs";
 
 interface Props {
-	page?: "home" | "gallery" | "docs";
+	page?: "home" | "gallery" | "docs" | "playground";
 }
 const { page } = Astro.props;
 const links = [
+	{ label: "Playground", href: "/playground/", key: "playground" },
 	{ label: "Gallery", href: "/gallery/", key: "gallery" },
 	{ label: "Docs", href: "/docs/", key: "docs" },
 	{ label: "GitHub", href: REPO, key: "" },

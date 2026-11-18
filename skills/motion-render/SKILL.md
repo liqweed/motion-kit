@@ -100,3 +100,10 @@ Re-exporting into the same folder replaces the previous export: files its
 `manifest.json` listed that the new export does not write are deleted, so the
 folder holds exactly what the new manifest lists. Files no export wrote are
 left alone and named in a warning; keep notes and review files elsewhere.
+
+The CLI gates `build`, `export`, `bake`, `video` and `icon` before writing
+output, including shared style contrast and scene-specific pairs. Exports
+include `runtimeHash`, a SHA-256 of runtime module paths and bytes, in the
+manifest and in `inputHash`, together with format, locale and render settings.
+A changed runtime invalidates the hash even before its package version changes.
+The hash does not recursively fingerprint arbitrary imports of custom scenes.

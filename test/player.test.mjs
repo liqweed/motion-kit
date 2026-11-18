@@ -444,3 +444,25 @@ it("themeCss follows the system unless a theme is fixed", () => {
 	assert.match(dark, /--mk-bg:#0f1115/);
 	assert.throws(() => themeCss("#d", { font: "x}</style><script>" }), /font must be/);
 });
+
+it("onStep follows seeking, playback and controls once per index and releases subscriptions", () => {
+	const { player, container, advance, frames } = setup();
+	const seen = [];
+	const unsubscribe = player.onStep((i) => seen.push(i));
+	assert.deepEqual(seen, [2]);
+	assert.equal(frames.size, 0, "subscribing does not start a polling loop");
+	player.seek(0);
+	player.seek(0.5);
+	player.playToStep(2);
+	advance(600);
+	advance(1000);
+	assert.deepEqual(seen, [2, 0, 1, 2]);
+	unsubscribe();
+	player.seekStep(1);
+	assert.deepEqual(seen, [2, 0, 1, 2]);
+	player.onStep((i) => seen.push(i));
+	player.destroy();
+	player.seekStep(0);
+	assert.deepEqual(seen, [2, 0, 1, 2, 1]);
+	assert.throws(() => setup().player.seek(NaN), /finite/);
+});

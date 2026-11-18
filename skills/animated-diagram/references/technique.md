@@ -20,7 +20,11 @@ authoring a timeline and recording it. Consequences:
 
 Video maps frame `f` at `fps` to `t = f / fps` (30 fps × 25 s = 750 frames).
 
-## 2. Determinism rules (enforced by `motion-kit check`)
+## 2. Determinism rules (sampled by `motion-kit check`)
+
+The gate samples outputs and stubs clocks; this is evidence, not a proof of
+purity. Aliases captured at import time, unsampled code paths, CSS motion and
+cross-call state still require code review.
 
 1. No dependence on previous frames.
 2. No uncontrolled randomness (derive variation from a seed and `t` if needed).
@@ -97,7 +101,7 @@ Never crop one master. Timings and the spec are shared; geometry is a function
 of the format (`16:9`, `4:3`, `1:1`, `9:16`, `wide` strip, `tall` column):
 
 - Row for wide aspects, snake grid for square-ish, column or tree for tall.
-- **Auto-fit text:** try the largest font (fixed formats ≤ 22 px, strips ≤ 16 px)
+- **Auto-fit text:** try the largest font (fixed formats ≤ 22 px (hub-spoke: 20 px), strips ≤ 16 px)
   and step down to 14 px until every label wraps into its budget; fail if even
   14 px doesn't fit. Never shrink below 14 px at 1×.
 - **Collision checks:** nodes must not overlap or leave the canvas; the layout

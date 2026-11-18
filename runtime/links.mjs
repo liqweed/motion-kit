@@ -29,7 +29,7 @@ const STEP_ATTR = "data-mk-step";
 /** @import { Scene } from "./scene.mjs" */
 /**
  * The part of the player controller the helpers use.
- * @typedef {{ scene: Scene, time: number, seek: (t: number) => void, seekStep: (ref: number | string) => void, playToStep: (ref: number | string) => void }} StepController
+ * @typedef {{ scene: Scene, time: number, onStep?: (listener: (index: number) => void) => (() => void), seek: (t: number) => void, seekStep: (ref: number | string) => void, playToStep: (ref: number | string) => void }} StepController
  */
 /**
  * @typedef {object} ScrollStepsOptions
@@ -177,6 +177,7 @@ export function scrollSteps(controller, sections, options = {}) {
 	};
 
 	if (typeof IntersectionObserver !== "function") return () => {};
+	const unsubscribe = mark ? c.onStep?.((index) => els.forEach((el, i) => markCurrent(el, steps[i] === index))) : undefined;
 	// The root, cut off at the line: a section enters or leaves it exactly
 	// when its top crosses the line, which is when the active one can change.
 	const below = `${(1 - line) * 100}%`;
@@ -202,6 +203,7 @@ export function scrollSteps(controller, sections, options = {}) {
 		if (disposed) return;
 		disposed = true;
 		observer.disconnect();
+		unsubscribe?.();
 		scroller.removeEventListener?.("scroll", onScroll);
 		if (mark) for (const el of els) markCurrent(el, false);
 	};
@@ -304,10 +306,12 @@ export function linkSteps(controller, target, options = {}) {
 			bound.push([el, name, fn]);
 		}
 	});
+	const unsubscribe = mark ? c.onStep?.((index) => els.forEach((el, i) => markCurrent(el, steps[i] === index))) : undefined;
 	let disposed = false;
 	return () => {
 		if (disposed) return;
 		disposed = true;
+		unsubscribe?.();
 		for (const [el, name, fn] of bound) el.removeEventListener(name, fn);
 		if (mark) for (const el of els) markCurrent(el, false);
 	};

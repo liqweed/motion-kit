@@ -1,3 +1,4 @@
+/** @import { Style } from "./style.mjs" */
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /**
@@ -9,6 +10,7 @@
  *     id, width, height,          // viewBox
  *     duration,                   // seconds until the final state
  *     title, description,         // accessible name + description
+ *     stepLabelsInFrame?: boolean, // false for narrative steps (default true)
  *     steps: [{ at, label, detail?, id? }],   // build steps; last = finished diagram
  *     frame(t, { idPrefix }) → string         // inner SVG markup at time t
  *   }
@@ -32,7 +34,7 @@ import { normalizeStyle, cssVars, resolveTokens } from "./style.mjs";
  */
 /**
  * What `renderSvg` passes to `frame` besides the time.
- * @typedef {{ idPrefix: string }} FrameContext
+ * @typedef {{ idPrefix: string, style?: Style }} FrameContext
  */
 /**
  * An animated diagram as a pure function of time (see the module comment).
@@ -51,14 +53,20 @@ export const FORMATS = {
 	tall: { width: 360, height: 0 }, // phone column: height computed by the scene type
 };
 
-/** Pick a localized string: plain string, or { en, nl, ... }. */
+/**
+ * Resolve copy exactly; plain strings are shared by every locale. Missing
+ * translations must never silently publish a different language.
+ * @param {string | Record<string, string> | null | undefined} value
+ * @param {string} [locale]
+ * @returns {string}
+ */
 export function localize(value, locale = "en") {
 	if (value == null) return "";
 	if (typeof value === "string") return value;
-	if (value[locale] != null) return value[locale];
-	const first = Object.values(value)[0];
-	if (first == null) return "";
-	return first;
+	if (typeof value !== "object" || Array.isArray(value) || !Object.hasOwn(value, locale) || typeof value[locale] !== "string" || !value[locale]) {
+		throw new Error(`missing translation for locale "${locale}"`);
+	}
+	return value[locale];
 }
 
 /**
@@ -82,10 +90,15 @@ export function validateScene(scene) {
 	for (const k of ["id", "width", "height", "duration", "title", "description", "steps", "frame"]) {
 		if (scene[k] === undefined || scene[k] === "") throw new Error(`scene ${scene.id ?? "?"} is missing "${k}"`);
 	}
-	if (!scene.steps.length) throw new Error(`scene ${scene.id}: needs at least one step`);
+	for (const key of ["width", "height", "duration"]) {
+		if (!Number.isFinite(scene[key]) || scene[key] <= 0) throw new Error(`scene ${scene.id}: ${key} must be a positive finite number`);
+	}
+	if (typeof scene.frame !== "function") throw new Error(`scene ${scene.id}: frame must be a function`);
+	if (!Array.isArray(scene.steps) || !scene.steps.length) throw new Error(`scene ${scene.id}: needs at least one step`);
 	let prev = -Infinity;
 	const ids = new Set();
 	for (const s of scene.steps) {
+		if (!Number.isFinite(s.at) || s.at < 0) throw new Error(`scene ${scene.id}: step time must be finite and non-negative`);
 		if (!(s.at > prev)) throw new Error(`scene ${scene.id}: steps must be strictly increasing in time`);
 		if (s.at > scene.duration + 1e-9) throw new Error(`scene ${scene.id}: step "${s.label}" is after the duration`);
 		if (!s.label) throw new Error(`scene ${scene.id}: every step needs a label`);
@@ -158,7 +171,7 @@ export function renderSvg(scene, t, options = {}) {
 		`<title id="${id}-title">${esc(scene.title)}</title>` +
 		`<desc id="${id}-desc">${esc(scene.description)}</desc>` +
 		bg +
-		scene.frame(time, { idPrefix: id }) +
+		scene.frame(time, { idPrefix: id, style }) +
 		`</svg>`;
 	return options.standalone ? resolveTokens(markup, style, options.theme ?? "light") : markup;
 }

@@ -1,3 +1,4 @@
+/** @import { Style } from "../style.mjs" */
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /**
@@ -23,7 +24,7 @@
 import { easeOut, easeStandard, lerp, progress } from "../motion.mjs";
 import { FONT_MIN, maxFontSize } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { tok } from "../style.mjs";
+import { NEUTRAL, tok } from "../style.mjs";
 import { drawOn, el, fade, num, text, translate } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
 
@@ -58,12 +59,13 @@ const RISE_BY = 14; // a layer rises this far into place
  * @param {number} enter
  * @param {number} active
  * @param {number} passed
+ * @param {Style} style
  */
-function layer(b, lines, fs, enter, active, passed) {
+function layer(b, lines, fs, enter, active, passed, style) {
 	if (enter <= 0) return "";
 	const dy = (1 - enter) * RISE_BY;
 	const label = (fill) => text({ x: b.x + b.w / 2, y: b.y + b.h / 2, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fs, "font-weight": 500, fill }, lines);
-	const box = (fill, stroke, width) => el("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: 10, fill, stroke, "stroke-width": width });
+	const box = (fill, stroke, width) => el("rect", { x: b.x, y: b.y, width: b.w, height: b.h, rx: style.radius, fill, stroke, "stroke-width": width * style.stroke / 2 });
 	return fade(
 		enter,
 		{ transform: dy > 0.004 ? translate(0, dy) : undefined },
@@ -179,20 +181,21 @@ export function stack(spec, { format = "16:9", locale = "en" } = {}) {
 
 	const vline = (x, y0, y1, attrs) => el("path", { d: `M${num(x)} ${num(y0)} V${num(y1)}`, fill: "none", "stroke-linecap": "round", ...attrs });
 
-	function frame(t) {
+	/** @param {number} t @param {{style?: Style}} [ctx] */
+	function frame(t, { style = NEUTRAL } = {}) {
 		const out = [];
 		const { railX } = fitted;
 		// Rail: draws on from the entry end while the layers rise; an arrowhead marks the exit.
 		const railLen = Math.abs(exitY - entryY);
 		const railDash = drawOn(railLen, progress(t, 0.2, RAIL, easeStandard));
-		if (railDash) out.push(vline(railX, entryY, exitY, { stroke: tok("line"), "stroke-width": 2, ...railDash }));
+		if (railDash) out.push(vline(railX, entryY, exitY, { stroke: tok("line"), "stroke-width": style.stroke, ...railDash }));
 		const head = progress(t, 0.2 + RAIL - 0.15, 0.2, easeOut);
 		if (head > 0) {
 			const s = direction === "down" ? -1 : 1;
-			out.push(el("path", { d: `M${num(railX - 6)} ${num(exitY + s * 9)} L${num(railX)} ${num(exitY)} L${num(railX + 6)} ${num(exitY + s * 9)}`, fill: "none", stroke: tok("line"), "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: head }));
+			out.push(el("path", { d: `M${num(railX - 6)} ${num(exitY + s * 9)} L${num(railX)} ${num(exitY)} L${num(railX + 6)} ${num(exitY + s * 9)}`, fill: "none", stroke: tok("line"), "stroke-width": style.stroke, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: head }));
 		}
 		const y = packetY(t);
-		if (Math.abs(y - entryY) > 0.5) out.push(vline(railX, entryY, y, { stroke: tok("accent"), "stroke-width": 3 }));
+		if (Math.abs(y - entryY) > 0.5) out.push(vline(railX, entryY, y, { stroke: tok("accent"), "stroke-width": style.stroke * 1.5 }));
 		fitted.boxes.forEach((b, li) => {
 			const enter = progress(t, riseAt(li), RISE, easeOut);
 			const k = visit[li];
@@ -201,9 +204,9 @@ export function stack(spec, { format = "16:9", locale = "en" } = {}) {
 			const passed = k < n - 1 ? progress(t, hopStart(k + 1), FILL, easeStandard) : 0;
 			// Tick from the layer to the rail: pending once the layer is in, accent once reached.
 			const cy = b.y + b.h / 2;
-			if (enter > 0) out.push(el("path", { d: `M${num(b.x + b.w + 4)} ${num(cy)} H${num(railX - 4)}`, stroke: tok("line"), "stroke-width": 2, "stroke-linecap": "round", opacity: enter * (1 - active) }));
-			if (active > 0) out.push(el("path", { d: `M${num(b.x + b.w + 4)} ${num(cy)} H${num(railX - 4)}`, stroke: tok("accent"), "stroke-width": 3, "stroke-linecap": "round", opacity: active }));
-			out.push(layer(b, wrapped[li], fitted.fs, enter, active, passed));
+			if (enter > 0) out.push(el("path", { d: `M${num(b.x + b.w + 4)} ${num(cy)} H${num(railX - 4)}`, stroke: tok("line"), "stroke-width": style.stroke, "stroke-linecap": "round", opacity: enter * (1 - active) }));
+			if (active > 0) out.push(el("path", { d: `M${num(b.x + b.w + 4)} ${num(cy)} H${num(railX - 4)}`, stroke: tok("accent"), "stroke-width": style.stroke * 1.5, "stroke-linecap": "round", opacity: active }));
+			out.push(layer(b, wrapped[li], fitted.fs, enter, active, passed, style));
 		});
 		// The packet: appears at the entry, then rides the rail.
 		const appear = progress(t, START, APPEAR, easeOut);

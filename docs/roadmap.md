@@ -12,43 +12,11 @@ order they should land, and how to tell they are done. Product intent is in
 [`prd.md`](prd.md); the contract is in [`spec/technique.md`](spec/technique.md).
 Shipped work is in [`CHANGELOG.md`](../CHANGELOG.md), not here.
 
-This version was written on 2026-11-18, against `main` with the pull request
-that carries it merged. A line that is a judgement, not a fact, says
-"(inference)". Every issue's acceptance criteria also include "the
-repository's gates pass (`npm run gate`)"; the tables leave that out.
+## Next
 
-## Where things stand
-
-- **Published:** 0.4.0 is on npm through trusted publishing, with GitHub
-  releases for 0.3.0 and 0.4.0.
-- **Waiting to release:** the change notes of the pull request that carries
-  this page (the skills' toolkit lookup, scroll and hover helpers, in-place
-  live updates, the `timeline` and `stack` types, the stricter gate and
-  contrast check, neutral's darker accent). Merging it opens the next release
-  pull request, which a person merges to tag and publish; [#50] (in progress
-  in [#51]) makes the first merge release it directly.
-- **The first consuming site** (docomply.eu, an Astro static site in Dutch and
-  English) has what it listed as needs, except two: continuous scroll-linked
-  or layered 3D motion (an [open question](#open-questions)), and a Lighthouse
-  performance score of 90 or higher while a large scene plays, which the
-  in-place updates should give but which nobody has measured on the site
-  (inference).
-
-## Now: settle the gate's promise
-
-| Order | Issue | What and why | Done when | Priority |
-|---|---|---|---|---|
-| 1 | — | Confirm or revert neutral's new light accent (`#2563eb` → `#1d36a8`) and dark emphasis (`#f59e0b` → `#fbbf24`). The contrast check now requires emphasis on accent at 3:1, which a mid-tone accent on white cannot meet. The change also recolours the logo, and the website's own stylesheet still uses `#2563eb`. | The maintainer keeps the tokens and the site's `site.css` follows them, or lowers the rule (the pair or its threshold) and neutral goes back. | high |
-| 2 | [#50] | Release on merge: a merged pull request with a `release` change note puts its release commit on `main`, so the tag, the npm publish and the GitHub release follow with no second merge. In progress in [#51]. | `changelog.release.push` is `direct` with `changelog.unreleased: wait`; the contributor docs and AGENTS describe the flow; the first release after the switch publishes with no manual step. | medium |
-| 3 | [#12] | Decide the gate's open questions (see [Open questions](#the-gates-open-questions-12)), then make the code, the docs and the spec agree. Users rely on the gate's promise, and its documented and enforced rules still differ. | Each question has a recorded answer; spec discrepancies D1 to D4 and D7 are gone; the README, AGENTS and the skills state the same rules the gate enforces. | medium |
-
-## Next: more built scene types
-
-| Order | Issue | What and why | Done when | Priority |
-|---|---|---|---|---|
-| 1 | [#18] | Promote `state-machine` from a storyboard in [`scene-types.md`](../skills/animated-diagram/references/scene-types.md) to a spec-driven type. Most diagrams that are not a sequence, a hub, a timeline or a stack still need a custom module. | An example spec passes `motion-kit check` in every format and in `en` and `nl`; the scene-types reference documents its fields; the website shows it live. | medium |
-| 2 | [#19] | Promote `request-journey` the same way. With [#18], this closes the epic [#3]. | As for [#18]. | medium |
-| 3 | [#11] | Import Mermaid flowcharts as specs, laid out once at build time (ELK or dagre). | A linear flowchart imports to a `sequence` spec that passes the gate; a branching one imports to a scene that passes in every format; unsupported syntax fails with an error that names it. | medium |
+| Issue | Remaining work | Done when |
+|---|---|---|
+| [#11] | Import Mermaid flowcharts as specs, with build-time layout. | Linear input becomes a valid sequence; branching input passes in every format; unsupported syntax is named in errors. |
 
 ## Later: the website
 
@@ -58,34 +26,15 @@ them (inference).
 | Order | Issue | What and why | Done when | Priority |
 |---|---|---|---|---|
 | 1 | [#14] | Land the Claude Design bundle the site was built from ([#23] built the site, but the bundle was not committed and `design_brief.prototypes` is not set in `.config/jig.yaml`). Its "needs" list holds work with no issue yet (see [Suggestions](#suggestions-with-no-issue-yet)). | The bundle is committed and passes the design-brief landing check; every item on its "needs" list has an issue or is built. | high |
-| 2 | [#15] | Add a spec playground to the website. | A pasted spec renders and plays; a failing spec shows the gate's message; reloading a shared URL restores the spec. | low |
-| 3 | [#2] | Finish the website epic: the "one scene, every medium" idea on the first screen, at least 12 live examples, reusable scroll and interaction patterns. | Every sub-issue is closed. | high |
+| 2 | [#2] | Finish the website epic: land the missing design bundle and reconcile its remaining needs. | Every sub-issue is closed. | high |
 
 ## Open questions
 
 Decisions, not commitments. Each one is the maintainer's call.
 
-### The gate's open questions ([#12])
-
-[PRD §10](prd.md#10-open-questions) questions 1 to 5, recorded as spec
-discrepancies D1 to D4 and D7. Question 6 (vendored gate parity) is answered in
-practice: `motion-kit check` and the vendored `check.mjs` run the same code
-(`lib/gate.mjs`); [#12] should record that as the rule.
-
-1. **Duration budget.** The gate fails only above 12 s; the README and AGENTS
-   say about 8 to 10 s; the skill says about 8 s. Which number is the rule?
-2. **`bake` and `video`.** `build` and `export` refuse a scene that fails the
-   gate; `bake` and `video` do not. Should they?
-3. **Locales for custom modules.** `check` tests a module only in `en` unless
-   `--locale` is given. Should modules declare their locales?
-4. **Missing translations.** `localize()` falls back silently. Should a missing
-   locale fail the gate?
-5. **Style `radius` and `stroke`.** Accepted and documented, never read. Wire
-   them or drop them?
-
 ### Continuous scroll-linked playback, or layered output for CSS 3D
 
-motion-kit jumps between settled steps, and the new `scrollSteps` helper does
+motion-kit jumps between settled steps, and `scrollSteps` does
 the same: scrolling one section forward plays to the next settled step. A
 consumer is weighing a "map that tilts into layers" motion that follows the
 scroll position. That needs one of two things motion-kit does not have:
@@ -127,26 +76,23 @@ viewport and a 390 × 844 phone viewport at 3x; two runs per row, median.
   export and the gate. This keeps export (inference), but splits the motion
   between the scene and the page's CSS, which the gate cannot see.
 - **c. Allow scroll-linked playback** by calling `seek(t)` on every scroll
-  frame. This breaks the settled-steps rule. The live player now patches the
+  frame. This breaks the settled-steps rule. The live player patches the
   SVG in place, which makes a frame on a 25 KB scene about a third as costly
   as before (`npm run bench:player`), so the cost is smaller than when this
   question was first asked.
 
-### Should `seek(t)` be the documented hook for outside drivers?
+### Performance of external playback drivers
 
-The controller is `{seek, play, pause, seekStep, playToStep, destroy, time,
-scene}`. The player puts it on `globalThis.__motionKit[id]` as a capture hook
-for renderers (spec §10.2), and the element and the Astro adapter hand it out
-as `.controller` after `motion-ready`. The ecosystem reference says HyperFrames
-and paused GSAP timelines can drive `seek(t)`. But the hook's key is
-format-suffixed, and generated in the Astro adapter (spec D10, PRD §10
-question 8), and `seek(t)` cancels playback. To decide:
+`seek(t)` and the controller are public APIs, and their autoplay, visibility
+and reduced-motion responsibilities are documented in the interaction reference.
+The remaining question is the supported scene-size/frame-time budget for a
+continuous outside driver. Measure on the consuming site, including a busy main
+thread and reduced-motion behavior, before promising a threshold.
 
-- Is `seek(t)` part of the stability promise ([`stability.md`](stability.md))?
-- Do outside drivers use the hook key, or only the adapters' `.controller`?
-- What does a driven player do with autoplay, the visibility observer and
-  reduced motion?
-- Up to what scene size is calling `seek(t)` at frame rate supported?
+## Consumer validation
+
+Measure a large live scene on docomply.eu against its Lighthouse performance
+score target of 90. The player benchmark alone does not establish that result.
 
 ## Housekeeping
 
@@ -155,8 +101,6 @@ Tracker and registry tasks; no code.
 - npm lists a `0.0.0-stage` version, published 2026-11-16 before 0.2.0.
   Deprecating it (`npm deprecate`, as a package owner) would keep it out of
   users' view (inference).
-- PRD §10 question 6 can be marked answered once [#12] records parity as the
-  rule.
 
 ## Suggestions with no issue yet
 
@@ -164,13 +108,10 @@ Candidates only; none is filed.
 
 | Candidate | Why |
 |---|---|
-| A step-change event on the player (for example `motion-step` on the container, or an `onStep` option). | `scrollSteps` and `linkSteps` mark the active section or term only when they cause the change; when a reader uses the player's own buttons or keyboard, the marks do not follow. The website polls the controller to keep its marks right. |
-| The Claude Design bundle's style skins and its three scene types with no issue: `before-after`, `comparison` and `funnel`. | The site shows them as "needs" cards. The skins (the node, connector and emphasis "draw" block) link to nothing; the types would join [#3]'s list. |
-| A consumer guide for vendoring into an Astro site: dictionaries as scene options, theme and style, the server render, the vendored gate in CI, the page helpers, and re-vendoring on upgrade. | The README's Astro section shows the props; one worked guide would show the whole path. |
+| The Claude Design bundle's style skins and its three scene types with no issue: `before-after`, `comparison` and `funnel`. | The site shows them as "needs" cards. The skins (the node, connector and emphasis "draw" block) link to nothing; the types need their own tracker items. |
 | An accessibility check (WCAG 2.1 AA) on a built player page, with JavaScript on and off, light and dark, and reduced motion. | The defects a consumer found in the player (step text, target size, stage semantics, duplicate ids) were fixed one by one; nothing keeps them fixed except unit tests. |
 | A frame-time budget, checked in CI on the benchmark scene. | `npm run bench:player` measures the live player at 6x CPU slowdown but enforces nothing and needs a local Chromium. A budget would make "fast enough on a mid-range phone" a checked promise. The value is the maintainer's call. |
 | A cross-browser smoke test of the player in Firefox and WebKit. | The visibility observer, the in-place updates and the scroll helper were checked only in Chromium. |
-| One issue for the spec discrepancies that no issue covers: D5, D6, D8, D9, D10, D12, D13 and D14. | [#12] covers D1 to D4 and D7. D14 (the manifest's input hash ignores the runtime) sits next to the new `sourceDirty` flag. |
 | A way for vendoring consumers to learn that a new version exists. | PRD §10 question 7. `MOTION_KIT_VERSION` records the vendored version, but nothing compares it with the latest release. |
 | The site follow-ups [#23] left open: self-hosted fonts instead of Google Fonts, and a redirect from `www.motion-kit.dev`. | [#23] lists both as not done. |
 
@@ -187,13 +128,6 @@ steps, with no parallax and no continuous scroll-scrubbing of diagrams
 unless the open question above decides otherwise.
 
 [#2]: https://github.com/liqweed/motion-kit/issues/2
-[#3]: https://github.com/liqweed/motion-kit/issues/3
 [#11]: https://github.com/liqweed/motion-kit/issues/11
-[#12]: https://github.com/liqweed/motion-kit/issues/12
 [#14]: https://github.com/liqweed/motion-kit/issues/14
-[#15]: https://github.com/liqweed/motion-kit/issues/15
-[#18]: https://github.com/liqweed/motion-kit/issues/18
-[#19]: https://github.com/liqweed/motion-kit/issues/19
 [#23]: https://github.com/liqweed/motion-kit/pull/23
-[#50]: https://github.com/liqweed/motion-kit/issues/50
-[#51]: https://github.com/liqweed/motion-kit/pull/51

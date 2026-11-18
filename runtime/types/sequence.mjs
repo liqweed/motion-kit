@@ -1,3 +1,4 @@
+/** @import { Style } from "../style.mjs" */
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /**
@@ -19,7 +20,7 @@
 import { easeOut, easeStandard, progress } from "../motion.mjs";
 import { circleNode, FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { tok } from "../style.mjs";
+import { NEUTRAL, tok } from "../style.mjs";
 import { drawOn, el, polyline, trimSegment } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
 
@@ -154,7 +155,8 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 	// never crosses a label.
 	const segs = L.centers.slice(1).map((c, i) => connector(L.centers[i], c, L.r, L.W, L.cols > 1, L.cellW));
 
-	function frame(t) {
+	/** @param {number} t @param {{style?: Style}} [ctx] */
+	function frame(t, { style = NEUTRAL } = {}) {
 		const enter = (k) => progress(t, k * ENTER_GAP, ENTER, easeOut);
 		const active = (k) => progress(t, fillStart(k), FILL, easeStandard);
 		const out = [];
@@ -162,13 +164,13 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 		segs.forEach((s, k) => {
 			const shown = Math.min(enter(k), enter(k + 1));
 			const common = { d: s.path.d, fill: "none", "stroke-linecap": "round", "stroke-linejoin": "round" };
-			if (shown > 0) out.push(el("path", { ...common, stroke: tok("line"), "stroke-width": 2, opacity: shown }));
+			if (shown > 0) out.push(el("path", { ...common, stroke: tok("line"), "stroke-width": style.stroke, opacity: shown }));
 			const dash = drawOn(s.path.length, progress(t, hopStart(k), HOP, easeStandard));
-			if (dash) out.push(el("path", { ...common, stroke: tok("accent"), "stroke-width": 3, ...dash }));
+			if (dash) out.push(el("path", { ...common, stroke: tok("accent"), "stroke-width": style.stroke * 1.5, ...dash }));
 		});
 		items.forEach((it, k) => {
 			const c = L.centers[k];
-			out.push(circleNode({ cx: c.x, cy: c.y, r: L.r, enter: enter(k), active: active(k), node: it.node }));
+			out.push(circleNode({ strokeWidth: style.stroke, cx: c.x, cy: c.y, r: L.r, enter: enter(k), active: active(k), node: it.node }));
 			out.push(stateLabel({ ...L.label(c), lines: it.lines, fontSize: L.fs, enter: enter(k), active: active(k) }));
 		});
 		// Emphasis ring: appears on node 1, then hops.
@@ -180,7 +182,7 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 				if (p <= 0) break;
 				pos = segs[k].ring.at(p);
 			}
-			out.push(el("circle", { cx: pos.x, cy: pos.y, r: ringR * (0.85 + 0.15 * appear), fill: "none", stroke: tok("emphasis"), "stroke-width": 3, opacity: appear }));
+			out.push(el("circle", { cx: pos.x, cy: pos.y, r: ringR * (0.85 + 0.15 * appear), fill: "none", stroke: tok("emphasis"), "stroke-width": style.stroke * 1.5, opacity: appear }));
 		}
 		return out.join("");
 	}

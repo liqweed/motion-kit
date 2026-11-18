@@ -12,6 +12,8 @@ import { tok } from "../runtime/style.mjs";
 import { cubic, drawOn, el, fade, num, text } from "../runtime/svg.mjs";
 import { wrapLabel } from "../runtime/wrap.mjs";
 
+export const locales = ["en", "nl"];
+
 const COPY = {
 	title: { en: "A request, there and back", nl: "Een verzoek, heen en terug" },
 	description: {

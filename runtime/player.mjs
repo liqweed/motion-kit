@@ -270,6 +270,9 @@ export function mountPlayer(container, scene, options = {}) {
 	for (const node of nodes) if (node) container.appendChild(toDom(doc, node, ui));
 	const { stage, live } = ui;
 
+	/** @type {Set<(index: number) => void>} */
+	const stepListeners = new Set();
+	let lastStep = -2;
 	let t = 0;
 	let playing = false;
 	let raf = 0;
@@ -294,10 +297,16 @@ export function mountPlayer(container, scene, options = {}) {
 		ui.captions?.forEach((c, i) => (i === idx ? c.setAttribute("class", "mk-on") : c.removeAttribute("class")));
 		if (ui.scrub) ui.scrub.value = String(t);
 		if (ui.playLabel) ui.playLabel.textContent = playing ? labels.pause : t >= scene.duration ? labels.replay : labels.play;
+		if (idx !== lastStep) {
+			lastStep = idx;
+			for (const listener of stepListeners) listener(idx);
+		}
 	}
 	/** @param {number} time */
 	function seek(time) {
 		if (destroyed) return;
+		if (!Number.isFinite(time)) throw new RangeError("seek time must be finite");
+		autoplayPending = false;
 		playing = false;
 		suspended = false;
 		cancelAnimationFrame(raf);
@@ -439,9 +448,23 @@ export function mountPlayer(container, scene, options = {}) {
 	const themeQuery = typeof matchMedia === "function" && !options.theme ? matchMedia("(prefers-color-scheme: dark)") : null;
 	themeQuery?.addEventListener?.("change", applyTheme);
 
+	/**
+	 * Subscribe to settled-step changes (including -1 before the first).
+	 * Calls immediately with the current index, then once per changed index
+	 * from playback, seeking or controls. Unsubscribe or destroy to release.
+	 * @param {(index: number) => void} listener
+	 * @returns {() => void}
+	 */
+	function onStep(listener) {
+		if (destroyed) return () => {};
+		stepListeners.add(listener);
+		listener(stepIndexAt(scene, t));
+		return () => { stepListeners.delete(listener); };
+	}
 	function destroy() {
 		if (destroyed) return;
 		destroyed = true;
+		stepListeners.clear();
 		if (mounted.get(container) === controller) mounted.delete(container);
 		playing = false;
 		cancelAnimationFrame(raf);
@@ -450,7 +473,7 @@ export function mountPlayer(container, scene, options = {}) {
 		themeQuery?.removeEventListener?.("change", applyTheme);
 		if (g.__motionKit[id] === controller) delete g.__motionKit[id];
 	}
-	const controller = { seek, play, pause, seekStep, playToStep, destroy, get time() { return t; }, scene };
+	const controller = { seek, play, pause, seekStep, playToStep, onStep, destroy, get time() { return t; }, scene };
 	const g = /** @type {any} */ (globalThis);
 	g.__motionKit = g.__motionKit ?? {};
 	g.__motionKit[id] = controller;

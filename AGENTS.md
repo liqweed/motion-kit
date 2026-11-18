@@ -65,7 +65,9 @@ runs `npm run gate`. Don't bypass them with `--no-verify`; fix the cause.
 - Same `t` ⇒ byte-identical output. Round every number through `num()`.
 - Colours come from tokens (`tok("accent")`), never literals.
 - Nothing moves at a step's `at`: step frames are settled.
-- After `duration` the frame holds; total ≤ ~8–10 s.
+- After `duration` the frame holds; hard duration limit 12 s (authoring target ≤ 8 s).
+- Custom modules declare shipped locales with `export const locales`; missing translations throw.
+- Narrative scenes set `stepLabelsInFrame: false`; otherwise final frames contain all step labels.
 - Labels are escaped (`text()`/`esc()`) and fit their wrap budget in every
   locale and format.
 - Ids (clip paths, gradients, …) are built from `frame(t, { idPrefix })`, so
