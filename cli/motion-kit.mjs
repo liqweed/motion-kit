@@ -24,7 +24,7 @@
  * Without --out the spec goes to stdout; with it, the spec is also checked in
  * every format. Unsupported Mermaid syntax fails with its line.
  */
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -34,7 +34,7 @@ import { SCENE_TYPES } from "../runtime/types/index.mjs";
 import { checkScene } from "../lib/check.mjs";
 import { checkFiles } from "../lib/gate.mjs";
 import { mermaidToSpec } from "../lib/mermaid.mjs";
-import { compareVersions, latestVersion, PACKAGE, vendoredVersion } from "../lib/outdated.mjs";
+import { compareVersions, isAdapterName, latestVersion, PACKAGE, shellQuote, vendoredVersion } from "../lib/outdated.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { writeIconSet } from "../lib/icon.mjs";
 import { exportSteps } from "../lib/export.mjs";
@@ -217,14 +217,22 @@ async function main() {
 				return;
 			}
 			mkdirSync(dirname(resolve(a.out)), { recursive: true });
-			writeFileSync(a.out, json);
-			const { spec } = result;
-			console.log(`wrote ${a.out}: ${spec.type} "${spec.id}", ${spec.nodes.length} nodes${spec.edges ? `, ${spec.edges.length} links` : ""}`);
-			const bad = await checkFiles([a.out], { formats: a.format, locales: a.locale, style });
+			// Gate a candidate beside the destination; an existing spec is replaced only once it passes.
+			const candidate = `${resolve(a.out)}.candidate-${process.pid}.json`;
+			writeFileSync(candidate, json);
+			let bad;
+			try {
+				bad = await checkFiles([candidate], { formats: a.format, locales: a.locale, style });
+				if (!bad) renameSync(candidate, a.out);
+			} finally {
+				rmSync(candidate, { force: true });
+			}
 			if (bad) {
-				console.error(`motion-kit: ${a.out} does not pass the gate in every format; shorten labels, split the chart, or ship only the formats that pass (--format)`);
+				console.error(`motion-kit: the import does not pass the gate in every format, so ${a.out} was not written; shorten labels, split the chart, or ship only the formats that pass (--format)`);
 				process.exit(1);
 			}
+			const { spec } = result;
+			console.log(`wrote ${a.out}: ${spec.type} "${spec.id}", ${spec.nodes.length} nodes${spec.edges ? `, ${spec.edges.length} links` : ""}`);
 			return;
 		}
 		case "vendor": {
@@ -232,6 +240,7 @@ async function main() {
 			mkdirSync(dir, { recursive: true });
 			cpSync(join(ROOT, "LICENSE"), join(dir, "LICENSE"));
 			cpSync(join(ROOT, "runtime"), join(dir, "runtime"), { recursive: true });
+			if (!isAdapterName(a.adapter) || !existsSync(join(ROOT, "adapters", a.adapter))) fail(`unknown adapter "${a.adapter}" (page, slidev, astro or element)`);
 			const adapter = join(ROOT, "adapters", a.adapter);
 			cpSync(adapter, join(dir, "adapter"), { recursive: true });
 			mkdirSync(join(dir, "lib"), { recursive: true });
@@ -254,7 +263,7 @@ async function main() {
 			}
 			if (compareVersions(vendored.version, latest) < 0) {
 				console.log(`${dir}: motion-kit ${vendored.version} is vendored; ${latest} is the latest release.`);
-				console.log(`re-vendor: npx ${PACKAGE}@${latest} vendor ${dir} --adapter ${vendored.adapter}`);
+				console.log(`re-vendor: npx ${PACKAGE}@${latest} vendor ${shellQuote(dir)} --adapter ${vendored.adapter}`);
 				console.log(`changes: https://github.com/liqweed/motion-kit/blob/main/CHANGELOG.md`);
 				process.exit(1);
 			}

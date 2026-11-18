@@ -84,6 +84,8 @@ describe("Mermaid import", () => {
 			["graph TD\nA[[Sub]] --> B", /subroutine/],
 			["graph TD\nA <--> B", /two-way, circle and cross links/],
 			["graph TD\nA --o B", /two-way, circle and cross links/],
+			["graph TD\nA---oB", /two-way, circle and cross links/],
+			["graph TD\nA--xB", /two-way, circle and cross links/],
 			["graph TD\nA ~~~ B", /invisible links/],
 			["graph TD\nA --> A", /links to itself/],
 			["graph TD\nA@{ shape: rect } --> B", /@\{ shape/],

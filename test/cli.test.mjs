@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { after, describe, it } from "node:test";
 import { rasterizer } from "../lib/raster.mjs";
 import { hasFfmpeg, probe } from "../lib/video.mjs";
@@ -280,8 +280,17 @@ describe("import", () => {
 		const r = node(CLI, "import", join(EX, "pull-request.mmd"), "--out", out, "--id", "pull-request");
 		assert.equal(r.status, 0, r.out);
 		assert.match(r.out, /flowchart "pull-request", 7 nodes, 8 links/);
-		assert.match(r.out, /✓ .*pr\.json · tall/);
+		assert.match(r.out, /✓ .* · tall/);
+		assert.deepEqual(readdirSync(dirname(out)), ["pr.json"], "no candidate file is left behind");
 		assert.equal(readFileSync(out, "utf8"), readFileSync(join(EX, "pull-request.json"), "utf8"));
+	});
+	it("keeps an existing spec when the gate rejects the import", () => {
+		const out = join(tmp, "import", "keep.json");
+		writeFileSync(out, "previous\n");
+		const r = node(CLI, "import", join(EX, "pull-request.mmd"), "--out", out, "--format", "nope");
+		assert.notEqual(r.status, 0);
+		assert.equal(readFileSync(out, "utf8"), "previous\n");
+		assert.equal(readdirSync(dirname(out)).filter((f) => f.includes("candidate")).length, 0);
 	});
 	it("prints to stdout without --out, reads stdin from -, and fails on unsupported syntax", () => {
 		const mmd = join(tmp, "chain.mmd");
