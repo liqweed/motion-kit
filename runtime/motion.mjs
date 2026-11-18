@@ -167,14 +167,38 @@ export const DEFAULT_MOTION = Object.freeze({
 	move: Object.freeze(/** @type {[number, number, number, number]} */ ([0.4, 0, 0.2, 1])),
 });
 
+/**
+ * A step frame must equal the frame 1 ms before it (the gate's settled-frame
+ * rule), and the shortest built-in move lasts about 0.2 s, so a curve has to be
+ * within rounding of 1 at 0.5 % of its duration before the end. The defaults are
+ * (about 1e-5 short of 1 there); a linear curve is 5e-3 short.
+ */
+const SETTLE_PROBE = 0.005;
+const SETTLE_TOLERANCE = 2e-5;
+/** Share of a curve's duration held at 1 when the curve does not settle by itself. */
+const SETTLE_WINDOW = 0.05;
+
+/**
+ * `curve` as it is, when it ends flat enough to settle on its own; otherwise
+ * the same curve finished in the first 95 % of its duration, so the last 5 % is
+ * held at exactly 1 and every step frame is settled whatever the curve.
+ * @param {(p: number) => number} curve
+ * @returns {(p: number) => number}
+ */
+function settled(curve) {
+	if (1 - curve(1 - SETTLE_PROBE) <= SETTLE_TOLERANCE) return curve;
+	return (p) => curve(Math.min(1, p / (1 - SETTLE_WINDOW)));
+}
+
 /** @type {Map<string, { easeOut: (p: number) => number, easeStandard: (p: number) => number }>} */
 const easingCache = new Map();
 
 /**
  * The entrance and movement curves of a style's `motion` (or the defaults).
  * Scene types call this with `style.motion` once per frame, so a diagram moves
- * on the page's own curve. The result is cached by curve; the endpoints stay
- * fixed, so settled frames do not change.
+ * on the page's own curve. The result is cached by curve. The endpoints stay
+ * fixed, and a curve that does not end flat (a linear one) finishes in the first
+ * 95 % of each move, so step frames are settled for every permitted curve.
  * @param {Motion} [motion]
  * @returns {{ easeOut: (p: number) => number, easeStandard: (p: number) => number }}
  */
@@ -184,7 +208,7 @@ export function easings(motion = DEFAULT_MOTION) {
 	let found = easingCache.get(key);
 	if (!found) {
 		if (easingCache.size >= 32) easingCache.clear();
-		found = { easeOut: cubicBezier(...motion.enter), easeStandard: cubicBezier(...motion.move) };
+		found = { easeOut: settled(cubicBezier(...motion.enter)), easeStandard: settled(cubicBezier(...motion.move)) };
 		easingCache.set(key, found);
 	}
 	return found;

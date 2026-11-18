@@ -57,8 +57,11 @@ that names `cubic-bezier(0.23, 1, 0.32, 1)` as its curve sets
 
 Every number is from 0 to 1, so no curve overshoots (no bounce); anything else
 throws. Only the shape of a move changes: durations, delays and the times of the
-steps do not, so step frames stay settled and the gate has nothing new to
-check. Custom scenes read `kit.easings(style.motion)` for the same two curves.
+steps do not, so step frames stay settled. A curve that ends flat, as the
+defaults and most easing curves do, is used exactly. One that is still moving at
+its end (a linear `[0, 0, 1, 1]`, an ease-in) would leave a step frame
+unsettled, so it finishes in the first 95 % of each move and holds for the last
+5 %. Custom scenes read `kit.easings(style.motion)` for the same two curves.
 
 ## Contrast
 

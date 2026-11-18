@@ -8,7 +8,7 @@ import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
-import { DEFAULT_MOTION, easeIn, easeOut, easeStandard, easings, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
+import { DEFAULT_MOTION, cubicBezier, easeIn, easeOut, easeStandard, easings, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
 import { maxFontSize } from "../runtime/parts.mjs";
 import { claimId, claimStylesheet, newPageState } from "../runtime/page.mjs";
@@ -455,6 +455,28 @@ describe("style motion", () => {
 			assert.deepEqual(checkScene(scene, { style }).problems, [], name);
 			assert.equal(renderSvg(scene, 0.7, { style }), renderSvg(scene, 0.7, { style }), `${name}: same t, same bytes`);
 		}
+	});
+	it("keeps every step settled, one millisecond before and after, for every permitted curve", () => {
+		// Linear, slow-ending, ease-in and steep-ending curves are the ones that still move at a fill's end.
+		const CURVES = [[0, 0, 1, 1], [0.4, 0, 0.9, 1], [0.42, 0, 1, 1], [0.1, 0.9, 0.9, 0.8], [0, 0, 0.58, 1], [0.23, 1, 0.32, 1]];
+		for (const curve of CURVES) {
+			const style = { motion: { enter: curve, move: curve } };
+			for (const name of NAMES) {
+				const scene = load(name);
+				assert.deepEqual(checkScene(scene, { style }).problems, [], `${name} on [${curve}]`);
+				for (const step of scene.steps) {
+					assert.equal(renderSvg(scene, step.at - 0.001, { style }), renderSvg(scene, step.at, { style }), `${name} "${step.label}" 1 ms before, on [${curve}]`);
+				}
+			}
+		}
+	});
+	it("holds a curve that does not settle by itself at 1 for the last 5 % of a move, and leaves a flat-ending one exact", () => {
+		const linear = easings({ enter: [0, 0, 1, 1], move: [0, 0, 1, 1] }).easeStandard;
+		assert.equal(linear(0), 0);
+		assert.ok(Math.abs(linear(0.5) - 0.5 / 0.95) < 1e-9, "the same curve, finished early");
+		for (const p of [0.95, 0.99, 0.995, 1]) assert.equal(linear(p), 1);
+		const ends = normalizeStyle({ motion: { enter: [0.16, 1, 0.3, 1], move: [0.23, 1, 0.32, 1] } }).motion;
+		assert.equal(easings(ends).easeStandard(0.97), cubicBezier(0.23, 1, 0.32, 1)(0.97), "a curve that ends flat is the CSS curve");
 	});
 	it("hands custom scenes the normalized motion", () => {
 		let seen;
