@@ -234,7 +234,8 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   `x' = pan.x + zoom·u`, `y' = pan.y − zoom·(v·sin el + z·cos el)`,
   `depth = −v·cos el + z·sin el`, with `u = x·cos az + y·sin az` and
   `v = −x·sin az + y·cos az`. At 90° elevation the result does not depend on
-  `z`: the plan view, north up (sine and cosine are exact at multiples of 90°).
+  `z`: the plan view, which has north up at azimuth 0 (sine and cosine are exact
+  at multiples of 90°); at the default 45° azimuth north points up and right.
   `projector(cam)` / `project(cam, p)` give `{x, y, depth}`; larger `depth` is
   nearer the viewer.
 - **Swivel.** `lerpCamera(a, b, p)` interpolates every field linearly (`a` at
@@ -265,7 +266,8 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   collisions G15 reports. Labels follow §7 (wrapped, localized, ≥ 14 px).
 - **Paths.** `path3(points)` is a polyline through world points with its
   length in world units, so a token keeps a constant speed whatever the camera
-  does.
+  does when its progress is linear (`tokenPoints` defaults to `easeStandard`;
+  pass `ease: linear`).
 
 ## 5. Markup
 

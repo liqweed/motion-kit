@@ -160,6 +160,8 @@ describe("solids", () => {
 		assert.throws(() => prism({ points: [{ x: 0, y: 0 }, { x: 1, y: 0 }], h: 1 }), /three points/);
 		assert.throws(() => prism({ points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }], h: 1 }), /no area/);
 		assert.throws(() => prism({ points: [{ x: 0, y: 0 }, { x: 4, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 4 }], h: 1 }), /convex/);
+		// a self-intersecting star passes the consecutive-turn check
+		assert.throws(() => prism({ points: [{ x: 0, y: 3 }, { x: 2, y: -3 }, { x: -3, y: 1 }, { x: 3, y: 1 }, { x: -2, y: -3 }], h: 1 }), /convex/);
 		assert.throws(() => prism({ points: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }], h: 1 }), /repeated point/);
 		assert.throws(() => box({ x: 0, y: 0, w: 0, d: 1, h: 1 }), /positive/);
 		assert.throws(() => box({ x: 0, y: 0, w: 1, d: 1, h: -1 }), /height/);
@@ -366,7 +368,7 @@ describe("the scene gate and labels", () => {
 		assert.ok(checkScene(sceneWithLabels([], { labelBoxes: () => 3 })).problems.some((p) => /must return an array/.test(p)));
 	});
 	it("reports a malformed label box instead of passing or throwing", () => {
-		for (const bad of [{ id: "a" }, { id: "a", x: NaN, y: 0, width: 1, height: 1 }, null, { x: 0, y: 0, width: 1, height: 1 }]) {
+		for (const bad of [{ id: "a" }, { id: "a", x: NaN, y: 0, width: 1, height: 1 }, null, { x: 0, y: 0, width: 1, height: 1 }, { id: "a", x: 0, y: 0, width: 1, height: 1, stem: { x1: NaN, y1: 0, x2: 20, y2: 10 } }, { id: "a", x: 0, y: 0, width: 1, height: 1, stem: 5 }]) {
 			const r = checkScene(sceneWithLabels([], { labelBoxes: () => [bad] }));
 			assert.ok(r.problems.some((p) => /labelBoxes\(\) entry 0 must be/.test(p)), JSON.stringify(bad));
 		}

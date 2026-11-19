@@ -9,7 +9,7 @@
  *
  * World: x east, y north, z up, in any unit. The camera looks at it from
  * `azimuth` (degrees turned about z; 0 = from the south) and `elevation`
- * (degrees above the horizon). 90° elevation is the plan view, with north up;
+ * (degrees above the horizon). 90° elevation with azimuth 0 is the plan view, with north up;
  * `ISO_ELEVATION` with a 45° azimuth is true isometric. The projection is
  * orthographic, so it is linear and a swivel from one camera to another is an
  * interpolation of the camera (`lerpCamera`).
@@ -170,7 +170,8 @@ export function fitCamera(points, cam, { width, height, margin = 0 }) {
 
 /**
  * A polyline through world points with its length, so a token travels it at a
- * constant speed in world units, whatever the camera does.
+ * constant speed in world units, whatever the camera does, when its progress is
+ * linear (`ease: linear`).
  * @param {Point3[]} points
  * @returns {{ length: number, points: Point3[], at: (f: number) => { x: number, y: number, z: number } }}
  */
@@ -243,6 +244,13 @@ function convexCcw(points) {
 		const b = ccw[(i + 1) % ccw.length];
 		const c = ccw[(i + 2) % ccw.length];
 		if ((b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x) < -1e-9) throw new Error("a solid's footprint must be convex");
+	}
+	// Consecutive turns alone pass a star that winds twice: every vertex must also
+	// lie on the inner side of every edge.
+	for (let i = 0; i < ccw.length; i++) {
+		const a = ccw[i];
+		const b = ccw[(i + 1) % ccw.length];
+		for (const p of ccw) if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) < -1e-9) throw new Error("a solid's footprint must be convex");
 	}
 	return ccw;
 }

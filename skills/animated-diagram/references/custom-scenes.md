@@ -122,7 +122,7 @@ World: x east, y north, `z` up, in any unit you like. Colours are token names
 
 | Need | Use |
 |---|---|
-| A camera | `camera({ azimuth, elevation, zoom, pan })`: the view's angles in degrees, pixels per world unit, and where the world origin lands. `elevation: 90` is the plan view (north up); `CAMERA_ISOMETRIC` is true isometric (45° azimuth, `ISO_ELEVATION` ≈ 35.26°); `CAMERA_PLAN` is the plan view |
+| A camera | `camera({ azimuth, elevation, zoom, pan })`: the view's angles in degrees, pixels per world unit, and where the world origin lands. `elevation: 90` with `azimuth: 0` is the plan view (north up); `CAMERA_ISOMETRIC` is true isometric (45° azimuth, `ISO_ELEVATION` ≈ 35.26°); `CAMERA_PLAN` is the plan view |
 | A swivel | `lerpCamera(from, to, progress(t, start, dur, easeStandard))`: every field interpolates, so plan → isometric is one move between two settled steps |
 | Keep it in the picture | `fitCamera(worldPoints, cam, { width, height, margin })` returns `cam` with the pan and zoom that fit the points (the floor corners, the tallest heights, the route). Call it with each frame's camera, and a swivel never clips |
 | A point on the screen | `project(cam, { x, y, z })` → `{ x, y, depth }` (`projector(cam)` for many points; larger `depth` is nearer the viewer) |
@@ -142,8 +142,9 @@ camera moves, as the example does. Boxes with `opacity: 0` are skipped.
 
 **Several tokens at once.** `tokensAlong(path, t, runs, draw)` draws every token
 in flight. `path` is anything with `at(fraction)`: `polyline`, `cubic`, or
-`path3(worldPoints)`, which keeps a constant speed in the world whatever the
-camera does (project each point in `draw`). `runs` is `[{ start, duration, ease?,
+`path3(worldPoints)`, which gives positions by distance, so a token moves at a constant speed in the
+world whatever the camera does when its `ease` is linear (the default is
+`easeStandard`; project each point in `draw`). `runs` is `[{ start, duration, ease?,
 path?, hold? }]`, one per token, each with its own start and, if it needs one,
 its own `path`; a token is drawn from `start` until it arrives (kept at the end
 with `hold`). `tokenPoints` gives the positions without drawing. Stagger the
