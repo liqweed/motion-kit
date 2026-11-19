@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-18
+last_updated: 2026-11-19
 ---
 
 # motion-kit technique — normative specification
@@ -39,6 +39,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
 | `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | Token pairs the scene draws beyond `CONTRAST_PAIRS` (§6); the gate checks the style against them in both themes [gate] G12 (`lib/check.mjs`, rule 8; used by `examples/custom-pulse.scene.mjs`). Tokens MUST be known and `min` in [1, 21]. |
+| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor` returns one, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
@@ -47,7 +48,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
   serializable scene options, passed unchanged; option names `format`,
-  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `style`, `scene` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
+  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
@@ -204,6 +205,68 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
   opacities `1 − p` and `p` instead of interpolating colours, which would need
   literals (`runtime/parts.mjs:1-8,68,94,109`).
 
+### 4.8 Several tokens (`runtime/svg.mjs`)
+
+- `tokenPoints(path, t, runs)` → `{index, progress, point, run}[]` for each
+  token in flight at `t`; `tokensAlong(path, t, runs, draw)` concatenates
+  `draw(point, {index, progress, run})` for them. `path` is anything with
+  `at(fraction) → point` (`polyline`, `cubic`, `path3`); `runs` is
+  `{start, duration, ease?, path?, hold?}[]`, one per token, each on its own
+  `path` if it has one and on `easeStandard` by default.
+- A token is in flight while its eased progress is above 0 and below 1; with
+  `hold` it stays at the end of its path once it has arrived. Both are pure
+  functions of `t`: no token carries state from an earlier frame.
+- Any number of tokens MAY move at the same time. The canon does not change:
+  they MUST move only between settled steps, so every token has arrived (or is
+  held still) at each step's `at` and the gate's settled-frame rule (G6)
+  holds. A token MUST NOT loop or restart: a scene plays once (§2).
+
+### 4.9 Isometric kit (`runtime/iso.mjs`)
+
+For custom scenes that draw a 3D view; handed to them in `kit`. Pure
+functions; a colour is a token name, resolved with `tok()` (G4 applies).
+
+- **Camera.** `camera({azimuth, elevation, zoom, pan})` (degrees, pixels per
+  world unit, and the screen position of the world origin; defaults: 45°,
+  `ISO_ELEVATION` = atan(1/√2) ≈ 35.264°, 1, the screen origin). `elevation`
+  MUST be in [0, 90], `zoom` > 0 [throws]. World: x east, y north, z up.
+  The projection is orthographic:
+  `x' = pan.x + zoom·u`, `y' = pan.y − zoom·(v·sin el + z·cos el)`,
+  `depth = −v·cos el + z·sin el`, with `u = x·cos az + y·sin az` and
+  `v = −x·sin az + y·cos az`. At 90° elevation the result does not depend on
+  `z`: the plan view, north up (sine and cosine are exact at multiples of 90°).
+  `projector(cam)` / `project(cam, p)` give `{x, y, depth}`; larger `depth` is
+  nearer the viewer.
+- **Swivel.** `lerpCamera(a, b, p)` interpolates every field linearly (`a` at
+  `p ≤ 0`, `b` at `p ≥ 1`); `fitCamera(points, cam, {width, height, margin})`
+  returns `cam` with the pan and zoom that centre and fit the points in what
+  the margins leave. A swivel is a move between two settled steps (§8).
+- **Solids.** `prism({points, h, z, fill, sides, shade, stroke, strokeWidth,
+  opacity, id})` extrudes a convex footprint (any winding; stored
+  counter-clockwise) from base height `z` by `h` ≥ 0; `box` (centred on x, y)
+  and `slab` (default `h` 0.25) are rectangular prisms; `regularPolygon` makes
+  a footprint. A non-convex, degenerate or too-small footprint, an unknown
+  token or a negative height throws. `fill` is the token of the top face,
+  `sides` of the side faces (default `fill`); `shade` (default `ink`, `null`
+  for none) is layered over each side at an opacity from 0.10 to 0.26 by how
+  far the face turns from screen left. Faces are `<path>`s outlined with
+  `stroke`; only faces that face the camera are drawn (the top when elevation
+  > 0, a side when its outward normal faces the camera and elevation < 90°).
+- **Depth order.** `orderSolids(solids, cam)` returns the solids far to near.
+  Two solids whose projections overlap are ordered by the axes that separate
+  them (a footprint edge, or height when seen from above); where the axes
+  disagree, or none separates them, they are not ordered. The result is a
+  topological sort, ties and cycles broken by the nearer centre, then by input
+  order: the same solids always give the same order. `drawSolids` draws in it.
+- **Labels.** `labelAnchor(cam, {id, at, lines, fontSize, lift, side,
+  opacity})` draws a dot on the projected point, a vertical stem `lift` pixels
+  up and a label box above it (or beside its top), and returns the markup and
+  the `LabelBox`. `labelProblems(boxes, {width, height, gap = 4})` lists the
+  collisions G15 reports. Labels follow §7 (wrapped, localized, ≥ 14 px).
+- **Paths.** `path3(points)` is a polyline through world points with its
+  length in world units, so a token keeps a constant speed whatever the camera
+  does.
+
 ## 5. Markup
 
 - Text and attribute values MUST be escaped (`& < > " '`) via `esc`, `text` or
@@ -282,6 +345,9 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
   or empty translation throws; null/undefined optional copy returns "".
 - Labels are labels; sentences go in `detail`. Font size MUST NOT go below
   14 px at 1× (§3).
+- A scene that places labels in a projected or moving view (§4.9) SHOULD
+  declare their boxes in `labelBoxes` (§1); the gate then fails overlapping
+  labels in every format and locale (G15).
 - Every shipped locale × format MUST pass the gate. `check` derives locales
   from a `.json` spec's localized objects (keys `xx` or `xx-YY`)
   (`lib/gate.mjs`). Modules export a non-empty unique `locales` array (default
@@ -543,6 +609,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G12 | Style passes WCAG contrast in both themes for every pair in `CONTRAST_PAIRS` (once per run) and for each scene's `contrastPairs` (per scene). | `lib/gate.mjs`, `lib/check.mjs` (rule 8), `runtime/style.mjs` (`checkContrast`) | Legibility in light and dark, for the pairs actually drawn (§6). |
 | G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
 | G14 | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
+| G15 | If the scene defines `labelBoxes`, at each sampled time and each step time: no two boxes with `opacity` > 0 are closer than 4 px, no stem crosses another box and every box lies inside the picture (`0, 0, width, height`). `labelBoxes` MUST return an array and not throw. Each problem is reported once, at its first time. | `lib/check.mjs` (rule 9), `runtime/iso.mjs` (`labelProblems`) | Labels placed in a projected view move with the camera; nothing else checks them against one another. Opacity 0 is not drawn, so a scene hides labels while the camera moves. |
 
 The gate checks structure, not looks. Visual review (before/after frames,
 phone size, real-time playback, dark mode) is required by

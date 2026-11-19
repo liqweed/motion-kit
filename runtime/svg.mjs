@@ -8,6 +8,7 @@
  * here; numbers are rounded here. Numbers you interpolate into a template
  * string yourself (transform, points, path d) must go through `num()`.
  */
+import { easeStandard, progress } from "./motion.mjs";
 
 const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 
@@ -162,4 +163,50 @@ export function drawOn(length, p) {
 	if (p <= 0) return null;
 	if (p >= 1) return {};
 	return { "stroke-dasharray": `${num(length)} ${num(length)}`, "stroke-dashoffset": num(length * (1 - p)) };
+}
+
+/* ------------------------------------------------------------------ tokens */
+
+/**
+ * One token's journey: it starts at `start` s and takes `duration` s along
+ * `path` (default: the path given to the function), on `ease` (default
+ * `easeStandard`). It is drawn while it travels; with `hold` it stays at the
+ * end of the path once it has arrived.
+ * @typedef {{ start: number, duration: number, path?: { at: (f: number) => any }, ease?: (p: number) => number, hold?: boolean }} TokenRun
+ */
+
+/**
+ * Where each of several tokens is at time t. Any number of tokens may travel
+ * at once, on one path or each on its own; a token not yet started, or
+ * arrived without `hold`, is left out. A scene keeps the steps settled by
+ * having every token arrive, and be gone, before the step's time.
+ * @param {{ at: (f: number) => any }} path anything with `at(fraction) → point`: `polyline`, `cubic`, `path3`
+ * @param {number} t
+ * @param {TokenRun[]} runs
+ * @returns {{ index: number, progress: number, point: any, run: TokenRun }[]}
+ */
+export function tokenPoints(path, t, runs) {
+	const out = [];
+	for (const [index, run] of runs.entries()) {
+		const p = progress(t, run.start, run.duration, run.ease ?? easeStandard);
+		if (p <= 0 || (p >= 1 && !run.hold)) continue;
+		out.push({ index, progress: p, point: (run.path ?? path).at(p), run });
+	}
+	return out;
+}
+
+/**
+ * Several tokens travelling at once: `draw(point, { index, progress, run })`
+ * for each token in flight, concatenated. Pure like every frame helper, so any
+ * frame is the same whatever was drawn before it.
+ * @param {{ at: (f: number) => any }} path
+ * @param {number} t
+ * @param {TokenRun[]} runs
+ * @param {(point: any, info: { index: number, progress: number, run: TokenRun }) => string} draw
+ * @returns {string}
+ */
+export function tokensAlong(path, t, runs, draw) {
+	return tokenPoints(path, t, runs)
+		.map(({ point, index, progress, run }) => draw(point, { index, progress, run }))
+		.join("");
 }
