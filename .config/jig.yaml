@@ -8,6 +8,17 @@ repository:
   base_branch: main
 review:
   repo_slug: liqweed/motion-kit
+  bots: ["docomply-review[bot]"]
+  # ai-review (docomply/ai-review, on majordomo) watches this repository through
+  # AI_REVIEW_EXTRA_REPOS and posts `AI review (motion-kit)` on every head, drafts
+  # included. Its check name and summary markers match Jig's defaults, so no
+  # pattern is set. If the service stops watching this repository, unset both
+  # this and drive.reviews_drafts: a drive expecting a reviewer that never posts
+  # sits in AWAITING_REVIEWER until it times out.
+  reviewer_app: docomply-review
+drive:
+  # The service runs with AI_REVIEW_REVIEW_DRAFTS=true.
+  reviews_drafts: true
 issue_tracker:
   adapter: github # GitHub Issues on liqweed/motion-kit
   # Repo-local taxonomy; also overrides the one set in ~/.jig/jig.yaml.
