@@ -16,6 +16,7 @@ import * as motionMod from "../runtime/motion.mjs";
 import * as sceneMod from "../runtime/scene.mjs";
 import * as styleMod from "../runtime/style.mjs";
 import * as svgMod from "../runtime/svg.mjs";
+import * as isoMod from "../runtime/iso.mjs";
 import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
 import { checkContrast, contrast, CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
@@ -398,8 +399,8 @@ describe("buildHtml", () => {
 });
 
 describe("KIT", () => {
-	it("holds every export of the motion, scene, style, svg and wrap modules", () => {
-		for (const mod of [motionMod, sceneMod, styleMod, svgMod, wrapMod]) {
+	it("holds every export of the motion, scene, style, svg, iso and wrap modules", () => {
+		for (const mod of [motionMod, sceneMod, styleMod, svgMod, isoMod, wrapMod]) {
 			for (const name of Object.keys(mod)) assert.ok(name in KIT, `KIT lacks ${name}`);
 		}
 	});

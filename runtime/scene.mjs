@@ -1,4 +1,5 @@
 /** @import { Style } from "./style.mjs" */
+/** @import { LabelBox } from "./iso.mjs" */
 // SPDX-License-Identifier: MIT
 // Copyright (c) 2026 Ophir Radnitz
 /**
@@ -11,6 +12,7 @@
  *     duration,                   // seconds until the final state
  *     title, description,         // accessible name + description
  *     stepLabelsInFrame?: boolean, // false for narrative steps (default true)
+ *     labelBoxes?(t) → LabelBox[], // the boxes of the labels drawn at t, for the gate
  *     steps: [{ at, label, detail?, id? }],   // build steps; last = finished diagram
  *     frame(t, { idPrefix }) → string         // inner SVG markup at time t
  *   }
@@ -40,7 +42,10 @@ import { normalizeStyle, cssVars, resolveTokens } from "./style.mjs";
  * An animated diagram as a pure function of time (see the module comment).
  * `contrastPairs`: token pairs the scene draws beyond CONTRAST_PAIRS
  * (runtime/style.mjs), which the gate checks the style against.
- * @typedef {{ id: string, width: number, height: number, duration: number, title: string, description: string, steps: Step[], frame: (t: number, ctx: FrameContext) => string, stepLabelsInFrame?: boolean, contrastPairs?: { fg: string, bg: string, min: number, use?: string }[], type?: string, format?: string, locale?: string }} Scene
+ * `labelBoxes`: the box of every label `frame(t)` draws, in the picture's
+ * coordinates (`labelAnchor` returns one); the gate fails a scene whose labels
+ * overlap, whose stems cross a label, or that leave the picture (runtime/iso.mjs).
+ * @typedef {{ id: string, width: number, height: number, duration: number, title: string, description: string, steps: Step[], frame: (t: number, ctx: FrameContext) => string, stepLabelsInFrame?: boolean, contrastPairs?: { fg: string, bg: string, min: number, use?: string }[], labelBoxes?: (t: number) => LabelBox[], type?: string, format?: string, locale?: string }} Scene
  */
 
 /** Formats: name → viewBox. Layouts are computed per format, never cropped. */
@@ -94,6 +99,7 @@ export function validateScene(scene) {
 		if (!Number.isFinite(scene[key]) || scene[key] <= 0) throw new Error(`scene ${scene.id}: ${key} must be a positive finite number`);
 	}
 	if (typeof scene.frame !== "function") throw new Error(`scene ${scene.id}: frame must be a function`);
+	if (scene.labelBoxes !== undefined && typeof scene.labelBoxes !== "function") throw new Error(`scene ${scene.id}: labelBoxes must be a function`);
 	if (!Array.isArray(scene.steps) || !scene.steps.length) throw new Error(`scene ${scene.id}: needs at least one step`);
 	let prev = -Infinity;
 	const ids = new Set();

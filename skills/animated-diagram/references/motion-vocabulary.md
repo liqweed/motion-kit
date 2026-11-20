@@ -54,6 +54,29 @@ little later with the same curve: the shape stretches in flight and settles at
 its own length. `splitEdge(t, start, dur, lag = 0.07)` → `{ lead, trail }`.
 Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
 
+## Camera swivel, depth and several tokens (isometric kit)
+
+- **Swivel:** a camera move is one beat on `easeStandard`, 1.2–1.5 s, from one
+  settled view to another (plan → isometric is `lerpCamera(plan, iso, p)`).
+  Nothing else but the things that need the new view (solids rising to their
+  height) moves with it. Fit the camera to the picture each frame, so no frame
+  of the swivel clips.
+- **Labels and a moving camera:** fade labels out before the camera moves and
+  back in after it rests (≈ 250–400 ms each): text is not read mid-swivel,
+  and its boxes cannot collide while it is hidden. The gate checks the boxes at
+  every sampled time.
+- **Heights:** solids rise during the swivel, not before it: in plan view
+  height is invisible. Draw a flat top first (`h` > 0 only so the faces exist).
+- **Depth:** `orderSolids` is the order; never draw by hand. Heights and
+  footprints decide it; a floor slab is drawn first.
+- **Several tokens:** stagger their starts by 0.25–0.4 s on a trip of 1.2–2 s,
+  so 3–4 are in flight at once without touching. Use `linear` for tokens that
+  travel a conveyor at a steady speed, and grow them in and out over the first
+  and last ≈ 8 % of the trip, so they do not pop. All have arrived, and their
+  targets have filled, ≥ 50 ms before the step (the usual pause between beats).
+  A shadow on the floor under each token (an ellipse of `ink` at ≈ 18 %,
+  squashed by `sin(elevation)`) shows where it is in the world.
+
 ## Container and text timing
 
 - The container (box, card) starts moving immediately; new text appears only
