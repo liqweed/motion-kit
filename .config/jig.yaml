@@ -52,3 +52,15 @@ changelog:
   # instead of costing a commit on main per merge (`write`, the default under
   # `direct`).
   unreleased: wait
+dispatch:
+  # What `jig dispatch` does here, read from `main` on the forge at every run
+  # (a change takes effect once it merges; which stages the host runs is the
+  # host's own dispatch file, majordomo's dotfiles/jig/dispatch.yaml). The labels
+  # put the dispatcher's state on each pull request it manages (`jig:driving`,
+  # `jig:converged`, `jig:parked`, `jig:stale`, `jig:held`, `jig:followed-up`); a
+  # person adds `jig:drive` to have it arm a drive on a pull request with none, or
+  # `jig:hold` to keep it off one. No identity, so no pickups; no follow-up
+  # command, so no post-merge pass. The labels must exist:
+  # `jig install dispatch --repo <clone> --yes`.
+  labels:
+    enabled: true
