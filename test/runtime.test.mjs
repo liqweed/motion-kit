@@ -18,6 +18,7 @@ import * as motionMod from "../runtime/motion.mjs";
 import * as sceneMod from "../runtime/scene.mjs";
 import * as styleMod from "../runtime/style.mjs";
 import * as svgMod from "../runtime/svg.mjs";
+import * as connectorsMod from "../runtime/connectors.mjs";
 import * as isoMod from "../runtime/iso.mjs";
 import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
@@ -460,8 +461,8 @@ describe("buildHtml with a custom module that reaches the kit only through kit",
 });
 
 describe("KIT", () => {
-	it("holds every export of the motion, scene, style, svg, iso and wrap modules", () => {
-		for (const mod of [motionMod, sceneMod, styleMod, svgMod, isoMod, wrapMod]) {
+	it("holds every export of the motion, scene, style, svg, iso, connectors and wrap modules", () => {
+		for (const mod of [motionMod, sceneMod, styleMod, svgMod, isoMod, connectorsMod, wrapMod]) {
 			for (const name of Object.keys(mod)) assert.ok(name in KIT, `KIT lacks ${name}`);
 		}
 	});

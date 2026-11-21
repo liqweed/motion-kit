@@ -26,6 +26,7 @@ import { FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes
 import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok } from "./style.mjs";
 import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab } from "./iso.mjs";
 import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment } from "./svg.mjs";
+import { PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead } from "./connectors.mjs";
 import { estimateWidth, wrapLabel } from "./wrap.mjs";
 
 /**
@@ -40,6 +41,7 @@ export const KIT = Object.freeze({
 	...{ CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok },
 	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment },
 	...{ CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab },
+	...{ PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead },
 	...{ estimateWidth, wrapLabel },
 });
 
