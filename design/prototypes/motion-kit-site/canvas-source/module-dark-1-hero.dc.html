@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Module dark hero</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>body{margin:0;background:#0d1117} a{color:inherit} a:hover{text-decoration:underline} a:focus-visible,button:focus-visible{outline:2px solid #d97706;outline-offset:2px}</style>
+</helmet>
+<div style="width:100%;max-width:1440px;box-sizing:border-box;background:#0d1117;color:#f3f4f6;font-family:'Instrument Sans',system-ui,sans-serif;font-size:16px;line-height:24px;font-weight:400">
+
+  <header style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;padding:16px 56px;border-bottom:1px solid #8b929c;box-sizing:border-box">
+    <a href="#" style="display:flex;align-items:center;gap:16px;text-decoration:none">
+      <img src="/_blob/fab8bfb941688ba4f1ddc3dcd5e13e81" width="32" height="32" alt="" style="display:block">
+      <span style="font-size:24px;line-height:32px;font-weight:600">motion-kit</span>
+    </a>
+    <nav aria-label="Main">
+      <ul style="display:flex;flex-wrap:wrap;gap:8px 32px;list-style:none;margin:0;padding:0">
+        <li><a href="#gallery" style="text-decoration:none">Gallery</a></li>
+        <li><a href="#where-it-runs" style="text-decoration:none">Where it runs</a></li>
+        <li><a href="#docs" style="text-decoration:none">Docs</a></li>
+        <li><a href="https://github.com/liqweed/motion-kit" style="text-decoration:none">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <div aria-hidden="true" style="height:16px;box-sizing:border-box;background-image:repeating-linear-gradient(90deg,#8b929c 0,#8b929c 1px,transparent 1px,transparent 8px),repeating-linear-gradient(90deg,#8b929c 0,#8b929c 1px,transparent 1px,transparent 40px);background-size:100% 4px,100% 8px;background-position:left top,left top;background-repeat:no-repeat"></div>
+
+  <main style="display:flex;flex-wrap:wrap;align-items:flex-start;gap:40px 16px;padding:40px 56px 64px;box-sizing:border-box">
+
+    <div style="flex:544 1 544px;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:32px">
+      <h1 style="margin:0;font-size:64px;line-height:64px;font-weight:600;letter-spacing:0">Deterministic animated diagrams.</h1>
+      <p style="margin:0;font-size:24px;line-height:32px;color:#a3aab5">A scene is a pure function of time, <span style="font-family:'DM Mono',ui-monospace,monospace;font-size:16px;line-height:24px;color:#f3f4f6">frame(t) → SVG</span>. One scene feeds a live player, Slidev decks, step frames, a zero-JS animated SVG and video.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:16px">
+        <a href="#quick-start" style="display:flex;align-items:center;height:48px;padding:0 24px;box-sizing:border-box;background:#1d36a8;color:#ffffff;font-weight:600;text-decoration:none">Quick start</a>
+        <a href="https://github.com/liqweed/motion-kit" style="display:flex;align-items:center;height:48px;padding:0 24px;box-sizing:border-box;border:2px solid #f3f4f6;background:#0d1117;color:#f3f4f6;font-weight:600;text-decoration:none">View on GitHub</a>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;height:48px;padding:0 16px;box-sizing:border-box;max-width:100%;background:#151922;border:1px solid #8b929c">
+        <span aria-hidden="true" style="flex:none;width:8px;height:8px;box-sizing:border-box;border:1px solid #f3f4f6;background:#1d36a8"></span>
+        <code style="font-family:'DM Mono',ui-monospace,monospace;font-size:16px;line-height:24px;color:#f3f4f6;overflow-wrap:anywhere">npx @liqweed/motion-kit --help</code>
+      </div>
+      <p style="margin:0;color:#a3aab5">Open source under the MIT licence.</p>
+    </div>
+
+    <section aria-labelledby="player-title" style="flex:768 1 768px;min-width:0;display:grid;grid-template-columns:16px minmax(0,1fr);grid-template-rows:16px auto;box-sizing:border-box;border:2px solid #8b929c;background:#151922">
+      <div aria-hidden="true" style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;border-right:1px solid #8b929c;border-bottom:1px solid #8b929c"><span style="width:8px;height:8px;box-sizing:border-box;border:1px solid #f3f4f6;background:#1d36a8"></span></div>
+      <div aria-hidden="true" style="height:16px;box-sizing:border-box;border-bottom:1px solid #8b929c;background-image:repeating-linear-gradient(90deg,#8b929c 0,#8b929c 1px,transparent 1px,transparent 8px),repeating-linear-gradient(90deg,#8b929c 0,#8b929c 1px,transparent 1px,transparent 40px);background-size:100% 4px,100% 8px;background-position:left bottom,left bottom;background-repeat:no-repeat"></div>
+      <div aria-hidden="true" style="box-sizing:border-box;border-right:1px solid #8b929c;background-image:repeating-linear-gradient(180deg,#8b929c 0,#8b929c 1px,transparent 1px,transparent 8px),repeating-linear-gradient(180deg,#8b929c 0,#8b929c 1px,transparent 1px,transparent 40px);background-size:4px 100%,8px 100%;background-position:right top,right top;background-repeat:no-repeat"></div>
+
+      <div style="min-width:0;padding:16px;display:flex;flex-direction:column;gap:16px">
+
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px">
+          <span style="font-family:'DM Mono',ui-monospace,monospace;font-weight:500;color:#f3f4f6">Fig. 1</span>
+          <h2 id="player-title" style="margin:0;font-size:24px;line-height:32px;font-weight:600">How an order reaches the customer</h2>
+          <div aria-hidden="true" style="margin-left:auto;display:flex;gap:8px">
+            <span style="width:8px;height:8px;background:#f3f4f6"></span>
+            <span style="width:8px;height:8px;background:#f3f4f6"></span>
+            <span style="width:8px;height:8px;background:#d97706"></span>
+            <span style="width:8px;height:8px;box-sizing:border-box;border:1px solid #8b929c"></span>
+            <span style="width:8px;height:8px;box-sizing:border-box;border:1px solid #8b929c"></span>
+            <span style="width:8px;height:8px;box-sizing:border-box;border:1px solid #8b929c"></span>
+          </div>
+        </div>
+
+        <div style="background:#0d1117;border:1px solid #8b929c;box-sizing:border-box">
+          <img src="/_blob/f210e4b196d43c97e81aae0f994e910d" width="960" height="540" alt="Order-flow diagram at step 3 of 6, Pick / Pack: items are collected and packed." style="display:block;width:100%;height:auto;aspect-ratio:16/9">
+        </div>
+
+        <div style="display:grid;grid-template-columns:40px 40px 40px 144px minmax(0,1fr);column-gap:8px;row-gap:0;align-items:start">
+          <button type="button" aria-label="Back" style="width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;background:#0d1117;border:2px solid #f3f4f6;border-radius:0;cursor:pointer;box-sizing:border-box"><svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24"><path d="M4 4h3v16H4zM20 4v16L8 12z" fill="#f3f4f6"/></svg></button>
+          <button type="button" aria-label="Pause" style="width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;background:#1d36a8;border:2px solid #f3f4f6;border-radius:0;cursor:pointer;box-sizing:border-box"><svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z" fill="#ffffff"/></svg></button>
+          <button type="button" aria-label="Next" style="width:40px;height:40px;padding:0;display:flex;align-items:center;justify-content:center;background:#0d1117;border:2px solid #f3f4f6;border-radius:0;cursor:pointer;box-sizing:border-box"><svg aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24"><path d="M17 4h3v16h-3zM4 4l12 8L4 20z" fill="#f3f4f6"/></svg></button>
+          <p style="margin:0;height:40px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;background:#0d1117;border:1px solid #8b929c;font-family:'DM Mono',ui-monospace,monospace"><span aria-hidden="true" style="width:8px;height:8px;background:#d97706"></span>Step 3 of 6</p>
+          <p style="margin:0;height:40px;box-sizing:border-box;display:flex;align-items:center;padding:0 16px;background:#0d1117;border:1px solid #8b929c">Items are collected and packed.</p>
+
+          <div aria-hidden="true" style="display:flex;flex-direction:column;align-items:center"><span style="width:1px;height:16px;background:#f3f4f6"></span><span style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">1</span></div>
+          <div aria-hidden="true" style="display:flex;flex-direction:column;align-items:center"><span style="width:1px;height:16px;background:#f3f4f6"></span><span style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">2</span></div>
+          <div aria-hidden="true" style="display:flex;flex-direction:column;align-items:center"><span style="width:1px;height:16px;background:#f3f4f6"></span><span style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">3</span></div>
+          <div aria-hidden="true" style="display:flex;flex-direction:column;align-items:center"><span style="width:1px;height:16px;background:#f3f4f6"></span><span style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">4</span></div>
+          <div aria-hidden="true"></div>
+        </div>
+
+        <ol style="list-style:none;margin:0;padding:16px 0 0;border-top:1px solid #8b929c;display:flex;flex-wrap:wrap;gap:8px 32px">
+          <li style="display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">1</span>Back</li>
+          <li style="display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">2</span>Pause</li>
+          <li style="display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">3</span>Next</li>
+          <li style="display:flex;align-items:center;gap:8px"><span aria-hidden="true" style="display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:24px;height:24px;background:#1d36a8;border:2px solid #f3f4f6;color:#ffffff;font-family:'DM Mono',ui-monospace,monospace;font-weight:500">4</span>Counter</li>
+        </ol>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
