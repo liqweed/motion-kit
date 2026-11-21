@@ -130,8 +130,9 @@ async function main() {
 			const r = checkScene(loaded.scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			warnAll(r.warnings);
-			// The page also paints the player: buttons, selected step and captions.
-			const player = checkContrast(style, sharedPairs("ink/bg", "ink/surface", "onAccent/accent", "muted/bg"));
+			// The page also paints the player: button text and borders, the selected step,
+			// captions, the focus outline, and (unless --no-heading) the heading on the canvas.
+			const player = checkContrast(style, sharedPairs(...(a["no-heading"] ? [] : ["ink/bg"]), "ink/surface", "onAccent/accent", "muted/bg", "emphasis/bg", "line/bg", "accent/bg"));
 			if (player.length) fail(`the player in the page fails the gate:\n  - ${player.join("\n  - ")}`);
 			const html = buildHtml(loaded, { style, ...where, options: sopts.options, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
 			if (/<\/script/i.test(html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>")))) fail("bundled code contains </script>");

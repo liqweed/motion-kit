@@ -102,7 +102,7 @@ folder holds exactly what the new manifest lists. Files no export wrote are
 left alone and named in a warning; keep notes and review files elsewhere.
 
 The CLI gates `build`, `export`, `bake`, `video` and `icon` before writing
-output, including the style contrast of the pairs the scene draws (a shared pair it does not draw is only a printed warning). Exports
+output, including the style contrast of the pairs the scene draws (a shared pair it does not draw is only a printed warning). `build` also holds the style to what the page's player paints, whatever the scene declares: ink/surface, onAccent/accent, muted/bg, emphasis/bg, line/bg, accent/bg, and ink/bg for the heading unless `--no-heading`; so `check` can pass where `build` fails. Exports
 include `runtimeHash`, a SHA-256 of runtime module paths and bytes, in the
 manifest and in `inputHash`, together with format, locale and render settings.
 A changed runtime invalidates the hash even before its package version changes.

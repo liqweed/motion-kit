@@ -176,6 +176,8 @@ describe("styles", () => {
 		assert.deepEqual(contrastReport({ name: "low", light: { muted: "#9a9a9a" } }, sharedPairs("muted/bg")).problems, ["low light: muted on bg is 2.81:1, needs 4.5:1"]);
 		// A declaration cannot weaken a shared threshold, and the shared entries cannot be edited.
 		assert.deepEqual(contrastReport({ name: "w", light: { ink: "#ffffff" } }, [{ fg: "ink", bg: "bg", min: 1 }]).problems.length, 1);
+		// The same adjacency written the other way round meets the same floor.
+		assert.equal(contrastReport({ name: "r", light: { emphasis: "#2563eb", accent: "#2563eb" } }, [{ fg: "accent", bg: "emphasis", min: 1 }]).problems.length, 2);
 		assert.throws(() => { "use strict"; sharedPairs("ink/bg")[0].min = 1; }, TypeError);
 		// A malformed declaration is a problem and nothing else.
 		assert.deepEqual(contrastReport(NEUTRAL, [{ fg: "brand", bg: "bg", min: 3 }]), { problems: ['neutral: contrast pair 0 has unknown fg token "brand"'], warnings: [] });

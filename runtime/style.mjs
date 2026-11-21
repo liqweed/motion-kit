@@ -276,12 +276,15 @@ export function contrastReport(style, drawn) {
 	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) return { problems: checkContrast(s), warnings: [] };
 	if (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length) return { problems: checkContrast(s, drawn), warnings: [] };
 	// A declaration may add pairs and name shared ones, never weaken a shared threshold.
+	// Contrast is symmetric, so a pair written the other way round is the same adjacency.
+	/** @param {ContrastPair} p @param {ContrastPair} d */
+	const same = (p, d) => (p.fg === d.fg && p.bg === d.bg) || (p.fg === d.bg && p.bg === d.fg);
 	drawn = drawn.map((d) => {
-		const shared = CONTRAST_PAIRS.find((p) => p.fg === d.fg && p.bg === d.bg);
+		const shared = CONTRAST_PAIRS.find((p) => same(p, d));
 		return shared && d.min < shared.min ? { ...d, min: shared.min } : d;
 	});
 	const problems = checkContrast(s, drawn);
-	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => d.fg === p.fg && d.bg === p.bg));
+	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => same(p, d)));
 	const warnings = misses(s, undrawn).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`);
 	return { problems, warnings };
 }

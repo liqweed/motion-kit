@@ -174,10 +174,11 @@ describe("cli", () => {
 		assert.match(r.out, /⚠ style: paper light: emphasis on bg is 1\.\d+:1, needs 3:1 \(held against: .*\)/);
 		assert.match(r.out, /✓ .*declared\.scene\.mjs · 16:9/);
 		assert.doesNotMatch(r.out, /✗/);
+		// The page's player paints a focus outline in emphasis, so build refuses what check allows.
 		r = both("build", declared, "-o", join(dir, "declared.html"), ...opts);
-		assert.equal(r.status, 0, r.out);
+		assert.equal(r.status, 1, r.out);
 		assert.match(r.out, /motion-kit: warning: contrast: paper light: emphasis on bg is 1\.\d+:1, 3:1 recommended \(this scene does not draw it\)/);
-		assert.ok(existsSync(join(dir, "declared.html")));
+		assert.match(r.out, /the player in the page fails the gate[\s\S]*emphasis on bg/);
 		r = both("check", undeclared, "-f", "16:9", ...opts);
 		assert.equal(r.status, 1);
 		assert.match(r.out, /✗ .*undeclared\.scene\.mjs · 16:9 · en\n {2}- contrast: paper light: emphasis on bg is /);

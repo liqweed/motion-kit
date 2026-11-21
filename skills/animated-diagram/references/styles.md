@@ -99,7 +99,7 @@ draws no text on the canvas, and a `sequence` draws no ink on surface.
 A style that misses a pair is reported once per run, as `⚠ style:` with the
 scene types that draw it, and fails exactly those scenes; every other scene
 passes, and `build`, `export` and the rest print `warning: contrast:` for the
-shared pairs they do not draw. `neutral` meets every pair, so it never warns.
+shared pairs they do not draw. `build` alone also fails a style that misses a pair the page's player paints (ink/surface, onAccent/accent, muted/bg, emphasis/bg, line/bg, accent/bg, and ink/bg for the heading unless `--no-heading`), declared or not. `neutral` meets every pair, so it never warns.
 
 Emphasis on accent is the pair most palettes miss: two saturated colours of
 the same lightness (blue and orange, teal and rust) are about 1:1 apart once
