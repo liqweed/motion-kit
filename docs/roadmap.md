@@ -20,7 +20,7 @@ them (inference).
 | Order | Issue | What and why | Done when | Priority |
 |---|---|---|---|---|
 | 1 | [#14] | Run the design round again from scratch ([#23] built the site from a bundle that was never committed): the Module design is picked, its bundle is in `design/prototypes/motion-kit-site/` and passes the landing check, and `website/DESIGN.md` pins the house values. Its "needs" items are [#73], [#74], [#75] and [#76]. | The pull request merges with the raw delivery commit kept in history, and the issue closes. | high |
-| 2 | [#61] | Build the picked design: the site's pages, the docs on the site and the isometric showcase. | The site follows `website/DESIGN.md`, at phone width too. | high |
+| 2 | [#61] | Build the picked design: the site's pages, the docs on the site and the isometric showcase. | The site follows `website/DESIGN.md`, at phone width too. Built pages get the isometric helpers from [#64] since [#77] (fixes [#70]). The contrast gate fails only on pairs a scene draws once [#79] merges ([#72]); until then it also fails on shared pairs a scene never draws. | high |
 | 3 | [#2] | Finish the website epic. | Every sub-issue is closed. | high |
 
 ## Open questions
@@ -150,7 +150,12 @@ unless the open question above decides otherwise.
 [#14]: https://github.com/liqweed/motion-kit/issues/14
 [#23]: https://github.com/liqweed/motion-kit/pull/23
 [#61]: https://github.com/liqweed/motion-kit/issues/61
+[#64]: https://github.com/liqweed/motion-kit/pull/64
+[#70]: https://github.com/liqweed/motion-kit/issues/70
+[#72]: https://github.com/liqweed/motion-kit/issues/72
 [#73]: https://github.com/liqweed/motion-kit/issues/73
 [#74]: https://github.com/liqweed/motion-kit/issues/74
 [#75]: https://github.com/liqweed/motion-kit/issues/75
 [#76]: https://github.com/liqweed/motion-kit/issues/76
+[#77]: https://github.com/liqweed/motion-kit/pull/77
+[#79]: https://github.com/liqweed/motion-kit/pull/79
