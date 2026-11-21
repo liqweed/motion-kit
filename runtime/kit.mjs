@@ -24,12 +24,13 @@
 import { DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 } from "./motion.mjs";
 import { FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId } from "./scene.mjs";
 import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok } from "./style.mjs";
-import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, translate, trimSegment } from "./svg.mjs";
+import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab } from "./iso.mjs";
+import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment } from "./svg.mjs";
 import { estimateWidth, wrapLabel } from "./wrap.mjs";
 
 /**
  * The runtime, flat, handed to custom scene modules as `opts.kit`: the exports
- * of motion, scene, style, svg and wrap (not the scene types or the player).
+ * of motion, scene, style, svg, iso and wrap (not the scene types or the player).
  * Named imports, because lib/bundle.mjs inlines only that form; a new export
  * in one of those modules is added here (test/runtime.test.mjs checks).
  */
@@ -37,17 +38,20 @@ export const KIT = Object.freeze({
 	...{ DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 },
 	...{ FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId },
 	...{ CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok },
-	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, translate, trimSegment },
+	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment },
+	...{ CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab },
 	...{ estimateWidth, wrapLabel },
 });
 
 const RESERVED = ["format", "locale", "kit"];
 
+/** @import { Scene } from "./scene.mjs" */
+
 /**
  * Build and validate a scene from a module's default export.
  * @param {unknown} make the module's default export
  * @param {{ format?: string, locale?: string, options?: Record<string, unknown> | null }} [opts]
- * @returns {import("./scene.mjs").Scene}
+ * @returns {Scene}
  */
 export function sceneFromModule(make, { format = "16:9", locale = "en", options } = {}) {
 	if (typeof make !== "function") throw new TypeError("a scene module's default export must be (opts) => scene");

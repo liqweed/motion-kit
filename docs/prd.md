@@ -75,14 +75,16 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 
 - A general animation or video-editing tool (footage, audio, voice-over,
   multi-scene edits): hand off to HyperFrames/Remotion
-  (`skills/motion-render/references/video.md:43-61`).
+  (`skills/motion-render/references/video.md`, "When to hand off to HyperFrames").
 - Automatic layout of large graphs inside motion-kit (ELK/dagre run outside,
-  coordinates go in the spec — `skills/animated-diagram/references/scene-types.md:56-59`).
+  coordinates go in the spec — `skills/animated-diagram/references/scene-types.md`,
+  "Auto-layout happens at build time"; `skills/animated-diagram/references/ecosystem.md`,
+  the ELK.js / dagre row).
 - Bouncy/elastic/ambient/decorative motion, loops, parallax
-  (`skills/animated-diagram/references/motion-vocabulary.md:59-62`).
+  (`skills/animated-diagram/references/motion-vocabulary.md`, "Banned in explainers").
 - Shipping brand styles or icon sets: motion-kit ships only `neutral`; brands
-  live in consumer repos (`README.md:70`, `runtime/parts.mjs:14-18`).
-- Font embedding in SVG (`skills/animated-diagram/references/styles.md:51-55`).
+  live in consumer repos (`README.md:79`, `iconPaths` in `runtime/parts.mjs`).
+- Font embedding in SVG (`skills/animated-diagram/references/styles.md`, "Fonts").
 
 ## 5. Output targets and their requirements
 

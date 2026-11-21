@@ -106,9 +106,58 @@ export default function make({ format = "1:1", kit }) {
 }
 ```
 
-Every command supports this, `motion-kit build` included (it bundles the whole
-runtime and passes it as `kit`). A module that imports instead must use
+Every command supports this, `motion-kit build` included (it bundles the runtime and passes
+`KIT` as `kit`, the isometric helpers included). A module that imports instead must use
 relative imports to a vendored runtime.
+
+## Isometric and 3D-looking scenes
+
+`kit` carries a small isometric kit (`runtime/iso.mjs`), for a floor, machines
+or buildings seen from an angle. Template: `examples/isometric-swivel.scene.mjs`
+(plan view that swivels to isometric, then three work items travel a line).
+Everything is a pure function: the same camera and solids give the same bytes.
+
+World: x east, y north, `z` up, in any unit you like. Colours are token names
+(`"surface"`, `"accent"`), never literals; the gate refuses a literal.
+
+| Need | Use |
+|---|---|
+| A camera | `camera({ azimuth, elevation, zoom, pan })`: the view's angles in degrees, pixels per world unit, and where the world origin lands. `elevation: 90` with `azimuth: 0` is the plan view (north up); `CAMERA_ISOMETRIC` is true isometric (45° azimuth, `ISO_ELEVATION` ≈ 35.26°); `CAMERA_PLAN` is the plan view |
+| A swivel | `lerpCamera(from, to, progress(t, start, dur, easeStandard))`: every field interpolates, so plan → isometric is one move between two settled steps |
+| Keep it in the picture | `fitCamera(worldPoints, cam, { width, height, margin })` returns `cam` with the pan and zoom that fit the points (the floor corners, the tallest heights, the route). Call it with each frame's camera, and a swivel never clips |
+| A point on the screen | `project(cam, { x, y, z })` → `{ x, y, depth }` (`projector(cam)` for many points; larger `depth` is nearer the viewer) |
+| Solids | `box({ x, y, w, d, h, z })` (centred on x, y), `slab({ x, y, w, d })` (a thin box, for a floor), `prism({ points, h, z })` with `regularPolygon(x, y, r, n)` for a footprint. Options: `fill` (top token), `sides` (side token, default `fill`), `shade` (token layered over the sides at 10–26 %, `null` for flat; `ink` darkens in the light theme and lightens in the dark one, pick `bg` where the dark theme should be darker), `stroke`, `opacity`, `id` |
+| Draw them | `drawSolid(solid, cam)`, or `drawSolids(list, cam)`, which orders them far to near first (`orderSolids` alone returns the order). Only faces that face the camera are drawn: at 90° elevation just the tops |
+| Animate a solid | Build it again each frame with the animated `h`, `z` or `opacity`. Two-state fills cross-fade two solids (`fade(p, {}, drawSolid(reached, cam))` over the pending one), as with any other element |
+| Labels | `labelAnchor(cam, { id, at: { x, y, z }, lines, lift, side, opacity })` → `{ markup, box }`: a dot on the point, a stem `lift` px up, the label above it (`side: "up"`, or beside the stem's top with `"right"` / `"left"`). Wrap and localize `lines` first (`wrapLabel`) |
+| Several tokens | `tokensAlong(path, t, runs, draw)`: see below |
+
+**The gate checks labels.** Return `labelBoxes: (t) => [box, …]` from the scene
+(the `box` of each `labelAnchor` you draw at `t`), and `motion-kit check` fails
+the scene when, at any sampled time or step, two label boxes overlap (closer
+than 4 px), a stem runs through another label, or a box leaves the picture. Fix
+it in the layout: alternate `lift` between neighbours (more in a narrow format,
+where they stand closer), shorten the label, or fade labels out while the
+camera moves, as the example does. Boxes with `opacity: 0` are skipped.
+
+**Several tokens at once.** `tokensAlong(path, t, runs, draw)` draws every token
+in flight. `path` is anything with `at(fraction)`: `polyline`, `cubic`, or
+`path3(worldPoints)`, which gives positions by distance, so a token moves at a constant speed in the
+world whatever the camera does when its `ease` is linear (the default is
+`easeStandard`; project each point in `draw`). `runs` is `[{ start, duration, ease?,
+path?, hold? }]`, one per token, each with its own start and, if it needs one,
+its own `path`; a token is drawn from `start` until it arrives (kept at the end
+with `hold`). `tokenPoints` gives the positions without drawing. Stagger the
+starts (`stagger()`) so the tokens do not sit on one another. Several tokens
+may move at the same time **inside the story's beats only**: every token has
+arrived, and the arrivals have filled, before the step's time (the settled-step
+rule in the gate applies as ever), and a token that stops mid-path is not a
+resting state. A token never loops back to the start.
+
+Canon: no loops, no ambient motion, no continuous scrubbing, 12 s hard limit
+(8 s target). An isometric scene plays once and holds its last frame, like any
+other, and under reduced motion the player shows that frame. A constantly
+moving hero is a 3D model's job, not motion-kit's.
 
 ## Declared locales and narrative steps
 

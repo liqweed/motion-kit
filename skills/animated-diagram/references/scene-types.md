@@ -102,7 +102,9 @@ names a state. Each path edge must start where the previous one ended; branches,
 cycles, repeated transitions and self-transitions are supported. The path is
 explicit: the runtime never decides which branch to take. All states appear
 pending, the initial state fills, then a single token follows the path while
-the current state fills accent. Completed edges retain their accent.
+the current state fills accent. Completed edges retain their accent. The
+built-in types carry one token at a time; a custom scene that needs several
+pieces of work moving at once uses `tokensAlong` (`custom-scenes.md`).
 
 Layouts use a column in reading order with separate connector lanes outside
 the labels; each fixed format centers the fitted graph, and strips grow to

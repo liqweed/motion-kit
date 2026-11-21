@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
@@ -16,6 +18,7 @@ import * as motionMod from "../runtime/motion.mjs";
 import * as sceneMod from "../runtime/scene.mjs";
 import * as styleMod from "../runtime/style.mjs";
 import * as svgMod from "../runtime/svg.mjs";
+import * as isoMod from "../runtime/iso.mjs";
 import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
 import { checkContrast, contrast, CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
@@ -397,9 +400,68 @@ describe("buildHtml", () => {
 	});
 });
 
+/**
+ * A custom module that takes the isometric helpers from `kit` alone (no import),
+ * and keeps the `kit` it was handed on `globalThis` for the test to inspect.
+ */
+const KIT_ONLY_SCENE = `
+export default function make({ format = "16:9", kit }) {
+	const { box, camera, drawSolids, labelAnchor, num, tok } = kit;
+	globalThis.__seenKit = kit;
+	const cam = camera({ azimuth: 45, zoom: 20, pan: { x: 200, y: 150 } });
+	const label = (t) => labelAnchor(cam, { id: "a", at: { x: 0, y: 0, z: 2 }, lines: ["Box"], opacity: num(Math.min(1, t)) });
+	return {
+		id: "kit-only-" + format.replace(":", "x"),
+		width: 400,
+		height: 300,
+		duration: 1,
+		title: "Kit only",
+		description: "A box drawn through kit alone.",
+		stepLabelsInFrame: false,
+		steps: [{ at: 1, label: "Done", detail: "The box stands." }],
+		labelBoxes: (t) => [label(t).box],
+		frame: (t) => drawSolids([box({ x: 0, y: 0, w: 2, d: 2, h: 2, fill: "accent", id: "b" })], cam) + label(t).markup,
+	};
+}
+`;
+
+describe("buildHtml with a custom module that reaches the kit only through kit", () => {
+	/** Build the page for the module, run its bundle in a fresh context and return the scene it makes. */
+	async function built() {
+		const dir = mkdtempSync(join(tmpdir(), "mk-kit-only-"));
+		try {
+			const file = join(dir, "kit-only.scene.mjs");
+			writeFileSync(file, KIT_ONLY_SCENE);
+			const loaded = await loadScene(file, { format: "wide", locale: "en" });
+			const html = buildHtml(loaded, { style: normalizeStyle("neutral"), format: "wide", locale: "en" });
+			const script = html.slice(html.lastIndexOf("<script>") + "<script>".length, html.lastIndexOf("(function () {"));
+			const make = /var scene = (.*);\n/.exec(html)?.[1];
+			assert.ok(make, "the page makes its scene in one expression");
+			const ctx = vm.createContext({});
+			vm.runInContext(script, ctx);
+			return { loaded, ctx, scene: vm.runInContext(make, ctx) };
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}
+	it("renders the same bytes in the page as in Node, without throwing", async () => {
+		const { loaded, scene } = await built();
+		assert.equal(scene.id, loaded.scene.id);
+		for (const t of [0, 0.4, 1]) {
+			const svg = scene.frame(t);
+			assert.ok(svg.includes("<polygon") || svg.includes("<path"), "the box is drawn");
+			assert.equal(svg, loaded.scene.frame(t));
+		}
+	});
+	it("hands the module the same names as the Node kit", async () => {
+		const { ctx } = await built();
+		assert.deepEqual(Object.keys(ctx.__seenKit).sort(), Object.keys(KIT).sort());
+	});
+});
+
 describe("KIT", () => {
-	it("holds every export of the motion, scene, style, svg and wrap modules", () => {
-		for (const mod of [motionMod, sceneMod, styleMod, svgMod, wrapMod]) {
+	it("holds every export of the motion, scene, style, svg, iso and wrap modules", () => {
+		for (const mod of [motionMod, sceneMod, styleMod, svgMod, isoMod, wrapMod]) {
 			for (const name of Object.keys(mod)) assert.ok(name in KIT, `KIT lacks ${name}`);
 		}
 	});

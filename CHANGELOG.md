@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-21
+
+### Fixed
+
+- `motion-kit build` gave a custom scene's `kit` no isometric helpers: `kit.camera`, `kit.box`, `kit.drawSolids`, `kit.labelAnchor` and the rest were undefined in the built page, though the scene passed `check` and `export` in Node. A built page now hands the module the same `kit` as Node, name for name; the player and the scene types, which only a built page ever offered through `kit`, are no longer on it. **Consumer action:** advised at configuration. Only a custom scene that read the player, `createScene`, `mountPlayer` or the page-link helpers (`scrollSteps`, `linkSteps`) from `kit` in a built page: those names were never in `KIT` or in Node, so such a scene already failed `check` and `export`. Import them from the vendored `runtime/` modules instead, or build the page from a spec, then rebuild. Every other scene needs nothing.
+
+## [0.9.0] - 2026-11-20
+
+### Added
+
+- An isometric kit for custom scenes, in `kit` beside the rest of the runtime. A camera (azimuth, elevation, pan and zoom) projects a world of x, y and height onto the picture: 90° elevation is the plan view, a 45° azimuth with `ISO_ELEVATION` is true isometric, and a swivel from one to the other is `lerpCamera` between two cameras, which `fitCamera` keeps in the frame. Solids (`box`, `slab`, `prism`) take their face colours from style tokens and shade their sides with a second token, so they follow every style and theme; `orderSolids` and `drawSolids` draw them far to near. `labelAnchor` places a label with a stem in the projected view. **Consumer action:** none.
+- Several tokens can travel at once. `tokensAlong` and `tokenPoints` place any number of tokens on one path or on a path each, each with its own start, duration and easing, still as a pure function of time; a scene keeps its steps settled by having every token arrive before the step. `path3` positions a token by distance along a path through the world, so with a linear `ease` its speed is constant whatever the camera does. **Consumer action:** none.
+- The scene gate checks labels. A scene that returns `labelBoxes(t)` (the boxes `labelAnchor` makes) fails `motion-kit check` when two labels overlap, a stem runs through another label, or a label leaves the picture, at any sampled time or step. **Consumer action:** advised at configuration. Return `labelBoxes` from a custom scene that places its own labels, to have the gate check them.
+- A generic example, `examples/isometric-swivel.scene.mjs`: four stations seen in plan, turned to isometric, then three work items travel the line together. It plays once, holds its final frame, lasts 7.1 s and passes the gate in every format and in English and Dutch. The `animated-diagram` skill's custom-scenes and motion-vocabulary references describe the kit. **Consumer action:** none.
+
 ## [0.8.0] - 2026-11-18
 
 ### Added
@@ -120,7 +135,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/liqweed/motion-kit/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/liqweed/motion-kit/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/liqweed/motion-kit/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/liqweed/motion-kit/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/liqweed/motion-kit/compare/v0.5.0...v0.6.0

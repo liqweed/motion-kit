@@ -137,7 +137,7 @@ const canonical = (markup) =>
 	});
 
 it("draws every sampled time in place, equal to a fresh render, whatever the order of seeks", async () => {
-	const files = ["bench/fleet.scene.mjs", "examples/smart-home.json", "examples/order-flow.json", "examples/integrations.json", "examples/custom-pulse.scene.mjs", "brand/logo.scene.mjs"];
+	const files = ["bench/fleet.scene.mjs", "examples/smart-home.json", "examples/order-flow.json", "examples/integrations.json", "examples/custom-pulse.scene.mjs", "examples/isometric-swivel.scene.mjs", "brand/logo.scene.mjs"];
 	for (const file of files) {
 		for (const format of ["16:9", "9:16"]) {
 			const { scene: s } = await loadScene(fileURLToPath(new URL(`../${file}`, import.meta.url)), { format });
@@ -187,6 +187,21 @@ it("backward and same-step calls jump and cancel any pending animation", () => {
 	assert.equal(frames.size, 0);
 	advance(2000);
 	assert.equal(player.time, 0);
+});
+
+it("under reduced motion the isometric example shows its final frame, and does not play", async () => {
+	const { scene: s } = await loadScene(fileURLToPath(new URL("../examples/isometric-swivel.scene.mjs", import.meta.url)), { format: "16:9" });
+	const { player, container, frames, observers } = setup({ reduced: true, sceneOverride: s, options: { id: "p", autoplay: "visible" } });
+	const stage = container.children[0];
+	const final = renderSvg(s, s.duration, { idPrefix: "p", live: true });
+	assert.equal(canonical(stage.innerHTML), canonical(final));
+	assert.equal(player.time, s.duration);
+	assert.equal(frames.size, 0, "nothing is scheduled");
+	assert.equal(observers.length, 0, "no autoplay is waiting for the page to scroll into view");
+	player.seekStep(0);
+	player.playToStep(1);
+	assert.equal(player.time, s.steps[1].at, "a step is reached by a jump");
+	assert.equal(frames.size, 0);
 });
 
 it("reduced motion always jumps to the requested step", () => {

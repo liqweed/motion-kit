@@ -1,0 +1,89 @@
+# How ai-review (docomply/ai-review, the self-hosted PR reviewer that runs on
+# majordomo) reviews THIS repository. Field reference: that repo's
+# docs/repo-config.md. The reviewer reads this file from the base branch
+# (main), never from a pull request's head, so a change here applies to the
+# pull requests opened after it merges.
+#
+# Without this file the reviewer falls back to generic defaults, which know
+# nothing about a deterministic renderer: that a scene is a pure function of
+# time, that the runtime ships unbuilt, or that the media is generated.
+
+platform_description: "motion-kit, a dependency-free JavaScript toolkit that renders deterministic animated diagrams (a scene is a pure function of time, frame(t) → SVG) to a live player, Slidev steps, SVG/PNG frames, baked SVG and video, plus a CLI, an Astro website and Claude Code plugin skills (plain ESM .mjs, JSDoc types checked by tsc, node:test)"
+
+architecture_invariants: |-
+  Weigh these invariants (flag violations):
+  - A scene is a pure function of time: `frame(t)` reads only `t` and constants. No `Date`, `Math.random`, `performance.now` or state carried between frames; the same `t` gives byte-identical output, with every number rounded through `num()`.
+  - Colours come from tokens (`tok("accent")`), never literals. Labels go through `text()`/`esc()` and fit their wrap budget in every locale and format. Ids (clip paths, gradients) are built from `idPrefix`, so two instances on a page never collide.
+  - `runtime/` is dependency-free ES modules for the browser and Node: no `node:` imports, no DOM access at import time, no build step. Consumers vendor these files verbatim, so they must work unbuilt. `lib/` and `cli/` may use `node:*` and optional dependencies but must degrade with a clear message when `@resvg/resvg-js` or `ffmpeg` is missing.
+  - There is no build step, transpiler or bundler: TypeScript is only a checker over JSDoc, and code must run on Node 22 (the `engines` floor).
+  - A CLI flag or behaviour change updates the matching `skills/*/SKILL.md` or `references/*.md` in the same pull request; a change to the scene contract updates `docs/spec/technique.md`.
+  - A change under `cli/`, `lib/`, `runtime/`, `adapters/`, `styles/`, `skills/`, `examples/` or `brand/` adds a change note in `changes/`; versions and `CHANGELOG.md` are never edited by hand (CI writes them on release).
+  - Rendering changes come with regenerated media and PNG snapshots in the same pull request, so a reviewer sees the visual change.
+  - Third-party design skills are pinned in `skills-lock.json` by upstream commit and content hash and are never copied into the repository.
+
+# High-noise or generated paths excluded from BOTH the diff and the full-file
+# context. Declaring this field REPLACES the reviewer's default set wholesale,
+# so the defaults this repo still wants are restated.
+exclude_pathspecs:
+  - ":(exclude,glob)**/*.lock"
+  - ":(exclude,glob)**/package-lock.json"
+  - ":(exclude,glob)**/*.snap"
+  - ":(exclude,glob)**/node_modules/**"
+  - ":(exclude,glob)**/dist/**"
+  - ":(exclude,glob)**/_generated/**"
+  - ":(exclude,glob)test/snapshots/**" # PNG snapshots of the examples' step frames
+
+# Changed-path patterns that escalate a review to the flagship tier: what ships
+# to consumers verbatim, the gate and the release pipeline, and this file.
+high_risk_path_patterns:
+  - source: '^\.config/ai-review\.yaml$' # this file: it retunes every later review
+  - source: '^\.github/workflows/' # CI, release and the site deploy
+  - source: '^runtime/' # vendored verbatim by consumers
+  - source: '^lib/check\.mjs$' # the scene gate
+  - source: '^scripts/' # versioning and release helpers
+  - source: '^package\.json$'
+  - source: '^skills-lock\.json$'
+  - source: '^\.claude-plugin/'
+
+# Files nobody hand-edits. Most specific first: a file matches the first rule
+# whose globs cover it.
+generated_artifacts:
+  - globs: ["docs/media/**", "assets/icon*", ".idea/icon*.svg"]
+    regenerate: "npm run media"
+    drift_gate: "npm run gate (the media freshness check)"
+  - globs: ["test/snapshots/**"]
+    regenerate: "npm run snapshots:update"
+    drift_gate: "npm test (test/snapshots.test.mjs)"
+  - globs: ["CHANGELOG.md"]
+    regenerate: "the release step, from the notes in changes/"
+    drift_gate: "the changelog workflow"
+
+rules:
+  - id: scene-determinism
+    paths: ["examples/**", "brand/**"]
+    pattern: { source: "Math\\.random|Date\\.now|new Date\\(|performance\\.now" }
+    attention: "A scene's frame(t) must be a pure function of t. Wall-clock and random sources break byte-identical output and the scene gate (lib/check.mjs stubs them to catch exactly this)."
+    severity: high
+    category: correctness
+  - id: scene-colour-literal
+    paths: ["examples/**", "brand/**"]
+    pattern: { source: "#[0-9a-fA-F]{3,8}\\b|rgba?\\(" }
+    attention: "Scene colours come from tokens (tok(\"accent\")), never literals, so every style and the light/dark variants stay consistent."
+    severity: medium
+    category: correctness
+  - id: runtime-no-node-imports
+    paths: ["runtime/**"]
+    pattern: { source: "from ['\"]node:|require\\(" }
+    attention: "runtime/ runs in the browser as well as Node and is vendored unbuilt: no node: imports, no require, no new dependencies."
+    severity: high
+    category: correctness
+  - id: change-note
+    paths: ["cli/**", "lib/**", "runtime/**", "adapters/**", "styles/**", "skills/**"]
+    attention: "A change to what ships needs a change note in changes/<branch-name>.md (release level patch, minor or major, or none to wait). Flag a shipped-path change with no note, and a note whose release level understates the change (a breaking CLI or runtime change is not a patch)."
+    severity: medium
+    category: docs
+  - id: skill-follows-cli
+    paths: ["cli/**", "skills/**"]
+    attention: "A CLI flag or behaviour change must update the matching SKILL.md or references/*.md in the same pull request, and the reverse: a skill must not document a flag the CLI does not have."
+    severity: medium
+    category: drift
