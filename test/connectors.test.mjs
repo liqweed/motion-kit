@@ -243,6 +243,14 @@ describe("examples/connectors.scene.mjs feeder junctions", () => {
 			assert.equal(diamonds(ta - 0.02), base + k, `${k} feeder junctions are lit just before junction ${k + 1} is reached`);
 			assert.equal(diamonds(ta + 0.3), base + k + 1, `junction ${k + 1} is lit once its fill has settled`);
 		});
+		// Identity, not just counts: each diamond is its own path, in draw order along the feeder. Swapping two junctions' reach times must fail.
+		const litPaths = (/** @type {number} */ t) => scene.frame(t, { idPrefix: "x" }).match(/<path d="M[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ Z"[^>]*stroke="var\(--mk-accent\)"/g) ?? [];
+		const order = litPaths(scene.duration).map((m) => m.match(/d="([^"]*)"/)?.[1]);
+		assert.equal(new Set(order).size, order.length, "each lit diamond is a distinct path");
+		reach.forEach((ta, k) => {
+			const lit = litPaths(ta + 0.3).map((m) => m.match(/d="([^"]*)"/)?.[1]);
+			assert.deepEqual([...lit].sort(), order.slice(0, base + k + 1).sort(), `junction ${k + 1} itself is the one lit at ${ta.toFixed(2)} s`);
+		});
 	});
 });
 
