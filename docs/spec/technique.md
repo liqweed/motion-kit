@@ -283,7 +283,7 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   drawn without the reveal, and every step frame, the final frame, a baked
   last slice and a reduced-motion frame carry no filter. Between 0 and 1 the
   `transform` and the `filter` are left off once they round to nothing
-  (a rise under 0.004 units, a blur under 0.005), so a frame never carries
+  (a rise or a blur under 0.005 units), so a frame never carries
   a `stdDeviation="0"`, which renderers read differently.
 - **Ids.** `id` names the filter and MUST be built from `frame`'s `idPrefix`
   (`${idPrefix}-reveal-1`), one per revealed element, so G14 holds and a baked
@@ -291,9 +291,11 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   [throws unless `id` is a CSS-safe token]. `rise` is 0 to 24 and `blur` 0 to 12
   [throws].
 - **Renderers.** The filter is `feGaussianBlur` in sRGB over a region of
-  `x −25 %`, `y −100 %`, `width 150 %`, `height 300 %` of the element's box:
-  enough for a blur as large as the element is tall, so the default 4 never
-  clips a line of text. The live player (its
+  `x −25 %`, `y −100 %`, `width 150 %`, `height 300 %` of the element's box,
+  which holds the blur of text at least about 50 units wide. For anything
+  narrower, or a `blur` above the default, `box: {x, y, width, height}` (the
+  element's own box, finite and positive [throws]) makes the region that box
+  plus 3 × `blur` on every side (`filterUnits="userSpaceOnUse"`). The live player (its
   in-place patch updates `stdDeviation` and the group's attributes, and drops
   the group when the reveal ends), `renderSvg`, `bake`, PNG export (resvg and
   Chrome) and video draw the blur the same way (`test/reveal.test.mjs`,

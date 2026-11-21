@@ -90,21 +90,25 @@ export function fade(opacity, attrs, ...children) {
  * `id` names the filter and must be built from the frame's `idPrefix`
  * (`${idPrefix}-reveal-1`), one id per revealed element: two instances on a
  * page, and every slice of a baked SVG, then never share a filter. The filter
- * works in sRGB, so every renderer blurs the same colours, and covers 25 %
- * beyond the element's box sideways and 100 % above and below, enough for a
- * `blur` up to about the element's own height.
+ * works in sRGB, so every renderer blurs the same colours. Its region is the
+ * element's box plus 25 % sideways and 100 % above and below, which holds the
+ * blur of text at least about 50 units wide; for anything narrower (a short
+ * label, an icon) or a larger `blur`, pass `box`, the element's own
+ * `{ x, y, width, height }`, and the region becomes that box plus 3 × `blur`
+ * on every side, in the element's own units.
  *
  * @param {number} enter eased progress, 0 to 1
- * @param {{ id: string, rise?: number, blur?: number }} options `rise`: units
- *   it starts below its place (default 6); `blur`: its starting blur radius,
- *   in units (default 4, at most 12)
+ * @param {{ id: string, rise?: number, blur?: number, box?: { x: number, y: number, width: number, height: number } }} options
+ *   `rise`: units it starts below its place (default 6); `blur`: its starting
+ *   blur radius, in units (default 4, at most 12); `box`: the element's box, see above
  * @param {...(string | string[])} children markup
  * @returns {string}
  */
-export function blurReveal(enter, { id, rise = 6, blur = 4 }, ...children) {
+export function blurReveal(enter, { id, rise = 6, blur = 4, box }, ...children) {
 	if (typeof id !== "string" || !/^[A-Za-z][\w-]*$/.test(id)) throw new Error(`blurReveal: id must be a CSS-safe id built from idPrefix, got ${JSON.stringify(id)}`);
 	if (!Number.isFinite(rise) || rise < 0 || rise > 24) throw new Error(`blurReveal: rise must be a number from 0 to 24, got ${rise}`);
 	if (!Number.isFinite(blur) || blur < 0 || blur > 12) throw new Error(`blurReveal: blur must be a number from 0 to 12, got ${blur}`);
+	if (box !== undefined && !(box && ["x", "y", "width", "height"].every((k) => Number.isFinite(box[k])) && box.width > 0 && box.height > 0)) throw new Error("blurReveal: box must be { x, y, width, height } with finite numbers and a positive size");
 	const o = Math.round(clamp01(enter) * 1000) / 1000; // as fade(): 0.9999 ≡ 1
 	if (o <= 0) return "";
 	const body = children.flat().filter(Boolean).join("");
@@ -112,10 +116,12 @@ export function blurReveal(enter, { id, rise = 6, blur = 4 }, ...children) {
 	const dy = (1 - o) * rise;
 	const sd = (1 - o) * blur;
 	const blurred = sd >= 0.005; // below that it rounds to 0 and would filter nothing
-	const filter = blurred
-		? `<defs>${el("filter", { id, x: "-25%", y: "-100%", width: "150%", height: "300%", "color-interpolation-filters": "sRGB" }, el("feGaussianBlur", { stdDeviation: sd }))}</defs>`
-		: "";
-	return filter + el("g", { transform: dy >= 0.004 ? translate(0, dy) : undefined, opacity: o, filter: blurred ? `url(#${id})` : undefined }, body);
+	const m = 3 * blur;
+	const region = box
+		? { filterUnits: "userSpaceOnUse", x: box.x - m, y: box.y - m, width: box.width + 2 * m, height: box.height + 2 * m }
+		: { x: "-25%", y: "-100%", width: "150%", height: "300%" };
+	const filter = blurred ? `<defs>${el("filter", { id, ...region, "color-interpolation-filters": "sRGB" }, el("feGaussianBlur", { stdDeviation: sd }))}</defs>` : "";
+	return filter + el("g", { transform: dy >= 0.005 ? translate(0, dy) : undefined, opacity: o, filter: blurred ? `url(#${id})` : undefined }, body);
 }
 
 /**

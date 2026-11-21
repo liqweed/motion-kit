@@ -41,6 +41,16 @@ describe("blurReveal", () => {
 		assert.match(out, /x="-25%" y="-100%" width="150%" height="300%"/);
 		assert.equal(findColourLiteral(out), null);
 	});
+	it("sizes the filter region from a box, for content too narrow for the percentages", () => {
+		const out = blurReveal(0.3, { id: "a-r", blur: 4, box: { x: 10, y: 20, width: 20, height: 16 } }, label);
+		assert.match(out, /<filter id="a-r" filterUnits="userSpaceOnUse" x="-2" y="8" width="44" height="40"/);
+		assert.throws(() => blurReveal(0.3, { id: "a-r", box: { x: 0, y: 0, width: 0, height: 5 } }, label), /box must be/);
+		assert.throws(() => blurReveal(0.3, { id: "a-r", box: /** @type {any} */ ({ x: 0 }) }, label), /box must be/);
+	});
+	it("leaves a rise that rounds to nothing off the group", () => {
+		assert.doesNotMatch(blurReveal(0.9985, { id: "a-r", rise: 4.5 }, label), /transform/);
+		assert.doesNotMatch(blurReveal(0.5, { id: "a-r", rise: 0 }, label), /transform/);
+	});
 	it("takes rise and blur as options, and refuses an id that is not one", () => {
 		assert.doesNotMatch(blurReveal(0.5, { id: "a-r", blur: 0 }, label), /filter/);
 		assert.doesNotMatch(blurReveal(0.5, { id: "a-r", rise: 0 }, label), /transform/);

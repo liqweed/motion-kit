@@ -168,7 +168,7 @@ quoted line reveals and is marked).
 
 | Need | Use |
 |---|---|
-| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card |
+| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card. The blur's region fits text 50 units wide or more; for a short label or an icon pass `box: { x, y, width, height }` |
 | Its filter id | `id: idPrefix + "-reveal-" + i`, one per revealed element. The gate refuses a fixed id, and every slice of a baked SVG has its own prefix |
 | A highlighter | `highlightSweep(p, { x, y, width, height, token, opacity, radius })`: a band in a token (default `emphasis`) at 30 % that grows from `x` to `x + width` as `p` (eased) goes 0 → 1. Draw it **before** the text; size it from `estimateWidth(line, fontSize)` plus padding each side (the estimate is generous, ×0.9 hugs a typical sans-serif) |
 
