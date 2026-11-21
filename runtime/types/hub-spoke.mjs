@@ -20,9 +20,16 @@
 import { progress, window01, easings } from "../motion.mjs";
 import { boxNode, FONT_MIN, maxFontSize, rectEdge } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { NEUTRAL, tok } from "../style.mjs";
+import { NEUTRAL, sharedPairs, tok } from "../style.mjs";
 import { drawOn, el, pointOnLine } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
+
+/**
+ * The shared contrast pairs this type draws: boxNode labels, connectors, the emphasis dot riding over them; no text on the canvas.
+ * The gate holds its scenes to these and reports the other shared pairs as
+ * warnings (`contrastReport`, runtime/style.mjs).
+ */
+export const contrastPairs = sharedPairs("ink/surface", "onAccent/accent", "line/bg", "accent/bg", "emphasis/bg", "emphasis/accent");
 
 const ENTER = 0.4;
 const ENTER_GAP = 0.08;
@@ -213,6 +220,7 @@ export function hubSpoke(spec, { format = "16:9", locale = "en" } = {}) {
 			withId({ at: HUB_ON + FILL, label: hubLabel, detail: localize(spec.hub.detail, locale) }, spec.hub.id),
 			...spokes.map((s, i) => withId({ at: stepAt(i), label: s.label, detail: s.detail }, spokesSpec[i].id)),
 		],
+		contrastPairs,
 		frame,
 	};
 }

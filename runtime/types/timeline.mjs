@@ -26,9 +26,16 @@
 import { lerp, progress, springSettleTime, springStep, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { NEUTRAL, tok } from "../style.mjs";
+import { NEUTRAL, sharedPairs, tok } from "../style.mjs";
 import { drawOn, el, fade, num, text, translate } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
+
+/**
+ * The shared contrast pairs this type draws: dates and labels on the canvas, dots and stems, the now pill (canvas fill) at the end of the accent axis; no text on surface or accent.
+ * The gate holds its scenes to these and reports the other shared pairs as
+ * warnings (`contrastReport`, runtime/style.mjs).
+ */
+export const contrastPairs = sharedPairs("ink/bg", "muted/bg", "line/bg", "accent/bg", "emphasis/bg", "emphasis/accent");
 
 /** @import { Scene } from "../scene.mjs" */
 
@@ -405,6 +412,7 @@ export function timeline(spec, { format = "16:9", locale = "en" } = {}) {
 		title: localize(spec.title, locale),
 		description: localize(spec.description, locale),
 		steps,
+		contrastPairs,
 		frame,
 	};
 }

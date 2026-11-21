@@ -6,9 +6,16 @@
 import { progress, lerp, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize } from "../parts.mjs";
 import { FORMATS, localize } from "../scene.mjs";
-import { NEUTRAL, tok } from "../style.mjs";
+import { NEUTRAL, sharedPairs, tok } from "../style.mjs";
 import { el, fade, num, text } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
+
+/**
+ * The shared contrast pairs this type draws: node labels, region labels on the canvas, edges, the dot over them; no ink on the canvas.
+ * The gate holds its scenes to these and reports the other shared pairs as
+ * warnings (`contrastReport`, runtime/style.mjs).
+ */
+export const contrastPairs = sharedPairs("muted/bg", "ink/surface", "onAccent/accent", "line/bg", "accent/bg", "emphasis/bg", "emphasis/accent");
 
 /**
  * Build the common graph walk used by state-machine and request-journey.
@@ -156,6 +163,7 @@ export function walk(spec, { format = "16:9", locale = "en" } = {}) {
 		id: `${spec.id}-${format.replace(":", "x")}`, type: spec.type, format, locale,
 		width: W, height: L.H, duration, title: localize(spec.title, locale), description: localize(spec.description, locale),
 		stepLabelsInFrame: false,
+		contrastPairs,
 		steps: [{ id: "initial", at: firstAt, label: labels[visits[0]], detail: localize(nodes[visits[0]].detail, locale) },
 			...route.map((e, k) => ({ id: `visit-${k + 1}`, at: stepAt(k), label: localize(edges[e].label, locale), detail: localize(edges[e].detail, locale) || `${labels[visits[k]]} → ${labels[visits[k + 1]]}` }))],
 		frame,

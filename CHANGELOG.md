@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-21
+
+### Added
+
+- Connectors for custom scenes, in `kit` beside the isometric kit. `connectorPath` routes through flat points, or through world points projected by a camera; `drawConnector` draws it on as a dashed line with an optional open-V arrowhead, and it rests as a dashed line. `drawJunction` draws a diamond where connectors turn, split or join, flat on the picture or lying in the floor plane of an isometric view, and lights it when a pulse arrives. `drawPulse` sends a light with a glow and a fading tail along a connector once, from its start to its end, and removes it on arrival (or holds it at the end with `hold`); `pulseEnd` gives the time it is over, so a scene keeps every step settled. Nothing repeats: a pulse runs once, inside its step's beat, like a token. Colours are style tokens. **Consumer action:** none.
+- A generic example, `examples/connectors.scene.mjs`: a request fans out through a diamond splitter to three services, then a result rides an isometric feeder line through three junctions. It plays once, holds its final frame, lasts 6.9 s and passes the gate in every format and in English and Dutch. The `animated-diagram` skill's custom-scenes and motion-vocabulary references describe the parts and the pulse's timing rule. **Consumer action:** none.
+
+## [0.10.0] - 2026-11-21
+
+### Changed
+
+- The contrast gate fails a scene only on the pairs it draws. WCAG judges what a scene shows (1.4.3 for text, 1.4.11 for graphics against their adjacent colours), not a palette, but the gate held every scene to all the shared pairs, so a brand style whose `emphasis` cannot reach 3:1 on both the canvas and the accent failed a figure that never draws `emphasis`. Each scene type now records the shared pairs it draws (`SCENE_TYPE_PAIRS`; a `hub-spoke` draws no text on the canvas, a `sequence` no `ink` on `surface`), and a custom scene says what it draws with `contrastPairs` (`kit.sharedPairs("ink/bg", "accent/bg", …)` picks shared pairs by name). The pairs a scene draws still fail the gate below 4.5:1 for text and 3:1 for graphics; the shared pairs it does not draw are warnings that name the pair, its ratio and its threshold in both themes (`motion-kit: warning: contrast: …` from `export`, `bake`, `video` and `icon`; `⚠ style:` once per run in `check`, with the scene types that draw the pair). `build` also fails a style that misses any pair the page player paints, even if the scene does not draw it. A scene that declares no `contrastPairs` is still held to every shared pair. `checkScene` also returns `warnings`. **Consumer action:** advised at configuration. A custom scene that already declares `contrastPairs` is now held to those pairs alone, so add the shared pairs it draws with `kit.sharedPairs(…)`, or it only gets warnings for them; a custom scene that declares none needs nothing.
+
 ## [0.9.1] - 2026-11-21
 
 ### Fixed
@@ -135,7 +148,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.9.1...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/liqweed/motion-kit/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/liqweed/motion-kit/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/liqweed/motion-kit/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/liqweed/motion-kit/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/liqweed/motion-kit/compare/v0.7.0...v0.8.0

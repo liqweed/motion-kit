@@ -65,10 +65,12 @@ unsettled, so it finishes in the first 95 % of each move and holds for the last
 
 ## Contrast
 
-`motion-kit check --style acme.json …` checks every token pair the scene types
-draw where the pair carries meaning in a step frame (`CONTRAST_PAIRS` in
-`runtime/style.mjs`), in both themes, at WCAG thresholds: 4.5:1 for text,
-3:1 for shapes and strokes.
+WCAG judges what a scene draws, not a palette: text needs 4.5:1 against what is
+behind it (1.4.3), and the parts of a graphic that carry meaning need 3:1 against
+the colours next to them (1.4.11). So `motion-kit check --style acme.json …`
+**fails a scene only on the pairs it draws**, in both themes. The shared list
+(`CONTRAST_PAIRS` in `runtime/style.mjs`) is every token pair the scene types
+draw where the pair carries meaning in a step frame:
 
 | Pair | Needs | Where it is drawn |
 |---|---|---|
@@ -92,18 +94,35 @@ Exempt (`CONTRAST_EXEMPT`), each for a reason:
 | accent on line | the accent draw-on covers the pending line; they meet only at the moving tip |
 | onAccent on emphasis | no scene type draws it; the motion-kit logo does, and logos are exempt from WCAG 1.4.11 |
 
+Each scene type draws some of these, not all (`SCENE_TYPE_PAIRS`): a `hub-spoke`
+draws no text on the canvas, and a `sequence` draws no ink on surface.
+A style that misses a pair is reported once per run, as `⚠ style:` with the
+scene types that draw it, and fails exactly those scenes; every other scene
+passes, and `build`, `export` and the rest print `warning: contrast:` for the
+shared pairs they do not draw. `build` alone also fails a style that misses a pair the page's player paints (ink/surface, onAccent/accent, muted/bg, emphasis/bg, line/bg, accent/bg, and ink/bg for the heading unless `--no-heading`), declared or not. `neutral` meets every pair, so it never warns.
+
 Emphasis on accent is the pair most palettes miss: two saturated colours of
 the same lightness (blue and orange, teal and rust) are about 1:1 apart once
 hue is gone. On a white canvas it usually means a dark accent (neutral light
 uses `#1d36a8`) with a mid-tone emphasis; on a dark canvas, a light emphasis
 (neutral dark uses `#fbbf24`).
 
-A custom scene that draws another pair declares it, and the gate checks the
-style against it for that scene:
+A custom scene says what it draws with `contrastPairs`: the gate holds the style
+to those pairs and only warns about the shared ones it leaves out. Shared pairs
+come by name from `kit.sharedPairs`; others are written out. A scene that
+declares nothing is held to every shared pair, as before, so say what you draw:
 
 ```js
-return { …, contrastPairs: [{ fg: "accent", bg: "surface", min: 3, use: "progress bar on its track" }] };
+return { …, contrastPairs: [
+	...kit.sharedPairs("ink/surface", "onAccent/accent", "line/bg", "accent/bg"),
+	{ fg: "accent", bg: "surface", min: 3, use: "progress bar on its track" },
+] };
 ```
+
+A figure in ink on paper with a green accent that never draws `emphasis` lists
+the pairs it does draw and passes with a palette whose `emphasis` cannot meet
+both the canvas and the accent. Declare a pair only if it is drawn: a declared
+pair is a failure, a threshold of 4.5 for text and 3 for graphics.
 
 ## Where style files live
 

@@ -94,6 +94,25 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   A shadow on the floor under each token (an ellipse of `ink` at ≈ 18 %,
   squashed by `sin(elevation)`) shows where it is in the world.
 
+## Connectors and pulses (derived)
+
+- **Connector:** draws on from its start in 0.4–0.6 s on `easeStandard`, the
+  dashes fixed to the path so they do not crawl, and rests as a dashed line. The
+  open-V arrowhead rides the leading end.
+- **Pulse:** one run per connector per step, 0.5–0.8 s on a flat connector, with
+  the tail lagging the head by 80–150 ms (split edges). On a long isometric
+  feeder use `linear`, 1.2–2 s, so the speed is constant and each junction
+  lights as it passes. It grows in over the first tenth of its life and fades
+  over the last sixth, so it never pops.
+- **Timing rule:** the pulse is over (`pulseEnd`), and its target has lit
+  (200–300 ms), ≥ 50 ms before the step. Several pulses may share a beat: all
+  at once to fan out from a junction (twin pulses outward), or in sequence, each
+  starting as the last arrives.
+- **Never** a pulse that repeats or runs while a step rests; that is looping
+  ambient motion (canon above). Loops are forbidden by contract and need review;
+  the gate's settled-frame rule only catches motion around the sampled step
+  boundaries, so it will not see every repeat.
+
 ## Container and text timing
 
 - The container (box, card) starts moving immediately; new text appears only
