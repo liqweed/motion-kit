@@ -1,7 +1,0 @@
----
-release: minor
----
-
-### Changed
-
-- The contrast gate fails a scene only on the pairs it draws. WCAG judges what a scene shows (1.4.3 for text, 1.4.11 for graphics against their adjacent colours), not a palette, but the gate held every scene to all the shared pairs, so a brand style whose `emphasis` cannot reach 3:1 on both the canvas and the accent failed a figure that never draws `emphasis`. Each scene type now records the shared pairs it draws (`SCENE_TYPE_PAIRS`; a `hub-spoke` draws no text on the canvas, a `sequence` no `ink` on `surface`), and a custom scene says what it draws with `contrastPairs` (`kit.sharedPairs("ink/bg", "accent/bg", …)` picks shared pairs by name). The pairs a scene draws still fail the gate below 4.5:1 for text and 3:1 for graphics; the shared pairs it does not draw are warnings that name the pair, its ratio and its threshold in both themes (`motion-kit: warning: contrast: …` from `export`, `bake`, `video` and `icon`; `⚠ style:` once per run in `check`, with the scene types that draw the pair). `build` also fails a style that misses any pair the page player paints, even if the scene does not draw it. A scene that declares no `contrastPairs` is still held to every shared pair. `checkScene` also returns `warnings`. **Consumer action:** advised at configuration. A custom scene that already declares `contrastPairs` is now held to those pairs alone, so add the shared pairs it draws with `kit.sharedPairs(…)`, or it only gets warnings for them; a custom scene that declares none needs nothing.
