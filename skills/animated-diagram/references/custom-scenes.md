@@ -106,8 +106,8 @@ export default function make({ format = "1:1", kit }) {
 }
 ```
 
-Every command supports this, `motion-kit build` included (it bundles the whole
-runtime and passes it as `kit`). A module that imports instead must use
+Every command supports this, `motion-kit build` included (it bundles the runtime and passes
+`KIT` as `kit`, the isometric helpers included). A module that imports instead must use
 relative imports to a vendored runtime.
 
 ## Isometric and 3D-looking scenes

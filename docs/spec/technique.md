@@ -52,8 +52,9 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
-  with the same object, its `kit` being the bundled runtime, after the CLI has
-  built the scene once through `sceneFromModule`.
+  with the same object, its `kit` being the bundled `KIT` (the same names as in
+  Node: `test/runtime.test.mjs` checks), after the CLI has built the scene once
+  through `sceneFromModule`.
 - A custom module MUST take the runtime from `kit`, or import only from
   `runtime/` with single-line relative `import { … } from "./x.mjs";`
   statements and use only the export forms the inliner supports, or `build`
@@ -485,9 +486,10 @@ that removes every listener, observer and mark they added.
   works under `connect-src 'none'` and from `file://`.
 - MUST pre-render the player's first state (`playerMarkup`, `PLAYER_CSS`,
   `themeCss`) and set `<html lang>` to the scene locale (`lib/build.mjs`).
-- A custom module is built with the caller's `--options` and `kit`: every
-  runtime module is a bundle entry, so the `MotionKit` global is the kit.
-  The page-link helpers (§10.2.2) are bundled too (`MotionKitRuntime.scrollSteps`,
+- A custom module is built with the caller's `--options` and `kit`: the
+  runtime's `kit` module is a bundle entry, and its `KIT` is what the module
+  receives, the isometric helpers (§4.9) included. The page-link helpers
+  (§10.2.2) are bundled too (`MotionKitRuntime.scrollSteps`,
   `MotionKitRuntime.linkSteps`).
 - The CLI MUST refuse a scene that fails the gate (`cli/motion-kit.mjs:112-113`)
   and bundled code containing `</script>` (`:115`).
