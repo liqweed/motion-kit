@@ -281,7 +281,8 @@ export function prism({ points, h, z = 0, fill = "surface", sides, shade = "ink"
 	const edgeGroups = groups && Object.freeze(foot.flipped ? groups.map((_, i) => groups[(2 * n - 2 - i) % n]) : [...groups]);
 	return Object.freeze({
 		points: foot.points,
-		...(edgeGroups ? { groups: edgeGroups, smooth } : {}),
+		...(edgeGroups ? { groups: edgeGroups } : {}),
+		...(smooth ? { smooth: true } : {}),
 		...(top ? { top: Object.freeze(checkTop(top)) } : {}),
 		z0: z,
 		z1: z + h,
@@ -712,7 +713,8 @@ export function planeMatrix(cam, { x, y, z = 0, w, d, view }) {
  */
 export function drawOnPlane(cam, plane, markup, opacity = 1) {
 	const m = planeMatrix(cam, plane);
-	if (Math.abs(m[0] * m[3] - m[1] * m[2]) < 1e-9) return "";
+	// Edge on: the two axes are parallel on the screen, whatever the scale of the view.
+	if (Math.abs(m[0] * m[3] - m[1] * m[2]) <= 1e-9 * Math.hypot(m[0], m[1]) * Math.hypot(m[2], m[3])) return "";
 	return fade(opacity, { transform: `matrix(${m.map((v) => num(v, 4)).join(" ")})` }, markup);
 }
 
@@ -720,7 +722,9 @@ export function drawOnPlane(cam, plane, markup, opacity = 1) {
 
 /**
  * A backdrop of diamonds: grid lines every `step` world units along x and y in
- * the floor plane at height `z`, within `radius` of (`x`, `y`), fading out
+ * the floor plane at height `z`, out to `radius` from (`x`, `y`) (a segment of
+ * one `step` is kept when its middle is inside, so the edge is ragged by up to
+ * half a step unless `radius` is a multiple of `step`), fading out
  * radially, so it follows the camera (diamonds in isometric, squares in plan).
  * The fade is `bands` steps of opacity, one `<path>` each, so the markup stays
  * small and needs no gradient or id; the lines are `stroke` (a token) at up to

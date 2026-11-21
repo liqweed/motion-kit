@@ -502,6 +502,10 @@ describe("rounded slabs", () => {
 		near(Math.max(...ys), 2);
 		assert.ok(!s.points.some((p) => Math.abs(p.x) > 3 - 1e-9 && Math.abs(p.y) > 2 - 1e-9), "no point at a square corner");
 	});
+	it("lets a prism sampled from a curve ask for one wall without groups", () => {
+		const twelve = prism({ points: regularPolygon(0, 0, 2, 12), h: 1, smooth: true, shade: null });
+		assert.equal(count(drawSolid(twelve, CAMERA_ISOMETRIC), "<path"), 2, "the wall and the top");
+	});
 	it("rejects a radius or a segment count that does not make a rounded box", () => {
 		assert.throws(() => roundedBox({ x: 0, y: 0, w: 4, d: 2, h: 1, radius: 1.5 }), /radius/);
 		assert.throws(() => roundedBox({ x: 0, y: 0, w: 4, d: 2, h: 1, radius: -1 }), /radius/);
@@ -567,6 +571,11 @@ describe("content on a horizontal plane", () => {
 		assert.equal(drawOnPlane(CAMERA_ISOMETRIC, plane, "<rect/>", 0), "");
 		assert.match(drawOnPlane(CAMERA_ISOMETRIC, plane, "<rect/>", 0.5), /opacity="0\.5"/);
 		assert.equal(drawOnPlane(CAMERA_ISOMETRIC, plane, "<rect/>"), drawOnPlane(CAMERA_ISOMETRIC, plane, "<rect/>"));
+	});
+	it("tells an edge-on plane from a large view", () => {
+		const big = { x: 0, y: 0, w: 1, d: 1, view: { width: 1e5, height: 1e5 } };
+		assert.ok(drawOnPlane(CAMERA_PLAN, big, "<g/>").startsWith("<g "));
+		assert.equal(drawOnPlane(camera({ azimuth: 45, elevation: 0 }), big, "<g/>"), "");
 	});
 	it("rejects a plane that has no area or no view", () => {
 		assert.throws(() => planeMatrix(CAMERA_PLAN, { ...plane, w: 0 }), /positive/);
