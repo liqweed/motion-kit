@@ -265,6 +265,13 @@ describe("label anchors", () => {
 
 	describe("the overlap check", () => {
 		const view = { width: 400, height: 400 };
+		it("does not pay for thousands of identical boxes", () => {
+			const one = anchor("a", 0, 0).box;
+			const many = Array.from({ length: 20000 }, () => ({ ...one }));
+			const t0 = performance.now();
+			assert.deepEqual(labelProblems(many, view).filter((p) => !p.includes("stem")), ['labels "a" and "a" overlap']);
+			assert.ok(performance.now() - t0 < 1000);
+		});
 		it("passes labels that are apart", () => {
 			assert.deepEqual(labelProblems([anchor("a", -4, 0).box, anchor("b", 4, 0).box], view), []);
 		});
