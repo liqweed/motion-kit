@@ -272,6 +272,14 @@ describe("label anchors", () => {
 			assert.deepEqual(labelProblems(many, view).filter((p) => !p.includes("stem")), ['labels "a" and "a" overlap']);
 			assert.ok(performance.now() - t0 < 1000);
 		});
+		it("ignores extra properties on a box when matching copies", () => {
+			const one = anchor("a", 0, 0).box;
+			/** @type {any} */
+			const circular = { ...one };
+			circular.self = circular;
+			const boxes = /** @type {any[]} */ ([circular, { ...one, extra: 1n }, { ...one, extra: 2n }]);
+			assert.doesNotThrow(() => labelProblems(boxes, view));
+		});
 		it("passes labels that are apart", () => {
 			assert.deepEqual(labelProblems([anchor("a", -4, 0).box, anchor("b", 4, 0).box], view), []);
 		});

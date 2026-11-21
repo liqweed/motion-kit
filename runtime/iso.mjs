@@ -580,14 +580,14 @@ export function labelProblems(boxes, { width, height, gap = 4, limit = Infinity,
 	if (limit === 0) return [];
 	const eps = 1e-9; // rounded box edges that meet exactly must not fail on float noise
 	// Drawn unless it fades out: `fade` drops an element whose opacity rounds to 0.
-	// Exact copies (same id, geometry and stem) all say the same sentences, and two
+	// Exact copies (same id, geometry and stem coordinates) all say the same sentences, and two
 	// of them already report an overlap with each other, so a third adds nothing:
 	// keep two, which bounds the work on a scene that repeats one box thousands of times.
 	/** @type {Map<string, number>} */
 	const copies = new Map();
 	const drawn = boxes.filter((b) => {
 		if (b.opacity !== undefined && Math.round(b.opacity * 1000) <= 0) return false;
-		const key = JSON.stringify([b.id, b.x, b.y, b.width, b.height, b.stem]);
+		const key = JSON.stringify([b.id, b.x, b.y, b.width, b.height, b.stem && [b.stem.x1, b.stem.y1, b.stem.x2, b.stem.y2]]);
 		const n = (copies.get(key) ?? 0) + 1;
 		copies.set(key, n);
 		return n <= 2;
