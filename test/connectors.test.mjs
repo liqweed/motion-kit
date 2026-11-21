@@ -250,6 +250,9 @@ describe("examples/connectors.scene.mjs feeder junctions", () => {
 		reach.forEach((ta, k) => {
 			const lit = litPaths(ta + 0.3).map((m) => m.match(/d="([^"]*)"/)?.[1]);
 			assert.deepEqual([...lit].sort(), order.slice(0, base + k + 1).sort(), `junction ${k + 1} itself is the one lit at ${ta.toFixed(2)} s`);
+			// Settled means fully opaque: a settled fade renders a bare <g>, so a diamond held at partial opacity (<g opacity="…">) must not count.
+			const opaque = (scene.frame(ta + 0.3, { idPrefix: "x" }).match(/<g><path d="M[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ Z"[^>]*fill="var\(--mk-accent\)"/g) ?? []).length;
+			assert.equal(opaque, base + k + 1, `junction ${k + 1} and the ones before it are lit at full opacity once settled`);
 		});
 	});
 });
