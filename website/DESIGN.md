@@ -54,7 +54,8 @@ falls back to a system glyph; subset it in if that shows.
 ## Grid, shape and spacing
 
 - A 12-column grid with 16 px gutters. The unit is 8 px: every block is a whole
-  number of modules. The design shows an 8 px ruler on every plate edge.
+  number of modules, except the 44 px interactive control target below. The
+  design shows an 8 px ruler on every plate edge.
 - Square corners everywhere (`border-radius: 0`). The logo is the only rounded
   shape.
 - 1 px rules, 2 px plate edges, 24 px square callout markers, 44 px controls.

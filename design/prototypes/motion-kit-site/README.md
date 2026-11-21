@@ -32,9 +32,13 @@ Module artboards (three, light and dark) were then copied here as
 were removed, the web-font link was replaced by the self-hosted files, and the
 canvas's uploaded images became files under `assets/`. The conversion also
 adds ink outlines to amber markers and strengthens the light-page borders from
-`#8b929c` to `#4b5563` where the contrast check required it. Other markup and
-copy are unchanged. This is a hand conversion, not an export made by Claude
-Design's own tool.
+`#8b929c` to `#4b5563` where the contrast check required it. Subsequent
+repository corrections add `box-sizing: border-box` and 2 px `#f3f4f6`
+keylines to the five dark target markers in both the static page and its
+archived canvas-source counterpart. Those are post-delivery contrast fixes,
+not attributes of the raw Claude Design export; other markup and copy are
+unchanged. This is a hand conversion, not an export made by Claude Design's
+own tool.
 
 What this bundle does not show: the gallery, the docs pages, a "needs" card,
 the isometric showcase, motion, and any width below 1200 px. Building the site
