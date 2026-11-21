@@ -48,7 +48,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
   serializable scene options, passed unchanged; option names `format`,
-  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
+  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
@@ -269,6 +269,48 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   length in world units, so a token keeps a constant speed whatever the camera
   does when its progress is linear (`tokenPoints` defaults to `easeStandard`;
   pass `ease: linear`).
+
+### 4.10 Connectors (`runtime/connectors.mjs`)
+
+For custom scenes that tie pieces together; handed to them in `kit`. Pure
+functions; a colour is a token name (G4 applies).
+
+- **Path.** `connectorPath(points, {camera?})` is a route through flat points
+  (picture pixels) or, with a `camera`, through world points projected by it.
+  `at(f)`, `cut(f)` (the picture points up to `f`) and `tip(f)` (the point and
+  the direction of travel, in radians) go by distance along the path, in the
+  world under a camera, so a pulse on a linear `ease` keeps a constant world
+  speed whatever the camera does. It throws for fewer than two points, a
+  non-finite coordinate or a path of no length.
+- **Connector.** `drawConnector(path, p, {stroke, width, dash, arrow,
+  arrowSize, opacity, id})` draws the path up to fraction `p` (the eased
+  progress of a draw-on) as a dashed polyline: nothing for `p ≤ 0`; the dash
+  pattern (default `6 5`) starts at the path's start, so dashes stand still as
+  the line grows, and `p ≥ 1` is the dashed line it rests as. An open-V
+  arrowhead (default on) rides the leading end and fades in over the first
+  tenth of `p`.
+- **Junction.** `drawJunction({at, camera?, plane, size, lit, fill, stroke,
+  litFill, litStroke, strokeWidth, opacity, id})` draws a diamond, a square
+  turned 45°, `size` pixels from centre to corner. `plane: "screen"` stands on
+  the picture; `"floor"` lies in the floor plane of an iso view: the same
+  diamond flattened by `sin(elevation)`, full in plan view. `lit` (0..1)
+  cross-fades the reached layer over the resting one. It throws for a size of
+  0 or less and for another plane.
+- **Pulse.** `drawPulse(path, t, run, {color, radius})` is a light that
+  travels the connector once. `run` is `{start, duration, lag?, ease?, hold?}`:
+  the head takes `duration` s on `ease` (default `easeStandard`) and the tail
+  follows `lag` s later (default `PULSE_LAG`, 0.12 s) on the same curve, so the
+  light stretches in flight and gathers at the end (split edges, §4.5). The
+  head has a glow (three halos of one token, fainter outward) and the tail
+  fades toward its trailing end. It grows in over the first tenth of its life
+  and, unless held, fades over the last sixth. It draws nothing before `start`
+  and, without `hold`, from `pulseEnd(run)` = `start + duration + lag` on; with
+  `hold` the head stays lit at the end of the connector. `pulseHead(t, run)` is
+  the head's fraction of the path, for lighting a target as the pulse passes.
+- **Canon.** A pulse runs once, in a step's beat, like a token (§4.8): every
+  pulse of the beat is over (`pulseEnd`) at least 50 ms before the step's `at`,
+  its target has filled, and nothing repeats while a step rests, so the
+  settled-frame rule (G6) holds. Several pulses may run in one beat.
 
 ## 5. Markup
 

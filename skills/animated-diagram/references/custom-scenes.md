@@ -158,6 +158,32 @@ arrived, and the arrivals have filled, before the step's time (the settled-step
 rule in the gate applies as ever), and a token that stops mid-path is not a
 resting state. A token never loops back to the start.
 
+## Connectors, junctions and pulses
+
+`kit` also ties pieces together (`runtime/connectors.mjs`). Template:
+`examples/connectors.scene.mjs` (a request fans out through a diamond splitter;
+a result rides an isometric feeder line through three junctions).
+
+| Need | Use |
+|---|---|
+| A route | `connectorPath(points, { camera? })`: flat `{ x, y }` points in pixels, or world `{ x, y, z }` points projected by `camera` (build it once if the camera rests, each frame if it moves). Positions go by distance, in the world under a camera |
+| A dashed connector | `drawConnector(path, p, { stroke, width, dash, arrow, opacity })`: draws the route up to fraction `p`, a dashed line whose dashes stay put as it grows. Draw it on with `progress(t, start, 0.5, easeStandard)`; at `p = 1` it is the resting dashed line. An open-V arrowhead rides the leading end (`arrow: false` for none) |
+| A diamond junction | `drawJunction({ at, camera?, plane, size, lit })` where connectors turn, split or join. `plane: "screen"` (default) stands on the picture, `"floor"` lies in an iso view's floor plane (give it the world point and the `camera`). `lit` (0..1) cross-fades the reached layer in, as a node's two layers do |
+| A light pulse | `drawPulse(path, t, { start, duration, lag?, ease?, hold? }, { color, radius })`: a head with a soft glow and a fading tail, from the connector's start to its end, once. `color` is a token (default `emphasis`). Gone at `pulseEnd(run)`, or held at the end with `hold` |
+
+**One pulse per step, inside the beat.** A pulse is a token with a glow: it runs
+once, in its step's beat, and is over before the step. Take `pulseEnd(run)`
+(`start + duration + lag`), add the time its target takes to light (200–300 ms),
+and put the step's `at` at least 50 ms after that; the settled-frame rule in the
+gate then holds. Several pulses may run in one beat: one per connector, starting
+together to fan out from a junction (the twin pulses of an explainer), or one
+after another, each starting when the last has arrived. Light a junction or a
+target when the pulse reaches it: `lit: progress(t, arriveAt, 0.25, easeStandard)`,
+where `arriveAt` is `run.start + run.duration` (with `ease: linear`, a junction
+at a fraction `f` of the path is reached at `run.start + f * run.duration`).
+A pulse never repeats while a step rests: a connector that pulses on a loop is
+ambient motion, which the canon rules out.
+
 Canon: no loops, no ambient motion, no continuous scrubbing, 12 s hard limit
 (8 s target). An isometric scene plays once and holds its last frame, like any
 other, and under reduced motion the player shows that frame. A constantly
