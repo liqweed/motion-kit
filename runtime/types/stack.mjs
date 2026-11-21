@@ -24,9 +24,16 @@
 import { lerp, progress, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { NEUTRAL, tok } from "../style.mjs";
+import { NEUTRAL, sharedPairs, tok } from "../style.mjs";
 import { drawOn, el, fade, num, text, translate } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
+
+/**
+ * The shared contrast pairs this type draws: layer labels, the rail and ticks, the packet dot over the accent rail; no text on the canvas.
+ * The gate holds its scenes to these and reports the other shared pairs as
+ * warnings (`contrastReport`, runtime/style.mjs).
+ */
+export const contrastPairs = sharedPairs("ink/surface", "onAccent/accent", "line/bg", "accent/bg", "emphasis/bg", "emphasis/accent");
 
 /** @import { Scene } from "../scene.mjs" */
 
@@ -226,6 +233,7 @@ export function stack(spec, { format = "16:9", locale = "en" } = {}) {
 		title: localize(spec.title, locale),
 		description: localize(spec.description, locale),
 		steps: order.map((li, k) => withId({ at: stepAt(k), label: labels[li], detail: localize(layers[li].detail, locale) }, layers[li].id)),
+		contrastPairs,
 		frame,
 	};
 }
