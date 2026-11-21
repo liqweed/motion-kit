@@ -45,12 +45,13 @@ export const KIT = Object.freeze({
 
 const RESERVED = ["format", "locale", "kit"];
 
+/** @import { Scene } from "./scene.mjs" */
+
 /**
- * Build and validate a scene from a module's default export. Returns the
- * `Scene` that `validateScene` returns. (No inline type import here: this file
- * is inlined into built pages, whose test forbids a dynamic-import lookalike.)
+ * Build and validate a scene from a module's default export.
  * @param {unknown} make the module's default export
  * @param {{ format?: string, locale?: string, options?: Record<string, unknown> | null }} [opts]
+ * @returns {Scene}
  */
 export function sceneFromModule(make, { format = "16:9", locale = "en", options } = {}) {
 	if (typeof make !== "function") throw new TypeError("a scene module's default export must be (opts) => scene");
