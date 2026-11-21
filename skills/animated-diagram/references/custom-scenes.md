@@ -195,7 +195,8 @@ Rules that keep it inside the canon:
   (`motion-vocabulary.md`, "Blur reveal or plain fade").
 - **Contrast.** Start the band's `opacity` at 0.2–0.4, but the gate checks the
   text against the canvas, not against the tinted band. With a custom style,
-  composite the band colour over the surface at that opacity and check the ink
+  composite the band colour at that opacity over the token actually behind it
+  (`bg` for text on the canvas, `surface` for text on a node) and check the ink
   against the result (4.5:1), or lower the opacity until it holds.
 
 ## Declared locales and narrative steps
