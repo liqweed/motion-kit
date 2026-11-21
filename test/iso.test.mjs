@@ -440,6 +440,15 @@ describe("the scene gate and labels", () => {
 		const r = checkScene(sceneWithLabels([], { labelBoxes: () => same }));
 		assert.ok(r.problems.length > 0 && r.problems.length <= 13, `${r.problems.length} problems`);
 	});
+	it("does a linear amount of work for thousands of identical label boxes", () => {
+		let reads = 0;
+		const make = () => ({ id: "same", get x() { reads++; return 10; }, y: 10, width: 50, height: 20 });
+		const boxes = Array.from({ length: 20000 }, make);
+		const problems = labelProblems(boxes, { width: 400, height: 400, limit: 13 });
+		assert.ok(problems.length > 0 && problems.length <= 13);
+		// Collapsing copies keeps this near one read per box; a quadratic scan would read ~10^8 times.
+		assert.ok(reads < boxes.length * 10, `${reads} reads of x`);
+	});
 	it("checks a label that is on screen only at one moment", () => {
 		const cam = camera({ azimuth: 0, elevation: 90, zoom: 20, pan: { x: 200, y: 200 } });
 		const a = labelAnchor(cam, { id: "a", at: { x: 0, y: 0 }, lines: ["Label"] });
