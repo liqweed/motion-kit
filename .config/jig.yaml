@@ -52,6 +52,23 @@ changelog:
   # instead of costing a commit on main per merge (`write`, the default under
   # `direct`).
   unreleased: wait
+
+design_brief:
+  # Where finished Claude Design bundles land, one folder per flow
+  # (`design/prototypes/<flow-slug>/`); chosen by the maintainer in #14.
+  prototypes: design/prototypes
+  # website/DESIGN.md pins the house values (easing, press scale, heading case,
+  # typeface); the design-brief builder binds new briefs to it.
+  design_language: website/DESIGN.md
+  handback:
+    # 1440 and 1200 px: the two desktop frames the round drew. No phone width
+    # yet; the site build (#61) adds and verifies one.
+    widths: [1440, 1200]
+    rubric: design/prototypes/RUBRIC.md
+    scorecard: design/prototypes/review-scorecard.md
+    browser_executable: /usr/bin/google-chrome
+    forbidden_terms: ["lorem ipsum", "Space Grotesk"]
+
 dispatch:
   # What `jig dispatch` does here, read from `main` on the forge at every run
   # (a change takes effect once it merges; which stages the host runs is the

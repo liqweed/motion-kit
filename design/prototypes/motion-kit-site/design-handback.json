@@ -1,0 +1,11 @@
+{
+	"version": 1,
+	"scenarios": [
+		{ "name": "hero-light", "url": "hero-light.html", "ready": "img", "screenshot": "screenshots/hero-light.png" },
+		{ "name": "hero-dark", "url": "hero-dark.html", "ready": "img", "screenshot": "screenshots/hero-dark.png" },
+		{ "name": "where-it-runs-light", "url": "where-it-runs-light.html", "ready": "img", "screenshot": "screenshots/where-it-runs-light.png" },
+		{ "name": "where-it-runs-dark", "url": "where-it-runs-dark.html", "ready": "img", "screenshot": "screenshots/where-it-runs-dark.png" },
+		{ "name": "player-light", "url": "player-light.html", "ready": "img", "screenshot": "screenshots/player-light.png" },
+		{ "name": "player-dark", "url": "player-dark.html", "ready": "img", "screenshot": "screenshots/player-dark.png" }
+	]
+}
