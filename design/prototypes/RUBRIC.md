@@ -18,3 +18,4 @@ mechanical rows; a person verifies the rest, and the scorecard
 | 8 | Controls are real buttons and links, with a visible focus state and 40 px or larger targets where the design says so | Read the markup |
 | 9 | The look is the picked direction's: its typefaces, shape language and layout idea | Look at the screenshots against the contract |
 | 10 | A person has picked this design | Recorded in `DECISION.md` |
+| 11 | Impeccable's detector (pinned `impeccable@4.10.0`, `detect` on each rendered page) reports no anti-pattern, or each finding is recorded with the person's decision | Run it against the bundle served locally |

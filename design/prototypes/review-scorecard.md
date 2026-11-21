@@ -22,6 +22,7 @@ Reviewed export base: 343535f6be880c246f19bde9c11194d5f5c95dc4
 | 8 | Real controls, focus state, target size | Pass with a finding | Real `<button>` and `<a>`, labelled, amber focus ring (3.2:1 on white). See finding 2 |
 | 9 | The look is the picked direction's | Pass with a finding | Instrument Sans and DM Mono, square corners, 8 px ruler, numbered callouts keyed to a legend. See finding 3 |
 | 10 | A person picked this design | Pass | `motion-kit-site/DECISION.md` |
+| 11 | Impeccable's detector | Pass with a finding | One anti-pattern, decision open. See finding 5 |
 
 ## Findings
 
@@ -42,6 +43,20 @@ Reviewed export base: 343535f6be880c246f19bde9c11194d5f5c95dc4
    diagram) needs them: #76.
 4. **Open.** The arrow in `frame(t) → SVG` is not in the Latin subset of
    either typeface and falls back to a system glyph.
+
+5. **Open, Ophir to decide.** Impeccable's detector (`impeccable@4.10.0
+   detect`, run on each page served locally) reports `overused-font` for
+   Instrument Sans: 59% of the text on the hero pages and 65% on the "where it
+   runs" pages. The player pages are not flagged. The variation pair, Albert
+   Sans + Spline Sans Mono, is not flagged on the hero. The detector also gives
+   two advisories, a repeating-gradient stripe and a grid-line background; both
+   are the 8 px ruler the Module contract asks for, a measurement device, and
+   are kept. Ophir chose Instrument Sans + DM Mono before the finding was
+   known. Keep it, or switch to the variation: switching means self-hosting
+   Albert Sans and Spline Sans Mono, redoing the pages' font stacks and
+   re-capturing the screenshots. Rule 4 of the `checks` skill says the
+   repository's design language wins over a vendored skill, so the outcome is
+   recorded in `website/DESIGN.md`.
 
 ## Not covered by this bundle
 
