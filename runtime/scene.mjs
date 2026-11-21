@@ -40,12 +40,14 @@ import { normalizeStyle, cssVars, resolveTokens } from "./style.mjs";
  */
 /**
  * An animated diagram as a pure function of time (see the module comment).
- * `contrastPairs`: token pairs the scene draws beyond CONTRAST_PAIRS
- * (runtime/style.mjs), which the gate checks the style against.
+ * `contrastPairs`: the token pairs the scene draws (runtime/style.mjs
+ * `sharedPairs` picks from CONTRAST_PAIRS; others are written out). The gate
+ * holds the style to exactly these and reports the shared pairs left out as
+ * warnings; a scene that declares none is held to all of CONTRAST_PAIRS.
  * `labelBoxes`: the box of every label `frame(t)` draws, in the picture's
  * coordinates (`labelAnchor` returns one); the gate fails a scene whose labels
  * overlap, whose stems cross a label, or that leave the picture (runtime/iso.mjs).
- * @typedef {{ id: string, width: number, height: number, duration: number, title: string, description: string, steps: Step[], frame: (t: number, ctx: FrameContext) => string, stepLabelsInFrame?: boolean, contrastPairs?: { fg: string, bg: string, min: number, use?: string }[], labelBoxes?: (t: number) => LabelBox[], type?: string, format?: string, locale?: string }} Scene
+ * @typedef {{ id: string, width: number, height: number, duration: number, title: string, description: string, steps: Step[], frame: (t: number, ctx: FrameContext) => string, stepLabelsInFrame?: boolean, contrastPairs?: readonly { fg: string, bg: string, min: number, use?: string }[], labelBoxes?: (t: number) => LabelBox[], type?: string, format?: string, locale?: string }} Scene
  */
 
 /** Formats: name → viewBox. Layouts are computed per format, never cropped. */

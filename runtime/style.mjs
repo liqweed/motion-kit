@@ -163,10 +163,12 @@ export function contrast(a, b) {
  */
 
 /**
- * Every token pair the scene types and shared parts draw where the pair
- * carries meaning in a step frame (runtime/types/*, runtime/parts.mjs). A
- * scene that draws other pairs declares them in `scene.contrastPairs`; the
- * gate checks those too (lib/check.mjs).
+ * The shared list: every token pair the scene types and shared parts draw
+ * where the pair carries meaning in a step frame (runtime/types/*,
+ * runtime/parts.mjs), with the contrast WCAG asks of it. It is the menu the
+ * scene types pick from (`sharedPairs`), not what every scene must meet: a
+ * scene is held to the pairs it draws (`contrastReport`). A scene that
+ * declares nothing is held to all of them.
  * @type {readonly ContrastPair[]}
  */
 export const CONTRAST_PAIRS = Object.freeze([
@@ -177,12 +179,12 @@ export const CONTRAST_PAIRS = Object.freeze([
 	{ fg: "onAccent", bg: "accent", min: 4.5, use: "labels, glyphs and icons inside reached nodes (boxNode, circleNode)" },
 	{ fg: "line", bg: "bg", min: 3, use: "connectors and the outlines of pending nodes" },
 	{ fg: "accent", bg: "bg", min: 3, use: "reached nodes and drawn connectors" },
-	{ fg: "emphasis", bg: "bg", min: 3, use: "the emphasis ring (sequence) and dot (hub-spoke) on the canvas" },
+	{ fg: "emphasis", bg: "bg", min: 3, use: "the emphasis ring (sequence, flowchart) and dot (hub-spoke, stack, walk) on the canvas, and the timeline's now pill" },
 	{
 		fg: "emphasis",
 		bg: "accent",
 		min: 3,
-		use: "the emphasis ring around the reached node it marks (sequence): 3.5 units apart, so adjacent at phone size. It tells the current node from the reached ones without relying on hue",
+		use: "the emphasis ring around the reached node it marks (sequence, flowchart): 3.5 units apart, so adjacent at phone size. It tells the current node from the reached ones without relying on hue. The dot of hub-spoke, stack and walk rides over accent connectors",
 	},
 ]);
 
@@ -200,6 +202,38 @@ export const CONTRAST_EXEMPT = Object.freeze([
 ]);
 
 /**
+ * Why a list of pairs cannot be checked (empty = it can).
+ * @param {string} name the style's name, for the message
+ * @param {unknown} pairs
+ * @returns {string[]}
+ */
+function malformedPairs(name, pairs) {
+	if (!Array.isArray(pairs)) return [`${name}: contrast pairs must be an array of { fg, bg, min }`];
+	const problems = [];
+	for (const [i, p] of pairs.entries()) {
+		const bad = !p || typeof p !== "object" ? "is not an object" : !TOKENS.includes(p.fg) ? `has unknown fg token "${p.fg}"` : !TOKENS.includes(p.bg) ? `has unknown bg token "${p.bg}"` : !(typeof p.min === "number" && p.min >= 1 && p.min <= 21) ? "needs a min contrast between 1 and 21" : "";
+		if (bad) problems.push(`${name}: contrast pair ${i} ${bad}`);
+	}
+	return problems;
+}
+
+/**
+ * Each pair a style does not reach, in both themes.
+ * @param {ReturnType<typeof normalizeStyle>} s
+ * @param {readonly ContrastPair[]} pairs well-formed
+ */
+function misses(s, pairs) {
+	const out = [];
+	for (const theme of /** @type {const} */ (["light", "dark"])) {
+		for (const { fg, bg, min } of pairs) {
+			const ratio = contrast(s[theme][fg], s[theme][bg]);
+			if (ratio < min) out.push({ theme, fg, bg, min, ratio });
+		}
+	}
+	return out;
+}
+
+/**
  * WCAG contrast checks a style must pass, in both themes.
  * @param {any} style style data or "neutral"; normalizeStyle fills the rest
  * @param {readonly ContrastPair[]} [pairs] default CONTRAST_PAIRS; a scene's
@@ -208,18 +242,41 @@ export const CONTRAST_EXEMPT = Object.freeze([
  */
 export function checkContrast(style, pairs = CONTRAST_PAIRS) {
 	const s = normalizeStyle(style);
-	if (!Array.isArray(pairs)) return [`${s.name}: contrast pairs must be an array of { fg, bg, min }`];
-	const problems = [];
-	for (const [i, p] of pairs.entries()) {
-		const bad = !p || typeof p !== "object" ? "is not an object" : !TOKENS.includes(p.fg) ? `has unknown fg token "${p.fg}"` : !TOKENS.includes(p.bg) ? `has unknown bg token "${p.bg}"` : !(typeof p.min === "number" && p.min >= 1 && p.min <= 21) ? "needs a min contrast between 1 and 21" : "";
-		if (bad) problems.push(`${s.name}: contrast pair ${i} ${bad}`);
-	}
-	if (problems.length) return problems;
-	for (const theme of ["light", "dark"]) {
-		for (const { fg, bg, min } of pairs) {
-			const r = contrast(s[theme][fg], s[theme][bg]);
-			if (r < min) problems.push(`${s.name} ${theme}: ${fg} on ${bg} is ${r.toFixed(2)}:1, needs ${min}:1`);
-		}
-	}
-	return problems;
+	const bad = malformedPairs(s.name, pairs);
+	if (bad.length) return bad;
+	return misses(s, pairs).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, needs ${m.min}:1`);
+}
+
+/**
+ * The shared pairs a scene type draws, picked from CONTRAST_PAIRS by their
+ * `fg/bg` names, in the order of that list. A scene type records them with
+ * the type (`contrastPairs` on its scenes) and a custom scene may do the same.
+ * @param {...string} names `"fg/bg"`, e.g. `"ink/bg"`; throws on one that CONTRAST_PAIRS does not hold
+ * @returns {readonly ContrastPair[]}
+ */
+export function sharedPairs(...names) {
+	for (const n of names) if (!CONTRAST_PAIRS.some((p) => `${p.fg}/${p.bg}` === n)) throw new Error(`sharedPairs: "${n}" is not a shared pair (known: ${CONTRAST_PAIRS.map((p) => `${p.fg}/${p.bg}`).join(", ")})`);
+	return Object.freeze(CONTRAST_PAIRS.filter((p) => names.includes(`${p.fg}/${p.bg}`)));
+}
+
+/**
+ * What one scene owes the style, WCAG 1.4.3 and 1.4.11 applied to the pairs it
+ * draws. A scene that declares no pairs draws, for this purpose, all of
+ * CONTRAST_PAIRS: every miss is a problem. A scene that declares them
+ * (`scene.contrastPairs`) is held to those; the shared pairs it does not
+ * declare are only reported, as warnings, because WCAG judges what is drawn,
+ * not the palette.
+ * @param {any} style style data or "neutral"
+ * @param {readonly ContrastPair[]} [drawn] `scene.contrastPairs`
+ * @returns {{ problems: string[], warnings: string[] }}
+ */
+export function contrastReport(style, drawn) {
+	const s = normalizeStyle(style);
+	// An empty list says nothing about what is drawn, which is no reason to drop every check.
+	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) return { problems: checkContrast(s), warnings: [] };
+	const problems = checkContrast(s, drawn);
+	if (problems.length && (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length)) return { problems, warnings: [] };
+	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => d.fg === p.fg && d.bg === p.bg));
+	const warnings = misses(s, undrawn).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`);
+	return { problems, warnings };
 }

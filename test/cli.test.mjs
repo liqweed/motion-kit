@@ -98,7 +98,8 @@ describe("cli", () => {
 
 		r = node(gate, join(dir, "scenes/labelled.scene.mjs"), "--format", "tall", "--style", join(dir, "low.json"), "--options", join(dir, "scenes/labels.mjs"));
 		assert.equal(r.status, 1);
-		assert.match(r.out, /✗ style: low light: onAccent on accent/);
+		assert.match(r.out, /⚠ style: low light: onAccent on accent is 2\.54:1, needs 4\.5:1 \(held against: .*custom scenes that declare no contrastPairs/);
+		assert.match(r.out, /✗ .*labelled\.scene\.mjs · tall · en\n {2}- contrast: low light: onAccent on accent/);
 
 		writeFileSync(join(dir, "scenes/broken.json"), "{ not json");
 		r = node(gate, join(dir, "scenes/missing.scene.mjs"), join(dir, "scenes/broken.json"), join(dir, "scenes/order-flow.json"), "--format", "16:9");
@@ -140,14 +141,49 @@ describe("cli", () => {
 		writeFileSync(join(dir, "blue.json"), JSON.stringify({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" }, dark: { accent: "#2563eb", emphasis: "#fbbf24" } }));
 		let r = node(CLI, "check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
 		assert.equal(r.status, 1);
-		assert.match(r.out, /✗ style: blue light: emphasis on accent is 1\.13:1, needs 3:1/);
+		// The style's result for every shared pair is shown once, as a warning with who draws it;
+		// order-flow (a sequence) draws emphasis on accent, so it fails there.
+		assert.match(r.out, /⚠ style: blue light: emphasis on accent is 1\.13:1, needs 3:1 \(held against: sequence, /);
+		assert.match(r.out, /✗ .*order-flow\.json · 16:9 · en\n {2}- contrast: blue light: emphasis on accent is 1\.13:1, needs 3:1/);
 		// A lighter dark surface passes the shared pairs but not custom-pulse's bar on its track.
 		writeFileSync(join(dir, "raised.json"), JSON.stringify({ name: "raised", dark: { surface: "#2b3242" } }));
 		r = node(CLI, "check", `${EX}order-flow.json`, `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "raised.json"));
 		assert.equal(r.status, 1);
 		assert.match(r.out, /✓ .*order-flow\.json · 16:9/);
 		assert.match(r.out, /✗ .*custom-pulse\.scene\.mjs · 16:9 · en\n {2}- contrast: raised dark: accent on surface is 2\.48:1, needs 3:1/);
-		assert.doesNotMatch(r.out, /✗ style:/);
+		assert.doesNotMatch(r.out, /⚠ style:/);
+	});
+	it("fails only the pairs a scene draws: a custom scene that declares them passes with a warning, one that declares nothing fails", () => {
+		const dir = join(tmp, "drawn");
+		mkdirSync(dir);
+		// Emphasis is 1.43:1 on the canvas, and neither scene draws it.
+		writeFileSync(join(dir, "paper.json"), JSON.stringify({ name: "paper", light: { emphasis: "#d8d8d8" } }));
+		writeFileSync(join(dir, "labels.json"), JSON.stringify({ labels: { title: "Three steps", steps: ["First", "Second", "Third"] } }));
+		const declared = join(dir, "declared.scene.mjs");
+		const undeclared = join(dir, "undeclared.scene.mjs");
+		writeFileSync(declared, LABELLED.replace("title: labels.title,", 'contrastPairs: kit.sharedPairs("ink/bg", "accent/bg"), title: labels.title,'));
+		writeFileSync(undeclared, LABELLED);
+		const opts = ["--options", join(dir, "labels.json"), "--style", join(dir, "paper.json")];
+		// Warnings go to stderr, which `node` drops from a run that succeeds.
+		const both = (/** @type {string[]} */ ...args) => {
+			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
+			return { status: p.status, out: `${p.stdout}${p.stderr}` };
+		};
+		let r = both("check", declared, "-f", "16:9", ...opts);
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /⚠ style: paper light: emphasis on bg is 1\.\d+:1, needs 3:1 \(held against: .*\)/);
+		assert.match(r.out, /✓ .*declared\.scene\.mjs · 16:9/);
+		assert.doesNotMatch(r.out, /✗/);
+		r = both("build", declared, "-o", join(dir, "declared.html"), ...opts);
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /motion-kit: warning: contrast: paper light: emphasis on bg is 1\.\d+:1, 3:1 recommended \(this scene does not draw it\)/);
+		assert.ok(existsSync(join(dir, "declared.html")));
+		r = both("check", undeclared, "-f", "16:9", ...opts);
+		assert.equal(r.status, 1);
+		assert.match(r.out, /✗ .*undeclared\.scene\.mjs · 16:9 · en\n {2}- contrast: paper light: emphasis on bg is /);
+		r = both("build", undeclared, "-o", join(dir, "undeclared.html"), ...opts);
+		assert.equal(r.status, 1);
+		assert.match(r.out, /scene fails the gate/);
 	});
 	it("export writes standalone steps, QC frames and a reproducible manifest", () => {
 		const dir = join(tmp, "exp");

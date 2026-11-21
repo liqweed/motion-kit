@@ -21,9 +21,9 @@ import * as svgMod from "../runtime/svg.mjs";
 import * as isoMod from "../runtime/iso.mjs";
 import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
-import { checkContrast, contrast, CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, normalizeStyle, resolveTokens } from "../runtime/style.mjs";
+import { checkContrast, contrast, contrastReport, CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, normalizeStyle, resolveTokens, sharedPairs } from "../runtime/style.mjs";
 import { cubic, drawOn, esc, num, polyline } from "../runtime/svg.mjs";
-import { createScene } from "../runtime/types/index.mjs";
+import { createScene, SCENE_TYPE_PAIRS } from "../runtime/types/index.mjs";
 import { wrapLabel } from "../runtime/wrap.mjs";
 
 const EXAMPLES = ["order-flow", "smart-home"].map((n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), "utf8")));
@@ -150,6 +150,85 @@ describe("styles", () => {
 		const scene = { ...clipped, contrastPairs: pairs };
 		assert.deepEqual(checkScene(scene).problems, []);
 		assert.deepEqual(checkScene(scene, { style: { name: "raised", dark: { surface: "#2b3242" } } }).problems, ["contrast: raised dark: accent on surface is 2.48:1, needs 3:1"]);
+	});
+	it("picks shared pairs by name, in the order of the shared list, and refuses an unknown one", () => {
+		assert.deepEqual(sharedPairs("emphasis/bg", "ink/bg").map((p) => `${p.fg}/${p.bg}`), ["ink/bg", "emphasis/bg"]);
+		assert.throws(() => sharedPairs("ink/bg", "accent/surface"), /"accent\/surface" is not a shared pair/);
+	});
+	it("holds a scene to the pairs it declares and only warns about the shared pairs it leaves out", () => {
+		// Blue accent, a mid-tone emphasis one shade off it: fine on the canvas, 1.13:1 on the accent.
+		const blue = { name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" } };
+		assert.equal(contrastReport(blue).problems.length, 2, "a scene that declares nothing is held to every shared pair");
+		assert.deepEqual(contrastReport(blue).warnings, []);
+		const drawn = sharedPairs("ink/bg", "line/bg", "accent/bg", "emphasis/bg");
+		assert.deepEqual(contrastReport(blue, drawn), {
+			problems: [],
+			warnings: [
+				"blue light: emphasis on accent is 1.13:1, 3:1 recommended (this scene does not draw it)",
+				"blue dark: emphasis on accent is 1.13:1, 3:1 recommended (this scene does not draw it)",
+			],
+		});
+		// Both themes, with ratio and threshold, for each pair.
+		const bleak = { name: "bleak", light: { onAccent: "#9ab0ff", emphasis: "#3b6cf0", accent: "#2563eb" }, dark: { emphasis: "#2563eb" } };
+		assert.deepEqual(contrastReport(bleak, drawn).warnings.map((w) => w.replace(/ is .*/, "")), ["bleak light: onAccent on accent", "bleak light: emphasis on accent", "bleak dark: emphasis on accent"]);
+		assert.deepEqual(contrastReport(NEUTRAL, drawn), { problems: [], warnings: [] });
+		// What a scene declares is held to the threshold it declares, text at 4.5 included.
+		assert.deepEqual(contrastReport({ name: "low", light: { muted: "#9a9a9a" } }, sharedPairs("muted/bg")).problems, ["low light: muted on bg is 2.81:1, needs 4.5:1"]);
+		// A malformed declaration is a problem and nothing else.
+		assert.deepEqual(contrastReport(NEUTRAL, [{ fg: "brand", bg: "bg", min: 3 }]), { problems: ['neutral: contrast pair 0 has unknown fg token "brand"'], warnings: [] });
+	});
+	it("each scene type records the shared pairs it draws, and neutral meets them all without a warning", () => {
+		const shared = new Set(CONTRAST_PAIRS);
+		for (const [type, pairs] of Object.entries(SCENE_TYPE_PAIRS)) {
+			assert.ok(pairs.length > 0 && pairs.every((p) => shared.has(p)), `${type} draws pairs from the shared list`);
+			assert.deepEqual(contrastReport(NEUTRAL, pairs), { problems: [], warnings: [] }, type);
+		}
+		for (const spec of EXAMPLES) assert.equal(createScene(spec, { format: "16:9", locale: "en" }).contrastPairs, SCENE_TYPE_PAIRS[spec.type], spec.type);
+		// The ring of a sequence or flowchart sits next to the reached node, the dots of hub-spoke,
+		// stack and walk ride over accent links and the timeline's axis runs into its now pill; no type draws all nine.
+		const names = (type) => SCENE_TYPE_PAIRS[type].map((p) => `${p.fg}/${p.bg}`);
+		assert.ok(names("sequence").includes("emphasis/accent") && names("hub-spoke").includes("emphasis/bg"));
+		assert.ok(!names("timeline").includes("ink/surface") && !names("hub-spoke").includes("ink/bg"));
+		assert.ok(Object.keys(SCENE_TYPE_PAIRS).every((t) => SCENE_TYPE_PAIRS[t].length < CONTRAST_PAIRS.length));
+	});
+	it("fails the built-in types on the pairs they draw, and a custom scene on the pairs it declares or, declaring none, on all", () => {
+		const blue = { name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" } };
+		const nothing = checkScene(clipped, { style: blue });
+		assert.deepEqual(nothing.problems, ["contrast: blue light: emphasis on accent is 1.13:1, needs 3:1", "contrast: blue dark: emphasis on accent is 1.13:1, needs 3:1"], "declares nothing: every shared pair, as before");
+		// Declares what it draws, never emphasis: passes, with the warning.
+		const scene = { ...clipped, contrastPairs: sharedPairs("ink/surface", "onAccent/accent", "line/bg", "accent/bg") };
+		const r = checkScene(scene, { style: blue });
+		assert.deepEqual(r.problems, []);
+		assert.equal(r.ok, true);
+		assert.deepEqual(r.warnings, [
+			"blue light: emphasis on accent is 1.13:1, 3:1 recommended (this scene does not draw it)",
+			"blue dark: emphasis on accent is 1.13:1, 3:1 recommended (this scene does not draw it)",
+		]);
+		// A declared text pair under 4.5:1 fails.
+		const dull = { name: "dull", light: { muted: "#9a9a9a" } };
+		assert.deepEqual(checkScene({ ...clipped, contrastPairs: sharedPairs("muted/bg") }, { style: dull }).problems, ["contrast: dull light: muted on bg is 2.81:1, needs 4.5:1"]);
+		assert.equal(checkScene({ ...clipped, contrastPairs: sharedPairs("muted/bg") }, { style: dull }).ok, false);
+		// The built-in types fail on the pairs they draw: a sequence on emphasis on accent, and
+		// a sequence or a hub-spoke on an emphasis under 3:1 on the canvas.
+		const hub = JSON.parse(readFileSync(new URL("../examples/smart-home.json", import.meta.url), "utf8"));
+		const seq = JSON.parse(readFileSync(new URL("../examples/order-flow.json", import.meta.url), "utf8"));
+		assert.ok(checkScene(createScene(seq, { format: "16:9", locale: "en" }), { style: blue }).problems.some((p) => /emphasis on accent is 1\.13:1/.test(p)));
+		const faint = { name: "faint", light: { emphasis: "#f2f2f2" } }; // 1.1:1 on the white canvas
+		for (const spec of [seq, hub]) {
+			const { problems } = checkScene(createScene(spec, { format: "16:9", locale: "en" }), { style: faint });
+			assert.ok(problems.some((p) => /faint light: emphasis on bg is 1\.1\d:1, needs 3:1/.test(p)), `${spec.type}: ${problems.join("; ")}`);
+		}
+		// A type does not fail on a pair it does not draw: the timeline has no text on a surface.
+		const incident = JSON.parse(readFileSync(new URL("../examples/incident.json", import.meta.url), "utf8"));
+		const dim = { name: "dim", light: { surface: "#202020" } };
+		const t = checkScene(createScene(incident, { format: "16:9", locale: "en" }), { style: dim });
+		assert.deepEqual(t.problems, []);
+		assert.deepEqual(t.warnings.map((w) => w.replace(/ is .*/, "")), ["dim light: ink on surface", "dim light: muted on surface"]);
+		// A type that does draw it fails: a hub-spoke labels its boxes in ink.
+		assert.ok(checkScene(createScene(hub, { format: "16:9", locale: "en" }), { style: dim }).problems.some((p) => /dim light: ink on surface/.test(p)));
+		// An empty declaration is no declaration: every shared pair is still held.
+		assert.deepEqual(checkScene({ ...clipped, contrastPairs: [] }, { style: blue }).problems, nothing.problems);
+		assert.deepEqual(checkScene(createScene(incident, { format: "16:9", locale: "en" })).warnings, [], "neutral: no warnings");
 	});
 	it("rejects unknown tokens and non-hex colours", () => {
 		assert.throws(() => normalizeStyle({ light: { brand: "#000000" } }));

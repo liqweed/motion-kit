@@ -32,10 +32,14 @@ Rules:
   no module-level mutable state.
 - Colours only via `tok()`; numbers in strings via `num()`. Named colours
   (`"red"`) are literals too.
-- Drawing a token pair the scene types don't (accent on surface, emphasis on
-  onAccent)? Declare it so the gate checks the style against it:
-  `contrastPairs: [{ fg: "accent", bg: "surface", min: 3, use: "bar on its track" }]`
-  (4.5 for text, 3 for shapes; `references/styles.md`).
+- Say which token pairs the scene draws: `contrastPairs`. The gate holds the
+  style to those pairs (WCAG 1.4.3, 1.4.11) and only warns about the shared
+  ones you leave out, so a brand palette is never failed on a pair the scene
+  never shows. `kit.sharedPairs("ink/bg", "accent/bg", …)` picks shared pairs by
+  name; write out others, such as
+  `{ fg: "accent", bg: "surface", min: 3, use: "bar on its track" }` (4.5 for
+  text, 3 for shapes; `references/styles.md`). A scene that declares none is
+  held to every shared pair, so declare what you draw.
 - Use `fade()`/`el()` so invisible elements disappear; `drawOn()` for lines.
 - Ids (clip paths, gradients, masks, markers, filters) MUST be built from
   `idPrefix`, the second argument's field: `${idPrefix}-clip`, referenced as
