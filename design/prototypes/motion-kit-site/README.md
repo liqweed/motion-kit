@@ -40,7 +40,7 @@ from it is [#61](https://github.com/liqweed/motion-kit/issues/61).
 
 Bar outcome: pass
 
-Open decision: Impeccable's detector (`impeccable@4.10.0 detect`, 2026-11-21) flags the primary typeface, Instrument Sans, as overused on the hero and "where it runs" pages (59% and 65% of their text). The pair Albert Sans + Spline Sans Mono, drawn as the variation, is not flagged. Ophir chose Instrument Sans + DM Mono before this was known; whether to keep it or switch is theirs to decide, and `website/DESIGN.md` records it.
+Decided: Impeccable's detector (`impeccable@4.10.0 detect`, 2026-11-21) flags the primary typeface, Instrument Sans, as overused on the hero and "where it runs" pages (59% and 65% of their text). The pair Albert Sans + Spline Sans Mono, drawn as the variation, is not flagged. Ophir chose Instrument Sans + DM Mono before this was known; on 2026-11-21, after seeing both pairs side by side, they kept Instrument Sans + DM Mono. The flag is a heuristic, and `website/DESIGN.md` records the outcome.
 
 Export base: 343535f6be880c246f19bde9c11194d5f5c95dc4
 Export base provenance: raw export

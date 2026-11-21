@@ -12,6 +12,8 @@ Ophir picked the design; Claude recorded it.
 | 2026-11-20 | One direction, from rendered variations (typeface pair and dark theme) | Ophir | **Module** |
 | 2026-11-20 | Dark theme | Ophir | Accepted as drawn |
 | 2026-11-21 | Typeface pair, from a side-by-side specimen | Ophir, relayed by the coordinating session | **Instrument Sans + DM Mono** (pair A, the original) |
+| 2026-11-21 | Impeccable's `overused-font` flag on Instrument Sans: keep or switch to Albert Sans + Spline Sans Mono | Ophir, relayed by the coordinating session | **Keep** Instrument Sans + DM Mono; the flag is a heuristic |
+| 2026-11-21 | Press scale `scale(0.97)` on `:active`, 100 ms (proposed by Claude) | Ophir, relayed by the coordinating session | **Confirmed** |
 
 Ophir gave no rationale for the pick. The first pick, from text alone, was
 hard for them to make with confidence; the later picks were made from images.

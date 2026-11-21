@@ -25,14 +25,16 @@ fixed. Building the site from them is #61.
 | **Typeface** | Instrument Sans for all text; DM Mono for callout numerals, parameter names, commands and spec strips. Both SIL OFL 1.1, self-hosted (Latin and Latin Extended). Never Space Grotesk or Inter. |
 | **Heading case** | Sentence case. Weight 600, tracking 0, no uppercase headings. Small labels may be uppercase with +0.06em tracking. |
 | **Easing curve** | `cubic-bezier(0.4, 0, 0.2, 1)` for everything, the curve the logo draws and the diagrams use. No bounce, no elastic. |
-| **Press scale** | `scale(0.97)` on `:active` for buttons and square controls, 100 ms, the easing curve above. Proposed by Claude: the round drew static frames, so Ophir has not seen it. Confirm or change it before #61 builds it. |
+| **Press scale** | `scale(0.97)` on `:active` for buttons and square controls, 100 ms, the easing curve above. Proposed by Claude, confirmed by Ophir on 2026-11-21. |
 
-**Open decision on the typeface.** Impeccable's detector flags Instrument Sans
-as an overused primary font on the hero and "where it runs" pages (2026-11-21).
-The pinned pair stays as Ophir chose it until Ophir decides. The alternative,
-Albert Sans + Spline Sans Mono, is not flagged; it was drawn as a variation in
-the round. Record the outcome here, as the repository's design language wins
-over a vendored skill.
+**Typeface: resolved.** Impeccable's detector flags Instrument Sans as an
+overused primary font on the hero and "where it runs" pages (2026-11-21). Ophir
+kept Instrument Sans + DM Mono on 2026-11-21, after seeing both pairs side by
+side. The flag is a heuristic about how common a font is, not a defect in the
+design, and the repository's design language wins over a vendored skill. The
+alternative, Albert Sans + Spline Sans Mono, is not flagged; it was drawn as a
+variation in the round and is not used. A later detector run that reports
+`overused-font` on Instrument Sans is this known, accepted finding.
 
 ## Type
 
