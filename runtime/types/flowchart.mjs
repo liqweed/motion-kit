@@ -29,9 +29,16 @@
 import { progress, easings } from "../motion.mjs";
 import { FONT_MIN, maxFontSize, rectEdge } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { NEUTRAL, tok } from "../style.mjs";
+import { NEUTRAL, sharedPairs, tok } from "../style.mjs";
 import { drawOn, el, fade, num, polyline, text, translate } from "../svg.mjs";
 import { estimateWidth, wrapLabel } from "../wrap.mjs";
+
+/**
+ * The shared contrast pairs this type draws: node labels, edge labels on the canvas, the emphasis ring on the canvas and around the reached node; no muted on surface.
+ * The gate holds its scenes to these and reports the other shared pairs as
+ * warnings (`contrastReport`, runtime/style.mjs).
+ */
+export const contrastPairs = sharedPairs("ink/bg", "muted/bg", "ink/surface", "onAccent/accent", "line/bg", "accent/bg", "emphasis/bg", "emphasis/accent");
 
 export const FLOWCHART_SHAPES = ["box", "round", "pill", "decision"];
 export const FLOWCHART_DIRECTIONS = ["down", "up", "right", "left"];
@@ -398,6 +405,7 @@ export function flowchart(spec, { format = "16:9", locale = "en" } = {}) {
 		title: localize(spec.title, locale),
 		description: localize(spec.description, locale),
 		steps: order.map((v, k) => withId({ at: stepAt(k), label: labels[v], detail: localize(nodes[v].detail, locale) }, nodes[v].id)),
+		contrastPairs,
 		frame,
 	};
 }
