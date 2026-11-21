@@ -161,7 +161,7 @@ describe("drawPulse", () => {
 		const after = drawPulse(L, end + 0.5, held);
 		assert.notEqual(after, "");
 		for (const dt of [0, 0.5, 30, 3600]) assert.equal(drawPulse(L, end + dt, held), after);
-		assert.doesNotMatch(after, /<line/, "the tail has gathered into the head");
+		assert.doesNotMatch(after, /<path[^>]*fill="none"/, "the tail has gathered into the head");
 		assert.match(after, /cx="100" cy="50"/);
 	});
 	it("runs on the ease it is given", () => {
@@ -221,7 +221,9 @@ describe("examples/connectors.scene.mjs", () => {
 		});
 		assert.equal(added[0], 1, "the splitter diamond");
 		assert.equal(added[1], 3, "the three services");
-		assert.ok(added[2] >= 1, `the shelf lights on arrival: ${added[2]}`);
+		// The feeder's junctions are all lit before the pulse arrives, so what lights after is the shelf alone: its three visible faces.
+		assert.equal(accent(6.09), accent(5.9), "every feeder junction is lit before the pulse reaches the shelf");
+		assert.equal(added[2], 3, `the shelf lights on arrival: ${added[2]}`);
 	});
 });
 
