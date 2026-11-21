@@ -22,6 +22,13 @@ describe("connectorPath", () => {
 		assert.deepEqual(L.cut(0.5), [{ x: 0, y: 0 }, { x: 75, y: 0 }]);
 		assert.equal(L.cut(1).length, 3);
 	});
+	it("spans between two fractions through the corner between them", () => {
+		assert.deepEqual(L.span(0.6, 0.9), [{ x: 90, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 35 }]);
+		assert.deepEqual(L.span(0.1, 0.4), [{ x: 15, y: 0 }, { x: 60, y: 0 }]);
+	});
+	it("refuses a path whose length overflows", () => {
+		assert.throws(() => connectorPath([{ x: -1e308, y: 0 }, { x: 1e308, y: 0 }]), /finite length/);
+	});
 	it("gives the direction of travel at the tip", () => {
 		near(L.tip(0.25).angle, 0);
 		near(L.tip(0.9).angle, Math.PI / 2);
@@ -140,7 +147,7 @@ describe("drawPulse", () => {
 		const circles = mid.match(/<circle[^>]*>/g) ?? [];
 		assert.equal(circles.length, 4, "three halos and the core");
 		assert.ok(circles.every((c) => c.includes("var(--mk-emphasis)")));
-		const tail = (mid.match(/<line[^>]*>/g) ?? []).map((l) => Number(l.match(/opacity="([\d.]+)"/)?.[1]));
+		const tail = (mid.match(/<path d="[^"]*" fill="none"[^>]*>/g) ?? []).map((l) => Number(l.match(/opacity="([\d.]+)"/)?.[1]));
 		assert.ok(tail.length > 1 && tail.every((o, i) => i === 0 || o > tail[i - 1]), `tail opacities ${tail}`);
 		assert.match(drawPulse(L, 1.4, run, { color: "accent" }), /var\(--mk-accent\)/);
 	});
@@ -203,8 +210,29 @@ describe("examples/connectors.scene.mjs", () => {
 	});
 	it("lights the diamonds and the targets as the pulses reach them", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9" });
-		const [split, fan, feed] = scene.steps.map((s) => scene.frame(s.at, { idPrefix: "x" }));
-		const accent = (/** @type {string} */ f) => (f.match(/fill="var\(--mk-accent\)"/g) ?? []).length;
-		assert.ok(accent(split) < accent(fan) && accent(fan) < accent(feed), `${accent(split)} < ${accent(fan)} < ${accent(feed)}`);
+		const accent = (/** @type {number} */ t) => (scene.frame(t, { idPrefix: "x" }).match(/fill="var\(--mk-accent\)"/g) ?? []).length;
+		// Arrival times from the example's timeline: IN 2 + 0.6, OUT 3.2 + 0.7, FEED 4.5 + 1.6 (all s).
+		const arrivals = [2.6, 3.9, 6.1];
+		const added = arrivals.map((ta) => {
+			const before = accent(ta - 0.01);
+			// The feeder's junctions light on the way; the others only on arrival.
+			if (ta < 6) assert.equal(accent(ta - 0.3), before, `nothing lights before the pulse arrives at ${ta}`);
+			return accent(ta + 0.4) - before;
+		});
+		assert.equal(added[0], 1, "the splitter diamond");
+		assert.equal(added[1], 3, "the three services");
+		assert.ok(added[2] >= 1, `the shelf lights on arrival: ${added[2]}`);
+	});
+});
+
+describe("drawPulse corners and instantaneous runs", () => {
+	it("bends a tail slice at the corner instead of cutting across it", () => {
+		const out = drawPulse(L, 0.8, { start: 0, duration: 1, lag: 0.5, ease: linear });
+		assert.match(out, /<path d="M[^"]* L100 0 L[^"]*"/);
+	});
+	it("holds an instantaneous run at its end without NaN", () => {
+		const out = drawPulse(L, 1, { start: 1, duration: 0, lag: 0, hold: true });
+		assert.doesNotMatch(out, /NaN/);
+		assert.match(out, /<circle/);
 	});
 });

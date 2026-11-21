@@ -31,7 +31,7 @@ import { estimateWidth, wrapLabel } from "./wrap.mjs";
 
 /**
  * The runtime, flat, handed to custom scene modules as `opts.kit`: the exports
- * of motion, scene, style, svg, iso and wrap (not the scene types or the player).
+ * of motion, scene, style, svg, iso, connectors and wrap (not the scene types or the player).
  * Named imports, because lib/bundle.mjs inlines only that form; a new export
  * in one of those modules is added here (test/runtime.test.mjs checks).
  */

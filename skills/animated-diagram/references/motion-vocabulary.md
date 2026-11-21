@@ -92,7 +92,9 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   at once to fan out from a junction (twin pulses outward), or in sequence, each
   starting as the last arrives.
 - **Never** a pulse that repeats or runs while a step rests; that is looping
-  ambient motion (canon above), and the gate's settled-frame rule fails it.
+  ambient motion (canon above). Loops are forbidden by contract and need review;
+  the gate's settled-frame rule only catches motion around the sampled step
+  boundaries, so it will not see every repeat.
 
 ## Container and text timing
 

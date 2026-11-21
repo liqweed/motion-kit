@@ -3,7 +3,7 @@
 /**
  * motion-kit · connectors, for custom scenes (`kit`).
  *
- * Three parts that tie a diagram's pieces together, as pure functions of time:
+ * Parts that tie a diagram's pieces together, as pure functions of time:
  *
  * - a **connector**: a dashed line along a flat polyline or a path through the
  *   world (seen through an iso camera), with an optional open-V arrowhead. It
@@ -35,11 +35,14 @@ import { el, fade, num } from "./svg.mjs";
  *   length: number,
  *   at: (f: number) => { x: number, y: number },
  *   cut: (f: number) => { x: number, y: number }[],
+ *   span: (from: number, to: number) => { x: number, y: number }[],
  *   tip: (f: number) => { x: number, y: number, angle: number },
  * }} ConnectorPath
  * `length` is the length of the path in its own units (pixels when flat, world
  * units under a camera). `at(f)` is the picture position at fraction `f` of
- * that length, `cut(f)` the picture points of the path up to `f`, and `tip(f)`
+ * that length, `cut(f)` the picture points of the path up to `f`, `span(from, to)` those
+ * between two fractions (every route vertex between them, so a corner stays a
+ * corner), and `tip(f)`
  * the position at `f` with the direction of travel there, in radians.
  */
 
@@ -63,6 +66,7 @@ export function connectorPath(points, { camera } = {}) {
 	const starts = [0];
 	for (let i = 1; i < world.length; i++) starts.push(starts[i - 1] + Math.hypot(world[i].x - world[i - 1].x, world[i].y - world[i - 1].y, world[i].z - world[i - 1].z));
 	const length = starts[starts.length - 1];
+	if (!Number.isFinite(length)) throw new Error("connectorPath: the path needs a finite length");
 	if (!(length > 0)) throw new Error("connectorPath: the path has no length");
 
 	/** The segment holding distance `d`, skipping any of zero length, and where in it. */
@@ -85,6 +89,15 @@ export function connectorPath(points, { camera } = {}) {
 		cut(f) {
 			const { i } = locate(f);
 			return [...world.slice(0, i), worldAt(f)].map((p) => {
+				const s = to(p);
+				return { x: s.x, y: s.y };
+			});
+		},
+		span(from, to0) {
+			const a = clamp01(from);
+			const b = clamp01(to0);
+			const inner = world.filter((_, j) => starts[j] / length > a && starts[j] / length < b);
+			return [worldAt(a), ...inner, worldAt(b)].map((p) => {
 				const s = to(p);
 				return { x: s.x, y: s.y };
 			});
@@ -208,7 +221,8 @@ export function drawPulse(path, t, run, { color = "emphasis", radius = 4 } = {})
 	const lead = progress(t, run.start, run.duration, ease);
 	if (lead <= 0) return "";
 	if (t >= pulseEnd(run) && !run.hold) return "";
-	const life = (t - run.start) / (run.duration + lag);
+	const total = run.duration + lag;
+	const life = total > 0 ? (t - run.start) / total : 1; // an instantaneous run is already at its end
 	const trail = progress(t, run.start + lag, run.duration, ease);
 	const env = clamp01(Math.min(life / 0.1, run.hold ? 1 : (1 - life) / (1 / 6)));
 	if (env < 0.001) return "";
@@ -216,10 +230,10 @@ export function drawPulse(path, t, run, { color = "emphasis", radius = 4 } = {})
 	const out = [];
 	if (lead - trail > 1e-6) {
 		for (let i = 0; i < TAIL_SLICES; i++) {
-			const a = path.at(trail + ((lead - trail) * i) / TAIL_SLICES);
-			const b = path.at(trail + ((lead - trail) * (i + 1)) / TAIL_SLICES);
+			// Each slice follows the route, so it turns at a corner between its ends.
+			const pts = path.span(trail + ((lead - trail) * i) / TAIL_SLICES, trail + ((lead - trail) * (i + 1)) / TAIL_SLICES);
 			const k = (i + 1) / TAIL_SLICES;
-			out.push(el("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: fill, "stroke-width": radius * 2 * (0.3 + 0.7 * k) * env, "stroke-linecap": "round", opacity: 0.5 * k * env }));
+			out.push(el("path", { d: pts.map((q, j) => `${j === 0 ? "M" : "L"}${num(q.x)} ${num(q.y)}`).join(" "), fill: "none", stroke: fill, "stroke-width": radius * 2 * (0.3 + 0.7 * k) * env, "stroke-linecap": "round", "stroke-linejoin": "round", opacity: 0.5 * k * env }));
 		}
 	}
 	const head = path.at(lead);
