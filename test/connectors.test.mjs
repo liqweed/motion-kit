@@ -242,10 +242,19 @@ function litEffectiveOpacity(svg, only) {
 	for (const m of svg.matchAll(/<(\/?[a-z]+)([^>]*)>/g)) {
 		if (m[1] === "g") stack.push(Number(/ opacity="([\d.]+)"/.exec(m[2])?.[1] ?? 1));
 		else if (m[1] === "/g") stack.pop();
-		else if (m[1] === "path" && only.includes(/d="([^"]*)"/.exec(m[2])?.[1]) && /d="M[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ Z"/.test(m[2]) && /fill="var\(--mk-accent\)"/.test(m[2])) out.push(stack.reduce((a, b) => a * b, 1));
+		else if (m[1] === "path" && only.includes(/d="([^"]*)"/.exec(m[2])?.[1]) && /d="M[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ Z"/.test(m[2]) && /fill="var\(--mk-accent\)"/.test(m[2])) out.push(stack.reduce((a, b) => a * b, 1) * Number(/ opacity="([\d.]+)"/.exec(m[2])?.[1] ?? 1));
 	}
 	return out;
 }
+
+describe("litEffectiveOpacity", () => {
+	const d = "M0 0 L1 0 L1 1 L0 1 Z";
+	it("counts the diamond's own opacity as well as its ancestors'", () => {
+		assert.deepEqual(litEffectiveOpacity(`<g opacity="1"><path d="${d}" fill="var(--mk-accent)" opacity="0.5"/></g>`, [d]), [0.5]);
+		assert.deepEqual(litEffectiveOpacity(`<g opacity="0.5"><path d="${d}" fill="var(--mk-accent)" opacity="0.5"/></g>`, [d]), [0.25]);
+		assert.deepEqual(litEffectiveOpacity(`<g><path d="${d}" fill="var(--mk-accent)"/></g>`, [d]), [1]);
+	});
+});
 
 describe("examples/connectors.scene.mjs feeder junctions", () => {
 	it("lights each feeder junction as the pulse reaches it, one diamond at a time", async () => {
