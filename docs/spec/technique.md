@@ -263,8 +263,9 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   solid. The solid is `smooth` and carries `groups` (one number per footprint
   edge: each arc, and each straight side, is a group): its visible sides draw
   as one wall, a single `<path>` outlined once, shaded by one unstroked layer
-  per group (so the number of side paths depends on how many arcs and sides
-  are visible, never on `segments`). `prism` takes the same `groups` (in the
+  per group (so the number of side paths is bounded by the arcs and sides, at
+  most 8 layers, and does not grow with `segments`; an arc within one sample of
+  tangent to the view may add or lose its layer as `segments` changes). `prism` takes the same `groups` (in the
   winding of its `points`) and `smooth`; without `smooth` a group is a face
   outlined by itself, without `groups` every edge is.
 - **Content on a plane.** `planeMatrix(cam, {x, y, z = 0, w, d, view})` is the
@@ -274,9 +275,10 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   the view is fitted into the rectangle, centred, its aspect kept; its x runs
   east, its y south. The matrix is the projection of the plane, so it follows
   every camera, including each one of a `lerpCamera` swivel. Entries are
-  rounded to 4 decimals (G3). `drawOnPlane(cam, plane, markup, opacity = 1)`
+  raw numbers; `drawOnPlane` serialises them through `num(v, 4)` (G3), and a
+  caller who writes its own transform MUST do the same. `drawOnPlane(cam, plane, markup, opacity = 1)`
   wraps the markup in it, and returns `""` for a plane seen edge on (elevation
-  0°) or with `opacity` 0. A solid's `top` (`{markup, view, inset = 0, opacity
+  0°) or too small to draw (its rounded matrix singular) or with `opacity` 0. A solid's `top` (`{markup, view, inset = 0, opacity
   = 1}`, any prism) draws such content on its top face, on the footprint's
   bounding box less `inset` (which MUST leave room [throws]), inside the solid's
   own group, so it is ordered, and fades, with the solid; it is not drawn when
@@ -284,11 +286,12 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   view's units; colours are tokens.
 - **Grid backdrop.** `drawGrid(cam, {radius, step = 1, x = 0, y = 0, z = 0,
   stroke = "line", strokeWidth = 1, opacity = 0.5, bands = 6})` draws grid
-  lines every `step` along x and y in the floor plane at height `z`, within
-  `radius` of (`x`, `y`): diamonds in isometric, squares in plan. The lines fade
+  lines every `step` along x and y in the floor plane at height `z`, out to
+  about `radius` of (`x`, `y`) (a segment of one `step` is kept when its middle
+  is inside, so a line's end may lie up to half a `step` beyond): diamonds in isometric, squares in plan. The lines fade
   radially in `bands` rings, one `<path>` each, faintest first, at up to
   `opacity` (no gradient, no id). `radius` and `step` MUST be above 0, `bands`
-  an integer ≥ 1, and the grid at most 200 cells each way from the centre
+  an integer from 1 to 64, and the grid at most 200 cells each way from the centre
   [throws]. It is static (a function of the camera alone) and has no depth: a
   scene draws it before the solids. Any motion added to it (a shimmer, a pan)
   is ambient motion, which the canon excludes: a scene plays once and holds (§2, §8).

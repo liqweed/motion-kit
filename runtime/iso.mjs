@@ -339,7 +339,7 @@ export function roundedBox({ x, y, w, d, h, radius, segments = 8, ...style }) {
 	const hd = d / 2;
 	// Counter-clockwise from the south-east corner. A vertex remembers the arcs it
 	// ends or starts; one that two arcs share (the radius took the whole side
-	// between them) joins them into one smooth run.
+	// between them) is one vertex, so no zero-length edge is made.
 	const corners = [
 		{ cx: x + hw - radius, cy: y - hd + radius, from: -90 },
 		{ cx: x + hw - radius, cy: y + hd - radius, from: 0 },
@@ -361,15 +361,12 @@ export function roundedBox({ x, y, w, d, h, radius, segments = 8, ...style }) {
 		const tail = /** @type {{ arcs: number[] }} */ (verts.pop());
 		verts[0].arcs.push(...tail.arcs);
 	}
-	const run = [0, 1, 2, 3]; // arcs joined into one: run[k] is the first arc of k's run
-	for (const v of verts) for (const k of v.arcs) run[k] = Math.min(run[k], run[v.arcs[0]]);
-	for (let pass = 0; pass < 3; pass++) for (let k = 0; k < 4; k++) run[k] = run[run[k]];
 	const points = verts.map(({ x, y }) => ({ x, y }));
-	// An edge between two vertices of one arc belongs to its run; any other is a straight side, its own group.
+	// An edge between two vertices of one arc belongs to that arc (arcs sharing an endpoint keep their own shading); any other is a straight side, its own group.
 	const groups = verts.map((v, i) => {
 		const w = verts[(i + 1) % verts.length];
 		const shared = v.arcs.find((k) => w.arcs.includes(k));
-		return shared === undefined ? 4 + i : run[shared];
+		return shared === undefined ? 4 + i : shared;
 	});
 	return prism({ points, h, groups, smooth: true, ...style });
 }
@@ -715,7 +712,10 @@ export function drawOnPlane(cam, plane, markup, opacity = 1) {
 	const m = planeMatrix(cam, plane);
 	// Edge on: the two axes are parallel on the screen, whatever the scale of the view.
 	if (Math.abs(m[0] * m[3] - m[1] * m[2]) <= 1e-9 * Math.hypot(m[0], m[1]) * Math.hypot(m[2], m[3])) return "";
-	return fade(opacity, { transform: `matrix(${m.map((v) => num(v, 4)).join(" ")})` }, markup);
+	// What is serialised must not be singular either: a view so large that the scale rounds to 0 draws a point, so nothing.
+	const r = m.map((v) => Number(num(v, 4)));
+	if (r[0] * r[3] - r[1] * r[2] === 0) return "";
+	return fade(opacity, { transform: `matrix(${r.map((v) => num(v, 4)).join(" ")})` }, markup);
 }
 
 /* ------------------------------------------------------------ grid backdrop */
@@ -723,8 +723,8 @@ export function drawOnPlane(cam, plane, markup, opacity = 1) {
 /**
  * A backdrop of diamonds: grid lines every `step` world units along x and y in
  * the floor plane at height `z`, out to `radius` from (`x`, `y`) (a segment of
- * one `step` is kept when its middle is inside, so the edge is ragged by up to
- * half a step unless `radius` is a multiple of `step`), fading out
+ * one `step` is kept when its middle is inside, so the edge is ragged: an end
+ * can lie up to half a step beyond `radius`), fading out
  * radially, so it follows the camera (diamonds in isometric, squares in plan).
  * The fade is `bands` steps of opacity, one `<path>` each, so the markup stays
  * small and needs no gradient or id; the lines are `stroke` (a token) at up to
@@ -737,7 +737,7 @@ export function drawOnPlane(cam, plane, markup, opacity = 1) {
 export function drawGrid(cam, { radius, step = 1, x = 0, y = 0, z = 0, stroke = "line", strokeWidth = 1, opacity = 0.5, bands = 6 }) {
 	if (!(finite(radius) && radius > 0)) throw new Error(`a grid's radius must be above 0, got ${radius}`);
 	if (!(finite(step) && step > 0)) throw new Error(`a grid's step must be above 0, got ${step}`);
-	if (!(Number.isInteger(bands) && bands >= 1)) throw new Error(`a grid needs at least 1 band, got ${bands}`);
+	if (!(Number.isInteger(bands) && bands >= 1 && bands <= 64)) throw new Error(`a grid needs from 1 to 64 bands, got ${bands}`);
 	if (!(finite(x) && finite(y) && finite(z))) throw new Error("a grid needs a finite centre");
 	const colour = tok(token(stroke));
 	const to = projector(cam);

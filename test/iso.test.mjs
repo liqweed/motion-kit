@@ -492,6 +492,10 @@ describe("rounded slabs", () => {
 			}
 		}
 	});
+	it("keeps each arc's own shading group when the radius takes whole sides", () => {
+		const s = roundedBox({ x: 0, y: 0, w: 2, d: 2, h: 1, radius: 1, segments: 6 });
+		assert.equal(new Set(s.groups).size, 4, "four arcs, four groups");
+	});
 	it("keeps the footprint on the box's outline: corners cut round, sides straight", () => {
 		const s = round(8);
 		const xs = s.points.map((p) => p.x);
@@ -573,9 +577,16 @@ describe("content on a horizontal plane", () => {
 		assert.equal(drawOnPlane(CAMERA_ISOMETRIC, plane, "<rect/>"), drawOnPlane(CAMERA_ISOMETRIC, plane, "<rect/>"));
 	});
 	it("tells an edge-on plane from a large view", () => {
-		const big = { x: 0, y: 0, w: 1, d: 1, view: { width: 1e5, height: 1e5 } };
-		assert.ok(drawOnPlane(CAMERA_PLAN, big, "<g/>").startsWith("<g "));
+		const big = { x: 0, y: 0, w: 100, d: 100, view: { width: 1e5, height: 1e5 } };
+		const drawn = drawOnPlane(CAMERA_PLAN, big, "<g/>");
+		assert.ok(drawn.startsWith("<g "));
+		const m = drawn.match(/matrix\(([^)]+)\)/)?.[1].split(" ").map(Number);
+		assert.ok(m && m[0] * m[3] - m[1] * m[2] !== 0, "a drawn matrix is invertible once rounded");
 		assert.equal(drawOnPlane(camera({ azimuth: 45, elevation: 0 }), big, "<g/>"), "");
+	});
+	it("draws nothing when the rounded matrix would collapse to a point", () => {
+		const tiny = { x: 0, y: 0, w: 1, d: 1, view: { width: 1e5, height: 1e5 } };
+		assert.equal(drawOnPlane(CAMERA_PLAN, tiny, "<g/>"), "");
 	});
 	it("rejects a plane that has no area or no view", () => {
 		assert.throws(() => planeMatrix(CAMERA_PLAN, { ...plane, w: 0 }), /positive/);
@@ -648,8 +659,13 @@ describe("the grid backdrop", () => {
 		assert.ok(o[0] < o[o.length - 1]);
 		// Nothing is drawn beyond the radius: the extent of the projected points stays inside it.
 		const cam = camera({ azimuth: 0, elevation: 90, zoom: 10 });
-		const xs = [...drawGrid(cam, { radius: 5 }).matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].flatMap((m) => [Number(m[1]), Number(m[2])]);
-		assert.ok(Math.max(...xs.map(Math.abs)) <= 5 * 10 + 1e-6, "inside the radius, to the nearest cell");
+		const pts = [...drawGrid(cam, { radius: 5 }).matchAll(/[ML](-?[\d.]+) (-?[\d.]+)/g)].map((m) => Math.hypot(Number(m[1]), Number(m[2])) / 10);
+		assert.ok(Math.max(...pts) <= 5 + 0.5 + 1e-6, "within the radius plus half a step");
+		assert.ok(Math.max(...pts) > 5 - 0.5, "and reaching out to it");
+	});
+	it("bounds the bands before allocating them", () => {
+		assert.throws(() => drawGrid(CAMERA_PLAN, { radius: 1, bands: 1e9 }), /bands/);
+		assert.ok(drawGrid(CAMERA_PLAN, { radius: 1, bands: 64 }).length > 0);
 	});
 	it("draws diamonds in isometric and squares in plan, in the floor plane at its height", () => {
 		const plan = drawGrid(camera({ azimuth: 0, elevation: 90, zoom: 10 }), { radius: 3, bands: 1 });
