@@ -227,6 +227,26 @@ describe("examples/connectors.scene.mjs", () => {
 	});
 });
 
+/**
+ * The effective opacity (product of every open `<g opacity>`) of each lit
+ * diamond (a four-vertex path filled with the accent token), in document order.
+ * @param {string} svg
+ * @param {(string | undefined)[]} only the `d` attributes of the diamonds to report
+ * @returns {number[]}
+ */
+function litEffectiveOpacity(svg, only) {
+	/** @type {number[]} */
+	const stack = [];
+	/** @type {number[]} */
+	const out = [];
+	for (const m of svg.matchAll(/<(\/?[a-z]+)([^>]*)>/g)) {
+		if (m[1] === "g") stack.push(Number(/ opacity="([\d.]+)"/.exec(m[2])?.[1] ?? 1));
+		else if (m[1] === "/g") stack.pop();
+		else if (m[1] === "path" && only.includes(/d="([^"]*)"/.exec(m[2])?.[1]) && /d="M[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ Z"/.test(m[2]) && /fill="var\(--mk-accent\)"/.test(m[2])) out.push(stack.reduce((a, b) => a * b, 1));
+	}
+	return out;
+}
+
 describe("examples/connectors.scene.mjs feeder junctions", () => {
 	it("lights each feeder junction as the pulse reaches it, one diamond at a time", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9" });
@@ -250,9 +270,10 @@ describe("examples/connectors.scene.mjs feeder junctions", () => {
 		reach.forEach((ta, k) => {
 			const lit = litPaths(ta + 0.3).map((m) => m.match(/d="([^"]*)"/)?.[1]);
 			assert.deepEqual([...lit].sort(), order.slice(0, base + k + 1).sort(), `junction ${k + 1} itself is the one lit at ${ta.toFixed(2)} s`);
-			// Settled means fully opaque: a settled fade renders a bare <g>, so a diamond held at partial opacity (<g opacity="…">) must not count.
-			const opaque = (scene.frame(ta + 0.3, { idPrefix: "x" }).match(/<g><path d="M[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ Z"[^>]*fill="var\(--mk-accent\)"/g) ?? []).length;
-			assert.equal(opaque, base + k + 1, `junction ${k + 1} and the ones before it are lit at full opacity once settled`);
+			// Settled means fully opaque through every ancestor: keep the product of the open <g> opacities, so a half-transparent outer group counts.
+			const effective = litEffectiveOpacity(scene.frame(ta + 0.3, { idPrefix: "x" }), order);
+			assert.equal(effective.length, base + k + 1, `junction ${k + 1}: every lit diamond is found`);
+			assert.deepEqual(effective.filter((o) => o !== 1), [], `junction ${k + 1} and the ones before it are lit at full effective opacity once settled`);
 		});
 	});
 });
