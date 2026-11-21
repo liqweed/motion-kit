@@ -32,7 +32,7 @@ custom scene's `frame` rather than importing the constants.
 | Use it for | Nodes, connectors, anything in a dense diagram; text that is not the point of the beat | Text the viewer should watch land: a heading, the label of the one thing the beat introduces, a quoted line, a card |
 | Looks like | Appears from transparent, rising a few units | The same, and starts soft: sharpens into place over the same 300–600 ms |
 | Cost | Opacity and transform only | An SVG filter per revealing element, every frame of the reveal. Keep to a few elements at a time |
-| Settled | No trace | No trace: the markup comes back bare, byte-identical |
+| Settled | No opacity or transform left; `fade` still wraps the markup in a `<g>` | No trace: the markup comes back bare, byte-identical |
 
 Reveal in reading order, siblings 80–150 ms apart, on the style's entrance
 curve. A reveal that does not carry a beat is decoration: use the fade. A

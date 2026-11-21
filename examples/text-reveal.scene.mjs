@@ -1,7 +1,7 @@
 /**
  * Example custom scene: text that sharpens into place, and a highlighter.
  *
- * Shows the two text helpers of `kit` (runtime/svg.mjs): `blurReveal`, which
+ * Shows the text helpers of `kit` (runtime/svg.mjs): `blurReveal`, which
  * fades a line in while it rises a few units and a blur goes to zero, and
  * `highlightSweep`, a token-coloured band that grows behind a line. Three
  * labels reveal in reading order, then a quoted line reveals and is marked,
@@ -87,7 +87,7 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 
 	// One sweep over all the lines of the quote: line i fills while the sweep
 	// is inside its share of the total width.
-	// estimateWidth is a safe over-estimate; 0.9 of it hugs a typical sans-serif.
+	// estimateWidth is a rough heuristic; 0.9 of it hugs a typical sans-serif for these lines (the gate checks they fit).
 	const widths = quote.map((line) => estimateWidth(line, fsQuote) * 0.9 + 2 * pad);
 	const total = widths.reduce((a, b) => a + b, 0);
 	const before = widths.map((_, i) => widths.slice(0, i).reduce((a, b) => a + b, 0));

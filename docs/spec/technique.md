@@ -273,8 +273,8 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
 ### 4.10 Text reveal and highlighter sweep (`runtime/svg.mjs`)
 
 - `blurReveal(enter, {id, rise = 6, blur = 4}, ...children)` draws `children`
-  with an opacity, a rise and a blur that all go to zero as `enter` (an eased
-  progress, §4.2) goes from 0 to 1: one `<g transform opacity filter>` and,
+  with an opacity that rises to one and a rise and a blur that go to zero as
+  `enter` (an eased progress, §4.2) goes from 0 to 1: one `<g transform opacity filter>` and,
   while the blur is above 0.005, a `<defs>` holding one `<filter>` with one
   `<feGaussianBlur>`. It returns `""` for `enter ≤ 0`.
 - **Settled means bare.** Once `enter` reaches 1, as `fade` rounds it (0.9995
@@ -313,12 +313,15 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   radius = 4})` draws a rounded `<rect>` filled with a token at `opacity`,
   from `x` to `x + width · p` (`p` eased, 0 to 1); `""` for `p ≤ 0`; at 1 the
   rectangle is the same on every frame. It is drawn before the text it marks,
-  and `opacity` stays low (0.2 to 0.4) so the text keeps its contrast: at
-  the default 0.3 the neutral style's ink reads on the tinted canvas at 4.5:1
-  or more in both themes (`test/reveal.test.mjs`). `width` is the scene's to
-  set; `estimateWidth` is a safe over-estimate of a line [throws on a
-  non-finite or non-positive size, an unknown token, or an `opacity` outside
-  (0, 1]].
+  and `opacity` starts low (0.2 to 0.4): at the default 0.3 the neutral
+  style's ink reads on the tinted canvas at 4.5:1 or more in both themes
+  (`test/reveal.test.mjs`). The gate checks text against the canvas, not
+  against the band, so a custom style must check its ink against the
+  composited tint itself. `width` is the scene's to set; `estimateWidth` is a
+  rough heuristic (characters × size × 0.56), not a bound, so pass a
+  conservative width where the band must cover the whole line [throws on a
+  non-finite or non-positive size, an unknown token, or an `opacity` that is
+  not a finite number in (0, 1]].
 - Both helpers are pure functions of their arguments. `examples/text-reveal.scene.mjs`
   reveals three labels in reading order, then a quoted line with one band per
   wrapped line swept first line to last.

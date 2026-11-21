@@ -23,7 +23,7 @@ describe("blurReveal", () => {
 		assert.equal(blurReveal(0.9996, { id: "a-r" }, label), label);
 		assert.equal(blurReveal(1, { id: "a-r" }, label, label), label + label, "several children, joined");
 	});
-	it("combines opacity, a rise and a blur that all shrink to nothing as it settles", () => {
+	it("combines an opacity that rises to one and a rise and a blur that shrink to nothing as it settles", () => {
 		const at = (/** @type {number} */ p) => blurReveal(p, { id: "a-r", rise: 6, blur: 4 }, label);
 		const start = at(0.01);
 		assert.match(start, /<filter id="a-r"[^>]*><feGaussianBlur stdDeviation="3\.96"\/><\/filter>/);
@@ -85,6 +85,9 @@ describe("highlightSweep", () => {
 		assert.throws(() => highlightSweep(0.5, { ...band, width: 0 }), /positive/);
 		assert.throws(() => highlightSweep(0.5, { ...band, x: NaN }), /finite/);
 		assert.throws(() => highlightSweep(0.5, { ...band, opacity: 0 }), /opacity/);
+		for (const bad of [true, "0.3", null, Number.NaN]) {
+			assert.throws(() => highlightSweep(0.5, { ...band, opacity: /** @type {any} */ (bad) }), /opacity/, String(bad));
+		}
 		assert.throws(() => highlightSweep(0.5, { ...band, token: "nope" }), /unknown style token/);
 	});
 	it("leaves the ink readable on its default band, in both themes", () => {
@@ -121,8 +124,9 @@ describe("the text-reveal example", () => {
 		const settled = scene.frame(scene.steps[0].at, { idPrefix: "p" });
 		for (const line of ["Faster startup", "Smaller bundles", "Clearer errors"]) {
 			assert.ok(settled.includes(`>${line}</text>`), line);
-			assert.doesNotMatch(settled.slice(settled.lastIndexOf("<", settled.indexOf(`>${line}</text>`))), /^<g/);
 		}
+		// No wrapper anywhere in the settled markup: no group, filter or defs.
+		assert.doesNotMatch(settled, /<g[\s>]|<filter|<defs|opacity=|transform=/);
 	});
 	it("shows a filter mid-reveal, so the test above can fail", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9", locale: "en" });
@@ -149,10 +153,30 @@ describe("the text-reveal example", () => {
 		assert.notEqual(renderSvg(scene, 0.2, { idPrefix: "p", style: slow }), renderSvg(scene, 0.2, { idPrefix: "p" }));
 		assert.deepEqual(checkScene(scene, { style: slow }).problems, []);
 	});
-	it("is built through kit alone, the way a page from `motion-kit build` calls it", async () => {
+	it("builds from the module's default export, in the other locale too", async () => {
 		const mod = await import(EXAMPLE);
 		const scene = sceneFromModule(mod.default, { format: "16:9", locale: "nl" });
 		assert.match(renderSvg(scene, 0.3, { idPrefix: "k" }), /id="k-reveal-/);
+	});
+	it("kit carries the helpers, so an import-free factory can build from kit alone", () => {
+		const scene = sceneFromModule(({ kit }) => {
+			const { blurReveal: reveal, highlightSweep: sweep, text: txt, easings, progress } = kit;
+			return {
+				id: "kit-only",
+				width: 200,
+				height: 100,
+				duration: 1,
+				title: "t",
+				description: "d",
+				steps: [{ at: 1, label: "a", detail: "b" }],
+				frame: (/** @type {number} */ t, /** @type {{ idPrefix: string }} */ { idPrefix }) =>
+					sweep(progress(t, 0, 1, easings().easeOut), { x: 0, y: 0, width: 50, height: 20 }) +
+					reveal(progress(t, 0, 1, easings().easeOut), { id: `${idPrefix}-r` }, txt({ x: 0, y: 10 }, "Hi")),
+			};
+		});
+		assert.match(renderSvg(scene, 0.4, { idPrefix: "k" }), /id="k-r"/);
+		assert.equal(typeof KIT.blurReveal, "function");
+		assert.equal(typeof KIT.highlightSweep, "function");
 	});
 	it("bakes each slice with its own filter ids, which none of the slices share", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9", locale: "en" });
@@ -161,6 +185,10 @@ describe("the text-reveal example", () => {
 		assert.ok(all.length > 0);
 		assert.equal(new Set(all).size, all.length, "no filter id is used by two slices");
 		// The last slice is the settled frame: no filter in it.
-		assert.doesNotMatch(svg.slice(svg.lastIndexOf('class="mk-f mk-last"')), /filter/);
+		const marker = svg.lastIndexOf('class="mk-f mk-last"');
+		assert.ok(marker >= 0, "the last slice carries the mk-last class");
+		const last = svg.slice(marker);
+		assert.match(last, /Faster startup/, "the slice holds the settled labels");
+		assert.doesNotMatch(last, /filter/);
 	});
 });

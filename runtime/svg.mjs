@@ -131,8 +131,11 @@ export function blurReveal(enter, { id, rise = 6, blur = 4, box }, ...children) 
  * (`estimateWidth(line, fontSize)` plus a little padding each side). Nothing is
  * drawn at `p` ≤ 0, and at 1 the band is the same rectangle every frame.
  *
- * Keep `opacity` low (0.2 to 0.4): the text drawn over it keeps its contrast
- * only while the band stays a tint of the canvas. `token` is any style token;
+ * Keep `opacity` low (0.2 to 0.4) as a starting point: the text drawn over it
+ * keeps its contrast only while the band stays a light tint of the canvas, and
+ * the gate checks the text against the canvas, not against the band. For a
+ * custom style, check the ink against the composited tint yourself (the neutral
+ * style does at 0.3). `token` is any style token;
  * the default `emphasis` is the style's marker colour.
  *
  * @param {number} p eased progress, 0 to 1
@@ -144,7 +147,7 @@ export function highlightSweep(p, { x, y, width, height, token = "emphasis", opa
 		if (!Number.isFinite(v)) throw new Error(`highlightSweep: ${name} must be a finite number, got ${v}`);
 	}
 	if (width <= 0 || height <= 0) throw new Error("highlightSweep: width and height must be positive");
-	if (!(opacity > 0 && opacity <= 1)) throw new Error(`highlightSweep: opacity must be above 0 and at most 1, got ${opacity}`);
+	if (!(Number.isFinite(opacity) && opacity > 0 && opacity <= 1)) throw new Error(`highlightSweep: opacity must be above 0 and at most 1, got ${opacity}`);
 	const w = width * clamp01(p);
 	if (w < 0.01) return "";
 	return el("rect", { x, y, width: w, height, rx: Math.max(0, Math.min(radius, w / 2, height / 2)), fill: tok(token), opacity });

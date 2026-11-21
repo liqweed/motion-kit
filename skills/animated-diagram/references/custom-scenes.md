@@ -161,7 +161,7 @@ moving hero is a 3D model's job, not motion-kit's.
 
 ## Text that sharpens into place, and a highlighter
 
-`kit` carries two text helpers (`runtime/svg.mjs`), for a label or a quote that
+`kit` carries text helpers (`runtime/svg.mjs`), for a label or a quote that
 should arrive as a beat and not just appear. Template:
 `examples/text-reveal.scene.mjs` (three labels reveal in reading order, then a
 quoted line reveals and is marked).
@@ -193,8 +193,10 @@ Rules that keep it inside the canon:
   Reveal the handful of elements the viewer must watch arrive, not every
   element in a dense diagram; for those, `fade()` is enough
   (`motion-vocabulary.md`, "Blur reveal or plain fade").
-- **Contrast.** Keep the band's `opacity` at 0.2–0.4: the text on it keeps its
-  contrast only while the band is a tint of the canvas.
+- **Contrast.** Start the band's `opacity` at 0.2–0.4, but the gate checks the
+  text against the canvas, not against the tinted band. With a custom style,
+  composite the band colour over the surface at that opacity and check the ink
+  against the result (4.5:1), or lower the opacity until it holds.
 
 ## Declared locales and narrative steps
 
