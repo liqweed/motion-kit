@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "ours": "343535f6be880c246f19bde9c11194d5f5c95dc4",
+  "exportBase": "343535f6be880c246f19bde9c11194d5f5c95dc4",
+  "previousExportBase": "343535f6be880c246f19bde9c11194d5f5c95dc4",
+  "provenance": "first-added fallback (no recorded raw export)",
+  "conflicts": [],
+  "regressions": []
+}

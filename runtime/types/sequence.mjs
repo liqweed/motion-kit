@@ -20,9 +20,16 @@
 import { progress, easings } from "../motion.mjs";
 import { circleNode, FONT_MIN, maxFontSize, stateLabel } from "../parts.mjs";
 import { FORMATS, localize, withId } from "../scene.mjs";
-import { NEUTRAL, tok } from "../style.mjs";
+import { NEUTRAL, sharedPairs, tok } from "../style.mjs";
 import { drawOn, el, polyline, trimSegment } from "../svg.mjs";
 import { wrapLabel } from "../wrap.mjs";
+
+/**
+ * The shared contrast pairs this type draws: labels on the canvas (stateLabel), circle glyphs, the emphasis ring on the canvas and around the reached node; no boxNode, so no ink on surface.
+ * The gate holds its scenes to these and reports the other shared pairs as
+ * warnings (`contrastReport`, runtime/style.mjs).
+ */
+export const contrastPairs = sharedPairs("ink/bg", "muted/bg", "muted/surface", "onAccent/accent", "line/bg", "accent/bg", "emphasis/bg", "emphasis/accent");
 
 // Timeline (seconds). Steps are settled because PERIOD ≥ HOP + FILL.
 const ENTER_GAP = 0.1;
@@ -199,6 +206,7 @@ export function sequence(spec, { format = "16:9", locale = "en" } = {}) {
 		title: localize(spec.title, locale),
 		description: localize(spec.description, locale),
 		steps: items.map((it, k) => withId({ at: stepAt(k), label: it.label, detail: it.detail }, nodes[k].id)),
+		contrastPairs,
 		frame,
 	};
 }

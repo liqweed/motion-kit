@@ -1,7 +1,7 @@
 ---
 title: motion-kit — roadmap
 status: draft
-last_updated: 2026-11-18
+last_updated: 2026-11-21
 ---
 
 # motion-kit — roadmap
@@ -19,8 +19,9 @@ them (inference).
 
 | Order | Issue | What and why | Done when | Priority |
 |---|---|---|---|---|
-| 1 | [#14] | Land the Claude Design bundle the site was built from ([#23] built the site, but the bundle was not committed and `design_brief.prototypes` is not set in `.config/jig.yaml`). Its "needs" list holds work with no issue yet (see [Suggestions](#suggestions-with-no-issue-yet)). | The bundle is committed and passes the design-brief landing check; every item on its "needs" list has an issue or is built. | high |
-| 2 | [#2] | Finish the website epic: land the missing design bundle and reconcile its remaining needs. | Every sub-issue is closed. | high |
+| 1 | [#14] | Run the design round again from scratch ([#23] built the site from a bundle that was never committed): the Module design is picked, its bundle is in `design/prototypes/motion-kit-site/` and passes the landing check, and `website/DESIGN.md` pins the house values. Its "needs" items are [#73], [#74], [#75] and [#76]. | The pull request merges with the raw delivery commit kept in history, and the issue closes. | high |
+| 2 | [#61] | Build the picked design: the site's pages, the docs on the site and the isometric showcase. | The site follows `website/DESIGN.md`, at phone width too. Built pages get the isometric helpers from [#64] since [#77] (fixes [#70]). Once [#79] merges ([#72]), scenes that declare `contrastPairs` are checked only for those pairs; custom scenes without that declaration and page builds still check the applicable shared pairs. | high |
+| 3 | [#2] | Finish the website epic. | Every sub-issue is closed. | high |
 
 ## Open questions
 
@@ -125,9 +126,7 @@ Candidates only; none is filed.
 
 | Candidate | Why |
 |---|---|
-| The Claude Design bundle's style skins and its three scene types with no issue: `before-after`, `comparison` and `funnel`. | The site shows them as "needs" cards. The skins (the node, connector and emphasis "draw" block) link to nothing; the types need their own tracker items. |
 | An accessibility check (WCAG 2.1 AA) on a built player page, with JavaScript on and off, light and dark, and reduced motion. | The defects a consumer found in the player (step text, target size, stage semantics, duplicate ids) were fixed one by one; nothing keeps them fixed except unit tests. Impeccable's detector already covers the rendered half, contrast and text size (`npx impeccable detect <url>`), so the check can start from it (inference). |
-| A `website/DESIGN.md`, written after [#14] lands. | Impeccable and similar skills read `PRODUCT.md` and `DESIGN.md` as their context. Without them, every design session works out the site's rules again. Generate it from the landed site (`impeccable document`), then pin the house values: easing curve, press scale, heading case and typeface. Pointing `design_brief.design_language` in `.config/jig.yaml` at the same file makes design-brief-builder bind the same canon. |
 | A frame-time budget, checked in CI on the benchmark scene. | `npm run bench:player` measures the live player at 6x CPU slowdown but enforces nothing and needs a local Chromium. A budget would make "fast enough on a mid-range phone" a checked promise. The value is the maintainer's call. |
 | A cross-browser smoke test of the player in Firefox and WebKit. | The visibility observer, the in-place updates and the scroll helper were checked only in Chromium. |
 | A redirect from `www.motion-kit.dev` to `motion-kit.dev`. | Left open by [#23]. It needs a DNS record and a redirect rule in the Cloudflare account, outside the repository; `www` answers with an error today. |
@@ -150,3 +149,13 @@ unless the open question above decides otherwise.
 [#11]: https://github.com/liqweed/motion-kit/issues/11
 [#14]: https://github.com/liqweed/motion-kit/issues/14
 [#23]: https://github.com/liqweed/motion-kit/pull/23
+[#61]: https://github.com/liqweed/motion-kit/issues/61
+[#64]: https://github.com/liqweed/motion-kit/pull/64
+[#70]: https://github.com/liqweed/motion-kit/issues/70
+[#72]: https://github.com/liqweed/motion-kit/issues/72
+[#73]: https://github.com/liqweed/motion-kit/issues/73
+[#74]: https://github.com/liqweed/motion-kit/issues/74
+[#75]: https://github.com/liqweed/motion-kit/issues/75
+[#76]: https://github.com/liqweed/motion-kit/issues/76
+[#77]: https://github.com/liqweed/motion-kit/pull/77
+[#79]: https://github.com/liqweed/motion-kit/pull/79

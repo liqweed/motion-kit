@@ -38,3 +38,6 @@ website/.wrangler/
 # Third-party agent skills: only skills-lock.json is tracked; restore with `npm run skills:design`
 /.agents/skills/
 /.claude/skills/
+
+# design-brief landing check output
+design/prototypes/**/.handback-render/

@@ -113,7 +113,7 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 - Every step label visible in the final frame, unless the scene opts out.
 - Ids come from the instance prefix: two renders with different prefixes share none.
 - No clock or randomness in `frame()` or the helpers it calls (rendered under stubbed clocks).
-- Style contrast (WCAG 4.5:1 text, 3:1 shapes, both themes) for the style in use, for every token pair the scene types draw and the pairs a scene declares.
+- Style contrast (WCAG 4.5:1 text, 3:1 shapes, both themes) for the style in use, for the token pairs each scene draws: the scene types' own, or the pairs a custom scene declares (all shared pairs if it declares none); the shared pairs a scene does not draw are warnings.
 - Layout/label fit per format × locale, through scene construction.
 
 **What a human approves**: the story (storyboard contact sheet), the look

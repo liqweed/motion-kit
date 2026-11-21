@@ -23,23 +23,25 @@
  */
 import { DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 } from "./motion.mjs";
 import { FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId } from "./scene.mjs";
-import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok } from "./style.mjs";
+import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, resolveTokens, sharedPairs, tok } from "./style.mjs";
 import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawGrid, drawOnPlane, drawSolid, drawSolids, fitCamera, labelAnchor, labelPill, labelProblems, lerpCamera, orderSolids, path3, planeMatrix, prism, project, projector, regularPolygon, roundedBox, roundedSlab, slab } from "./iso.mjs";
 import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment } from "./svg.mjs";
+import { PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead } from "./connectors.mjs";
 import { estimateWidth, wrapLabel } from "./wrap.mjs";
 
 /**
  * The runtime, flat, handed to custom scene modules as `opts.kit`: the exports
- * of motion, scene, style, svg, iso and wrap (not the scene types or the player).
+ * of motion, scene, style, svg, iso, connectors and wrap (not the scene types or the player).
  * Named imports, because lib/bundle.mjs inlines only that form; a new export
  * in one of those modules is added here (test/runtime.test.mjs checks).
  */
 export const KIT = Object.freeze({
 	...{ DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 },
 	...{ FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId },
-	...{ CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, cssVars, normalizeStyle, resolveTokens, tok },
+	...{ CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, resolveTokens, sharedPairs, tok },
 	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment },
 	...{ CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawGrid, drawOnPlane, drawSolid, drawSolids, fitCamera, labelAnchor, labelPill, labelProblems, lerpCamera, orderSolids, path3, planeMatrix, prism, project, projector, regularPolygon, roundedBox, roundedSlab, slab },
+	...{ PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead },
 	...{ estimateWidth, wrapLabel },
 });
 

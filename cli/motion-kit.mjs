@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { FORMATS } from "../runtime/scene.mjs";
+import { checkContrast, sharedPairs } from "../runtime/style.mjs";
 import { SCENE_TYPES } from "../runtime/types/index.mjs";
 import { checkScene } from "../lib/check.mjs";
 import { checkFiles } from "../lib/gate.mjs";
@@ -79,6 +80,10 @@ function fail(msg) {
 	console.error(`motion-kit: ${msg}`);
 	process.exit(1);
 }
+/** Contrast the scene does not draw but the style misses: said, never failed (G12). @param {string[]} warnings */
+function warnAll(warnings) {
+	for (const w of warnings) console.error(`motion-kit: warning: contrast: ${w}`);
+}
 function need(v, what) {
 	if (!v) fail(`${cmd}: ${what} is required`);
 	return v;
@@ -124,6 +129,11 @@ async function main() {
 			const loaded = await loadScene(file, sopts);
 			const r = checkScene(loaded.scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
+			warnAll(r.warnings);
+			// The page also paints the player: button text and borders, the selected step,
+			// captions, the focus outline, and (unless --no-heading) the heading on the canvas.
+			const player = checkContrast(style, sharedPairs(...(a["no-heading"] ? [] : ["ink/bg"]), "ink/surface", "onAccent/accent", "muted/bg", "emphasis/bg", "line/bg", "accent/bg"));
+			if (player.length) fail(`the player in the page fails the gate:\n  - ${player.join("\n  - ")}`);
 			const html = buildHtml(loaded, { style, ...where, options: sopts.options, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
 			if (/<\/script/i.test(html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>")))) fail("bundled code contains </script>");
 			const out = need(a.out, "--out");
@@ -138,6 +148,7 @@ async function main() {
 			const { scene } = await loadScene(file, sopts);
 			const r = checkScene(scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
+			warnAll(r.warnings);
 			if (a.png && !(await rasterizer())) fail("--png needs @resvg/resvg-js or Chrome");
 			// The contact sheet's phone row shows the tall layout, as a phone does.
 			/** @type {{ scene?: any, error?: string }} */
@@ -159,6 +170,7 @@ async function main() {
 			const { scene } = await loadScene(file, await sceneOpts(file));
 			const gate = checkScene(scene, { style });
 			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
+			warnAll(gate.warnings);
 			const svg = bake(scene, { fps: Number(a.fps ?? 15), style, theme: a.theme, background: a.background });
 			const out = need(a.out, "--out");
 			writeFileSync(out, svg);
@@ -171,6 +183,7 @@ async function main() {
 			const { scene } = await loadScene(file, await sceneOpts(file));
 			const gate = checkScene(scene, { style });
 			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
+			warnAll(gate.warnings);
 			const out = need(a.out, "--out");
 			const r = await renderVideo(scene, {
 				out,
@@ -192,6 +205,7 @@ async function main() {
 			const { scene } = await loadScene(file, await sceneOpts(file, { ...where, format: format ?? "1:1" }));
 			const r = checkScene(scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
+			warnAll(r.warnings);
 			const png = !a["no-png"];
 			if (png && !(await rasterizer())) fail("icon PNG needs @resvg/resvg-js or Chrome (or pass --no-png)");
 			const root = resolve(need(a.out, "--out"));
@@ -297,7 +311,7 @@ const VENDOR_CHECK = `#!/usr/bin/env node
 //
 // Every format unless --format; for a spec every locale its strings carry, for
 // a custom module its exported locales (default "en"), unless --locale. The style (neutral by default) must
-// pass the contrast check. --options passes scene options to custom modules:
+// pass the contrast of the pairs each scene draws (G12). --options passes scene options to custom modules:
 // a .json file, inline JSON, or an .mjs module exporting ({ format, locale }) => options.
 // Exits 1 if anything fails; a file that cannot be loaded fails on its own.
 import { parseArgs } from "node:util";
