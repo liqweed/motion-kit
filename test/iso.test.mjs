@@ -163,6 +163,10 @@ describe("solids", () => {
 		// a self-intersecting star passes the consecutive-turn check
 		assert.throws(() => prism({ points: [{ x: 0, y: 3 }, { x: 2, y: -3 }, { x: -3, y: 1 }, { x: 3, y: 1 }, { x: -2, y: -3 }], h: 1 }), /convex/);
 		assert.throws(() => prism({ points: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }], h: 1 }), /repeated point/);
+		// The unit square traversed twice: positive area, every turn and half-plane right.
+		const square = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+		assert.throws(() => prism({ points: [...square, ...square], h: 1 }), /repeated point/);
+		assert.throws(() => prism({ points: [...square, ...square].reverse(), h: 1, fill: "surface" }), /repeated point/);
 		assert.throws(() => box({ x: 0, y: 0, w: 0, d: 1, h: 1 }), /positive/);
 		assert.throws(() => box({ x: 0, y: 0, w: 1, d: 1, h: -1 }), /height/);
 		assert.throws(() => regularPolygon(0, 0, 1, 2), /3 sides/);
@@ -285,6 +289,26 @@ describe("label anchors", () => {
 			assert.equal(faint.markup, "");
 			assert.deepEqual(labelProblems([anchor("a").box, faint.box], view), []);
 		});
+		it("stops at the limit", () => {
+			const same = Array.from({ length: 1000 }, (_, i) => ({ id: `l${i}`, x: 10, y: 10, width: 50, height: 20 }));
+			const started = performance.now();
+			assert.equal(labelProblems(same, { ...view, limit: 5 }).length, 5);
+			assert.ok(performance.now() - started < 500);
+			assert.equal(labelProblems(same.slice(0, 4), view).length, 6);
+		});
+		it("checks the box the SVG draws, rounded to two decimals", () => {
+			// A raw left edge of -0.004 is drawn at x="0": inside the picture.
+			const edge = labelAnchor(cam, { id: "e", at: { x: -200.004 / 20, y: 0 }, lines: ["Label"], side: "right" });
+			assert.match(edge.markup, /<rect x="0" /);
+			assert.equal(edge.box.x, 0);
+			assert.deepEqual(labelProblems([edge.box], view), []);
+			// A raw gap of 3.996 is drawn as the required 4 px.
+			const a = anchor("a", 0, 0, { side: "right" });
+			const b = labelAnchor(cam, { id: "b", at: { x: (a.box.width + 3.996) / 20, y: 0 }, lines: ["Label"], side: "right" });
+			assert.match(b.markup, new RegExp(`<rect x="${b.box.x}" `));
+			near(b.box.x - (a.box.x + a.box.width), 4);
+			assert.deepEqual(labelProblems([a.box, b.box].map((x) => ({ ...x, stem: undefined })), view), []);
+		});
 		it("ignores labels that are not drawn", () => {
 			assert.deepEqual(labelProblems([anchor("a").box, anchor("b", 0, 0, { opacity: 0 }).box], view), []);
 		});
@@ -372,6 +396,19 @@ describe("the scene gate and labels", () => {
 			const r = checkScene(sceneWithLabels([], { labelBoxes: () => [bad] }));
 			assert.ok(r.problems.some((p) => /labelBoxes\(\) entry 0 must be/.test(p)), JSON.stringify(bad));
 		}
+	});
+	it("fails a label box with a negative width or height", () => {
+		for (const bad of [{ id: "a", x: 10, y: 10, width: -20, height: 10 }, { id: "a", x: 10, y: 10, width: 20, height: -10 }]) {
+			const r = checkScene(sceneWithLabels([], { labelBoxes: () => [bad] }));
+			assert.ok(r.problems.some((p) => /labelBoxes\(\) entry 0 must be/.test(p)), JSON.stringify(bad));
+		}
+	});
+	it("bounds the work and the messages for a scene of many colliding labels", () => {
+		const same = Array.from({ length: 1000 }, (_, i) => ({ id: `l${i}`, x: 10, y: 10, width: 50, height: 20 }));
+		const started = performance.now();
+		const r = checkScene(sceneWithLabels([], { labelBoxes: () => same }));
+		assert.ok(performance.now() - started < 1000);
+		assert.ok(r.problems.length > 0 && r.problems.length <= 13 + 2, `${r.problems.length} problems`);
 	});
 	it("checks a label that is on screen only at one moment", () => {
 		const cam = camera({ azimuth: 0, elevation: 90, zoom: 20, pan: { x: 200, y: 200 } });

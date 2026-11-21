@@ -39,7 +39,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
 | `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | Token pairs the scene draws beyond `CONTRAST_PAIRS` (§6); the gate checks the style against them in both themes [gate] G12 (`lib/check.mjs`, rule 8; used by `examples/custom-pulse.scene.mjs`). Tokens MUST be known and `min` in [1, 21]. |
-| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor` returns one, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
+| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor` returns one, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers, `width` and `height` not negative [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
@@ -247,7 +247,7 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   opacity, id})` extrudes a convex footprint (any winding; stored
   counter-clockwise) from base height `z` by `h` ≥ 0; `box` (centred on x, y)
   and `slab` (default `h` 0.25) are rectangular prisms; `regularPolygon` makes
-  a footprint. A non-convex, degenerate or too-small footprint, an unknown
+  a footprint. A non-convex, degenerate or too-small footprint, one with a repeated vertex (adjacent or not, so a footprint that winds round twice), an unknown
   token or a negative height throws. `fill` is the token of the top face,
   `sides` of the side faces (default `fill`); `shade` (default `ink`, `null`
   for none) is layered over each side at an opacity from 0.10 to 0.26 by how
@@ -263,8 +263,9 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
 - **Labels.** `labelAnchor(cam, {id, at, lines, fontSize, lift, side,
   opacity})` draws a dot on the projected point, a vertical stem `lift` pixels
   up and a label box above it (or beside its top), and returns the markup and
-  the `LabelBox`. `labelProblems(boxes, {width, height, gap = 4})` lists the
-  collisions G15 reports. Labels follow §7 (wrapped, localized, ≥ 14 px).
+  the `LabelBox`, rounded to two decimals as the SVG attributes are, so the gate
+  and the picture agree. `labelProblems(boxes, {width, height, gap = 4, limit})`
+  lists the collisions G15 reports, and stops at `limit` (default all). Labels follow §7 (wrapped, localized, ≥ 14 px).
 - **Paths.** `path3(points)` is a polyline through world points with its
   length in world units, so a token keeps a constant speed whatever the camera
   does when its progress is linear (`tokenPoints` defaults to `easeStandard`;
