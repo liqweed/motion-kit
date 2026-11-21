@@ -39,7 +39,7 @@ Reviewed export base: 343535f6be880c246f19bde9c11194d5f5c95dc4
 3. **Open, for #61.** The hero's callout leaders point at the player's
    controls, not at parts of the diagram, because the scene exposes no anchors
    for page callouts. The design's motion moment (leaders drawing to the
-   diagram) needs them; see the issue filed for it.
+   diagram) needs them: #76.
 4. **Open.** The arrow in `frame(t) → SVG` is not in the Latin subset of
    either typeface and falls back to a system glyph.
 
