@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-21
+
+### Fixed
+
+- `motion-kit build` gave a custom scene's `kit` no isometric helpers: `kit.camera`, `kit.box`, `kit.drawSolids`, `kit.labelAnchor` and the rest were undefined in the built page, though the scene passed `check` and `export` in Node. A built page now hands the module the same `kit` as Node, name for name; the player and the scene types, which only a built page ever offered through `kit`, are no longer on it. **Consumer action:** advised at configuration. Only a custom scene that read the player, `createScene`, `mountPlayer` or the page-link helpers (`scrollSteps`, `linkSteps`) from `kit` in a built page: those names were never in `KIT` or in Node, so such a scene already failed `check` and `export`. Import them from the vendored `runtime/` modules instead, or build the page from a spec, then rebuild. Every other scene needs nothing.
+
 ## [0.9.0] - 2026-11-20
 
 ### Added
@@ -129,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.9.1...HEAD
+[0.9.1]: https://github.com/liqweed/motion-kit/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/liqweed/motion-kit/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/liqweed/motion-kit/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/liqweed/motion-kit/compare/v0.6.0...v0.7.0
