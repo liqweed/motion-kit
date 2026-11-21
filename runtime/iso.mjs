@@ -566,21 +566,28 @@ function segmentHits(s, r) {
  * What is wrong with a set of drawn labels: two boxes closer than `gap`
  * pixels (overlapping), a stem running through another label, a box outside
  * the picture. Boxes with `opacity` 0 are not drawn and are skipped. Each
- * problem is one sentence; none for a clean set. It stops at `limit` problems
- * (default: all), so a scene with thousands of colliding labels costs no more
- * than the first few.
+ * problem is one sentence, and a repeated sentence is reported once; none for
+ * a clean set. It stops at `limit` problems (default: all; 0 returns none; a
+ * negative or NaN `limit` throws), so a scene with thousands of colliding
+ * labels costs no more than the first few. Sentences in `ignore` are skipped
+ * and do not count towards the limit.
  * @param {LabelBox[]} boxes
- * @param {{ width: number, height: number, gap?: number, limit?: number }} view the picture's size
+ * @param {{ width: number, height: number, gap?: number, limit?: number, ignore?: Set<string> }} view the picture's size
  * @returns {string[]}
  */
-export function labelProblems(boxes, { width, height, gap = 4, limit = Infinity }) {
+export function labelProblems(boxes, { width, height, gap = 4, limit = Infinity, ignore }) {
+	if (Number.isNaN(limit) || limit < 0) throw new RangeError(`labelProblems: limit must be 0 or more, got ${limit}`);
+	if (limit === 0) return [];
 	const eps = 1e-9; // rounded box edges that meet exactly must not fail on float noise
 	// Drawn unless it fades out: `fade` drops an element whose opacity rounds to 0.
 	const drawn = boxes.filter((b) => b.opacity === undefined || Math.round(b.opacity * 1000) > 0);
 	/** @type {string[]} */
 	const problems = [];
 	/** @param {string} message @returns {boolean} whether the limit is reached */
-	const add = (message) => problems.push(message) >= limit;
+	const add = (message) => {
+		if (ignore?.has(message) || problems.includes(message)) return false;
+		return problems.push(message) >= limit;
+	};
 	for (const [i, a] of drawn.entries()) {
 		if ((a.x < -eps || a.y < -eps || a.x + a.width > width + eps || a.y + a.height > height + eps) && add(`label "${a.id}" is outside the picture`)) return problems;
 		for (let j = i + 1; j < drawn.length; j++) {

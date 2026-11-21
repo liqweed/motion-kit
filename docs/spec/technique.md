@@ -595,8 +595,9 @@ that removes every listener, observer and mark they added.
 × locale (`--locale`, repeatable; else every locale a spec's strings carry, and
 `en` for a module, §7), with `--options` for modules, plus the style contrast
 check. A file that cannot be read, parsed or built fails on its own and the
-remaining files are still checked; the exit code is 1 on any failure. `npm run gate` = unit tests +
-`check` over `examples/` and `brand/` (`package.json:15-18`).
+remaining files are still checked; the exit code is 1 on any failure. `npm run gate` = `gate:core`
+(typecheck, version sync, unit tests, `check` over `examples/` and `brand/`,
+media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`).
 
 | ID | Rule | Code | Rationale |
 |---|---|---|---|

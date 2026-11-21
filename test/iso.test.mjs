@@ -6,6 +6,7 @@ import { loadScene } from "../lib/load.mjs";
 import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab } from "../runtime/iso.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
 import { FORMATS, validateScene } from "../runtime/scene.mjs";
+import { estimateWidth } from "../runtime/wrap.mjs";
 import { cubic, polyline, tokenPoints, tokensAlong } from "../runtime/svg.mjs";
 
 const near = (/** @type {number} */ a, /** @type {number} */ b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} is not ${b}`);
@@ -296,15 +297,30 @@ describe("label anchors", () => {
 			assert.ok(performance.now() - started < 500);
 			assert.equal(labelProblems(same.slice(0, 4), view).length, 6);
 		});
+		it("returns nothing at limit 0 and refuses a negative or NaN limit", () => {
+			const outside = [anchor("a", -20, 0).box];
+			assert.deepEqual(labelProblems(outside, { ...view, limit: 0 }), []);
+			assert.throws(() => labelProblems(outside, { ...view, limit: -1 }), RangeError);
+			assert.throws(() => labelProblems(outside, { ...view, limit: NaN }), RangeError);
+		});
+		it("reports a repeated sentence once and skips ignored ones without counting them", () => {
+			const dup = Array.from({ length: 20 }, () => ({ id: "a", x: 10, y: 10, width: 50, height: 20 }));
+			const out = { id: "o", x: -50, y: 0, width: 10, height: 10 };
+			assert.deepEqual(labelProblems([...dup, out], { ...view, limit: 5 }), ['labels "a" and "a" overlap', 'label "o" is outside the picture']);
+			assert.deepEqual(labelProblems([...dup, out], { ...view, limit: 1, ignore: new Set(['labels "a" and "a" overlap']) }), ['label "o" is outside the picture']);
+		});
 		it("checks the box the SVG draws, rounded to two decimals", () => {
 			// A raw left edge of -0.004 is drawn at x="0": inside the picture.
 			const edge = labelAnchor(cam, { id: "e", at: { x: -200.004 / 20, y: 0 }, lines: ["Label"], side: "right" });
 			assert.match(edge.markup, /<rect x="0" /);
 			assert.equal(edge.box.x, 0);
 			assert.deepEqual(labelProblems([edge.box], view), []);
-			// A raw gap of 3.996 is drawn as the required 4 px.
+			// A raw gap of 3.999 is drawn as the required 4 px.
 			const a = anchor("a", 0, 0, { side: "right" });
-			const b = labelAnchor(cam, { id: "b", at: { x: (a.box.width + 3.996) / 20, y: 0 }, lines: ["Label"], side: "right" });
+			const rawWidth = estimateWidth("Label", 14 * 1.08) + 16;
+			assert.notEqual(rawWidth, a.box.width, "the box width is rounded, so the raw gap differs");
+			const b = labelAnchor(cam, { id: "b", at: { x: (rawWidth + 3.999) / 20, y: 0 }, lines: ["Label"], side: "right" });
+			assert.ok(rawWidth + 3.999 - rawWidth < 4 && b.box.x - a.box.x - rawWidth > 4 - 0.01, "raw gap 3.999 is below 4, its drawn gap is not");
 			assert.match(b.markup, new RegExp(`<rect x="${b.box.x}" `));
 			near(b.box.x - (a.box.x + a.box.width), 4);
 			assert.deepEqual(labelProblems([a.box, b.box].map((x) => ({ ...x, stem: undefined })), view), []);
