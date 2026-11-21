@@ -36,9 +36,10 @@ logo.
 [`website/DESIGN.md`](../../../website/DESIGN.md) pins the values: the
 typeface pair, sentence-case headings, the easing curve, the press scale, the
 8-multiple type scale, the grid and shape rules, and the light and dark colour
-tokens. The colour tokens are the neutral style's, so the site and the
-diagrams share them. The site's CSS takes them as custom properties when #61
-builds it.
+tokens. The light palette follows the neutral style. The dark palette is a
+deliberate site override for the picked dark artboards; #61 must use the
+site-dark tokens from `website/DESIGN.md`, not neutral dark. The site's CSS
+takes them as custom properties when #61 builds it.
 
 ## Not decided
 

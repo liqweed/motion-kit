@@ -46,7 +46,7 @@ Every size and line height is a multiple of 8.
 | Section heading | 48 / 56 | 600 |
 | Title | 24 / 32 | 600 |
 | Body, controls | 16 / 24 | 400, 500 for controls, 600 for emphasis |
-| Mono labels | 14 / 24 | 400 to 500 |
+| Mono labels | 16 / 24 | 400 to 500 |
 
 The arrow in `frame(t) → SVG` is not in the Latin subset of either face, so it
 falls back to a system glyph; subset it in if that shows.
@@ -57,7 +57,7 @@ falls back to a system glyph; subset it in if that shows.
   number of modules. The design shows an 8 px ruler on every plate edge.
 - Square corners everywhere (`border-radius: 0`). The logo is the only rounded
   shape.
-- 1 px rules, 2 px plate edges, 24 px square callout markers, 40 px controls.
+- 1 px rules, 2 px plate edges, 24 px square callout markers, 44 px controls.
   No circles or pills.
 - Figures carry numbered callouts keyed to a legend beneath them.
 

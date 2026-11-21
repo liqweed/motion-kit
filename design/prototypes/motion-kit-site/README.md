@@ -11,11 +11,11 @@ figure carries numbered callouts keyed to a legend.
 | Path | What |
 |---|---|
 | `hero-light.html`, `hero-dark.html` | The home hero with the live player |
-| `where-it-runs-light.html`, `where-it-runs-dark.html` | The "Where it runs" section: five targets |
+| `where-it-runs-light.html`, `where-it-runs-dark.html` | The "Where it runs" section and its target list |
 | `player-light.html`, `player-dark.html` | One frame of the recurring figure: the player at step 4 of 6 |
 | `fonts/` | Instrument Sans and DM Mono, self-hosted (SIL OFL 1.1, licences beside them), Latin and Latin Extended |
-| `assets/` | The logo and four real step frames of `examples/order-flow.json`, drawn by the product (steps 3 and 4, light and dark) |
-| `canvas-source/` | The six Claude Design artboards these pages were converted from |
+| `assets/` | The logo and real step frames of `examples/order-flow.json`, drawn by the product |
+| `canvas-source/` | The Claude Design artboards these pages were converted from |
 | `design-handback.json`, `screenshots/` | The landing check's scenarios and delivered screenshots (1440 and 1200 px wide) |
 | `handback-report.json` | Written by `handback.ts merge` |
 
@@ -30,9 +30,11 @@ held the product's real copy; the canvas keeps no version history. The six
 Module artboards (three, light and dark) were then copied here as
 `canvas-source/` and converted to static pages: the canvas wrapper and runtime
 were removed, the web-font link was replaced by the self-hosted files, and the
-canvas's uploaded images became files under `assets/`. Nothing in the markup or
-copy was changed otherwise. This is a hand conversion, not an export made by
-Claude Design's own tool.
+canvas's uploaded images became files under `assets/`. The conversion also
+adds ink outlines to amber markers and strengthens the light-page borders from
+`#8b929c` to `#4b5563` where the contrast check required it. Other markup and
+copy are unchanged. This is a hand conversion, not an export made by Claude
+Design's own tool.
 
 What this bundle does not show: the gallery, the docs pages, a "needs" card,
 the isometric showcase, motion, and any width below 1200 px. Building the site
