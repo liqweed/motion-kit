@@ -25,6 +25,23 @@ custom scene's `frame` rather than importing the constants.
 | Pause between beats | ≥ 50 ms, so step frames settle |
 | Whole explainer | aim for ≤ 8 s, then hold; gate limit 12 s |
 
+## Blur reveal or plain fade (`blurReveal`, `highlightSweep`)
+
+| | Plain fade (`fade`, the node parts' 8-unit rise) | Blur reveal (`blurReveal`) |
+|---|---|---|
+| Use it for | Nodes, connectors, anything in a dense diagram; text that is not the point of the beat | Text the viewer should watch land: a heading, the label of the one thing the beat introduces, a quoted line, a card |
+| Looks like | Appears from transparent, rising a few units | The same, and starts soft: sharpens into place over the same 300–600 ms |
+| Cost | Opacity and transform only | An SVG filter per revealing element, every frame of the reveal. Keep to a few elements at a time |
+| Settled | No trace | No trace: the markup comes back bare, byte-identical |
+
+Reveal in reading order, siblings 80–150 ms apart, on the style's entrance
+curve. A reveal that does not carry a beat is decoration: use the fade. A
+`highlightSweep` marks one thing in a scene (it uses the `emphasis` token, and
+there is one emphasis element), grows left to right behind its text over about
+0.6 s on the entrance curve, and starts while the text is still sharpening or
+once it has. Neither helper loops; a blinking cursor is ambient motion, so a
+cursor stays static.
+
 ## Springs, without breaking random access (derived)
 
 Frame-by-frame spring simulation depends on earlier frames. Use the closed form.

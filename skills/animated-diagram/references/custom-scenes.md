@@ -159,6 +159,43 @@ Canon: no loops, no ambient motion, no continuous scrubbing, 12 s hard limit
 other, and under reduced motion the player shows that frame. A constantly
 moving hero is a 3D model's job, not motion-kit's.
 
+## Text that sharpens into place, and a highlighter
+
+`kit` carries two text helpers (`runtime/svg.mjs`), for a label or a quote that
+should arrive as a beat and not just appear. Template:
+`examples/text-reveal.scene.mjs` (three labels reveal in reading order, then a
+quoted line reveals and is marked).
+
+| Need | Use |
+|---|---|
+| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card |
+| Its filter id | `id: idPrefix + "-reveal-" + i`, one per revealed element. The gate refuses a fixed id, and every slice of a baked SVG has its own prefix |
+| A highlighter | `highlightSweep(p, { x, y, width, height, token, opacity, radius })`: a band in a token (default `emphasis`) at 30 % that grows from `x` to `x + width` as `p` (eased) goes 0 → 1. Draw it **before** the text; size it from `estimateWidth(line, fontSize)` plus padding each side (the estimate is generous, ×0.9 hugs a typical sans-serif) |
+
+Rules that keep it inside the canon:
+
+- **Settled means bare.** When `enter` reaches 1, `blurReveal` returns your
+  markup with no group, no filter and no `<defs>`, so every step frame and the
+  final frame are byte-identical to the same text drawn without the reveal.
+  Finish each reveal 50 ms or more before the step it belongs to, as with any
+  beat; the gate's settled-step rule then holds. Do not wrap the call in your
+  own filter or opacity.
+- **Once per element, inside a beat.** A reveal runs 300–600 ms and never
+  repeats. Stagger siblings 80–150 ms in reading order. A blinking cursor or any
+  other loop is ambient motion and stays out; a static cursor is fine.
+- **Reduced motion** shows the final frame, which is the settled text and the
+  full band: no filter, no motion.
+- **Renderers.** The live player (in-place patch), `bake`, PNG export (resvg,
+  Chrome) and video draw the same blur. A consumer that ignores SVG filters
+  shows the fade and the rise only, and only mid-reveal; step frames carry no
+  filter.
+- **Cost.** A blur is the most expensive thing a frame can ask the browser for.
+  Reveal the handful of elements the viewer must watch arrive, not every
+  element in a dense diagram; for those, `fade()` is enough
+  (`motion-vocabulary.md`, "Blur reveal or plain fade").
+- **Contrast.** Keep the band's `opacity` at 0.2–0.4: the text on it keeps its
+  contrast only while the band is a tint of the canvas.
+
 ## Declared locales and narrative steps
 
 Export `const locales = ["en", "nl"]` alongside the default factory so both

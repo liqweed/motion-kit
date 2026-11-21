@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-19
+last_updated: 2026-11-21
 ---
 
 # motion-kit technique — normative specification
@@ -269,6 +269,57 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   length in world units, so a token keeps a constant speed whatever the camera
   does when its progress is linear (`tokenPoints` defaults to `easeStandard`;
   pass `ease: linear`).
+
+### 4.10 Text reveal and highlighter sweep (`runtime/svg.mjs`)
+
+- `blurReveal(enter, {id, rise = 6, blur = 4}, ...children)` draws `children`
+  with an opacity, a rise and a blur that all go to zero as `enter` (an eased
+  progress, §4.2) goes from 0 to 1: one `<g transform opacity filter>` and,
+  while the blur is above 0.005, a `<defs>` holding one `<filter>` with one
+  `<feGaussianBlur>`. It returns `""` for `enter ≤ 0`.
+- **Settled means bare.** Once `enter` reaches 1, as `fade` rounds it (0.9995
+  and above), `blurReveal` MUST return the children unchanged: no group, no
+  filter, no `<defs>`, so a settled frame is byte-identical to the same markup
+  drawn without the reveal, and every step frame, the final frame, a baked
+  last slice and a reduced-motion frame carry no filter. Between 0 and 1 the
+  `transform` and the `filter` are left off once they round to nothing
+  (a rise under 0.004 units, a blur under 0.005), so a frame never carries
+  a `stdDeviation="0"`, which renderers read differently.
+- **Ids.** `id` names the filter and MUST be built from `frame`'s `idPrefix`
+  (`${idPrefix}-reveal-1`), one per revealed element, so G14 holds and a baked
+  SVG, which renders each slice with its own prefix, never repeats one
+  [throws unless `id` is a CSS-safe token]. `rise` is 0 to 24 and `blur` 0 to 12
+  [throws].
+- **Renderers.** The filter is `feGaussianBlur` in sRGB over a region of
+  `x −25 %`, `y −100 %`, `width 150 %`, `height 300 %` of the element's box:
+  enough for a blur as large as the element is tall, so the default 4 never
+  clips a line of text. The live player (its
+  in-place patch updates `stdDeviation` and the group's attributes, and drops
+  the group when the reveal ends), `renderSvg`, `bake`, PNG export (resvg and
+  Chrome) and video draw the blur the same way (`test/reveal.test.mjs`,
+  `test/player.test.mjs`). A consumer that ignores SVG filters (some slide
+  applications) shows the fade and the rise without the blur, and only in a
+  frame taken mid-reveal: step frames carry no filter.
+- **Timing.** The reveal is one entrance, 300 to 600 ms (§4.2), on the style's
+  entrance curve (`easings(style.motion).easeOut`), finished 50 ms or more
+  before the step it belongs to (G6). It happens once per element and holds.
+  The blur is a paint cost no other motion helper has; the plain fade
+  (`fade`) stays the default for a label whose arrival does not need to be
+  watched
+  ([`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)).
+- `highlightSweep(p, {x, y, width, height, token = "emphasis", opacity = 0.3,
+  radius = 4})` draws a rounded `<rect>` filled with a token at `opacity`,
+  from `x` to `x + width · p` (`p` eased, 0 to 1); `""` for `p ≤ 0`; at 1 the
+  rectangle is the same on every frame. It is drawn before the text it marks,
+  and `opacity` stays low (0.2 to 0.4) so the text keeps its contrast: at
+  the default 0.3 the neutral style's ink reads on the tinted canvas at 4.5:1
+  or more in both themes (`test/reveal.test.mjs`). `width` is the scene's to
+  set; `estimateWidth` is a safe over-estimate of a line [throws on a
+  non-finite or non-positive size, an unknown token, or an `opacity` outside
+  (0, 1]].
+- Both helpers are pure functions of their arguments. `examples/text-reveal.scene.mjs`
+  reveals three labels in reading order, then a quoted line with one band per
+  wrapped line swept first line to last.
 
 ## 5. Markup
 
