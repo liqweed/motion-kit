@@ -227,6 +227,25 @@ describe("examples/connectors.scene.mjs", () => {
 	});
 });
 
+describe("examples/connectors.scene.mjs feeder junctions", () => {
+	it("lights each feeder junction as the pulse reaches it, one diamond at a time", async () => {
+		const { scene } = await loadScene(EXAMPLE, { format: "16:9" });
+		// Lit junction layers: four-vertex diamonds stroked with the accent token.
+		const diamonds = (/** @type {number} */ t) => (scene.frame(t, { idPrefix: "x" }).match(/<path d="M[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ L[\d.\-]+ [\d.\-]+ Z"[^>]*stroke="var\(--mk-accent\)"/g) ?? []).length;
+		// FEED starts at 4.5 s and lasts 1.6 s at constant speed; the feeder's legs are 2, 1.4, 2.4 and 1.3 world units, the turns after the first three.
+		const legs = [2, 1.4, 2.4, 1.3];
+		const total = legs.reduce((a, b) => a + b, 0);
+		let d = 0;
+		const reach = legs.slice(0, 3).map((leg) => (d += leg, 4.5 + (d / total) * 1.6));
+		const base = diamonds(4.4);
+		assert.equal(base, 1, "only the splitter diamond is lit before the feeder pulse");
+		reach.forEach((ta, k) => {
+			assert.equal(diamonds(ta - 0.02), base + k, `${k} feeder junctions are lit just before junction ${k + 1} is reached`);
+			assert.equal(diamonds(ta + 0.3), base + k + 1, `junction ${k + 1} is lit once its fill has settled`);
+		});
+	});
+});
+
 describe("drawPulse corners and instantaneous runs", () => {
 	it("bends a tail slice at the corner instead of cutting across it", () => {
 		const out = drawPulse(L, 0.8, { start: 0, duration: 1, lag: 0.5, ease: linear });
