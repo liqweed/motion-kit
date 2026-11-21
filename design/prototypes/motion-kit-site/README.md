@@ -38,4 +38,9 @@ What this bundle does not show: the gallery, the docs pages, a "needs" card,
 the isometric showcase, motion, and any width below 1200 px. Building the site
 from it is [#61](https://github.com/liqweed/motion-kit/issues/61).
 
-Bar outcome: pending
+Bar outcome: pass
+
+Export base: 343535f6be880c246f19bde9c11194d5f5c95dc4
+Export base provenance: raw export
+Previous export base: 343535f6be880c246f19bde9c11194d5f5c95dc4
+Previous export base provenance: first-added fallback (no recorded raw export)
