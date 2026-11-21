@@ -30,6 +30,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { FORMATS } from "../runtime/scene.mjs";
+import { checkContrast, sharedPairs } from "../runtime/style.mjs";
 import { SCENE_TYPES } from "../runtime/types/index.mjs";
 import { checkScene } from "../lib/check.mjs";
 import { checkFiles } from "../lib/gate.mjs";
@@ -129,6 +130,9 @@ async function main() {
 			const r = checkScene(loaded.scene, { style });
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			warnAll(r.warnings);
+			// The page also paints the player: buttons, selected step and captions.
+			const player = checkContrast(style, sharedPairs("ink/bg", "ink/surface", "onAccent/accent", "muted/bg"));
+			if (player.length) fail(`the player in the page fails the gate:\n  - ${player.join("\n  - ")}`);
 			const html = buildHtml(loaded, { style, ...where, options: sopts.options, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
 			if (/<\/script/i.test(html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>")))) fail("bundled code contains </script>");
 			const out = need(a.out, "--out");

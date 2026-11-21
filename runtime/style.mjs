@@ -186,7 +186,7 @@ export const CONTRAST_PAIRS = Object.freeze([
 		min: 3,
 		use: "the emphasis ring around the reached node it marks (sequence, flowchart): 3.5 units apart, so adjacent at phone size. It tells the current node from the reached ones without relying on hue. The dot of hub-spoke, stack and walk rides over accent connectors",
 	},
-]);
+].map((p) => Object.freeze(p)));
 
 /**
  * Pairs that are drawn (by the scene types, only in motion; or by the
@@ -274,8 +274,13 @@ export function contrastReport(style, drawn) {
 	const s = normalizeStyle(style);
 	// An empty list says nothing about what is drawn, which is no reason to drop every check.
 	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) return { problems: checkContrast(s), warnings: [] };
+	if (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length) return { problems: checkContrast(s, drawn), warnings: [] };
+	// A declaration may add pairs and name shared ones, never weaken a shared threshold.
+	drawn = drawn.map((d) => {
+		const shared = CONTRAST_PAIRS.find((p) => p.fg === d.fg && p.bg === d.bg);
+		return shared && d.min < shared.min ? { ...d, min: shared.min } : d;
+	});
 	const problems = checkContrast(s, drawn);
-	if (problems.length && (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length)) return { problems, warnings: [] };
 	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => d.fg === p.fg && d.bg === p.bg));
 	const warnings = misses(s, undrawn).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`);
 	return { problems, warnings };

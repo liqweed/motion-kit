@@ -23,7 +23,7 @@ import * as wrapMod from "../runtime/wrap.mjs";
 import { renderSvg, safeId, stepIndex, validateScene } from "../runtime/scene.mjs";
 import { checkContrast, contrast, contrastReport, CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, normalizeStyle, resolveTokens, sharedPairs } from "../runtime/style.mjs";
 import { cubic, drawOn, esc, num, polyline } from "../runtime/svg.mjs";
-import { createScene, SCENE_TYPE_PAIRS } from "../runtime/types/index.mjs";
+import { createScene, SCENE_TYPE_PAIRS, SCENE_TYPES } from "../runtime/types/index.mjs";
 import { wrapLabel } from "../runtime/wrap.mjs";
 
 const EXAMPLES = ["order-flow", "smart-home"].map((n) => JSON.parse(readFileSync(new URL(`../examples/${n}.json`, import.meta.url), "utf8")));
@@ -174,6 +174,9 @@ describe("styles", () => {
 		assert.deepEqual(contrastReport(NEUTRAL, drawn), { problems: [], warnings: [] });
 		// What a scene declares is held to the threshold it declares, text at 4.5 included.
 		assert.deepEqual(contrastReport({ name: "low", light: { muted: "#9a9a9a" } }, sharedPairs("muted/bg")).problems, ["low light: muted on bg is 2.81:1, needs 4.5:1"]);
+		// A declaration cannot weaken a shared threshold, and the shared entries cannot be edited.
+		assert.deepEqual(contrastReport({ name: "w", light: { ink: "#ffffff" } }, [{ fg: "ink", bg: "bg", min: 1 }]).problems.length, 1);
+		assert.throws(() => { "use strict"; sharedPairs("ink/bg")[0].min = 1; }, TypeError);
 		// A malformed declaration is a problem and nothing else.
 		assert.deepEqual(contrastReport(NEUTRAL, [{ fg: "brand", bg: "bg", min: 3 }]), { problems: ['neutral: contrast pair 0 has unknown fg token "brand"'], warnings: [] });
 	});
@@ -183,6 +186,17 @@ describe("styles", () => {
 			assert.ok(pairs.length > 0 && pairs.every((p) => shared.has(p)), `${type} draws pairs from the shared list`);
 			assert.deepEqual(contrastReport(NEUTRAL, pairs), { problems: [], warnings: [] }, type);
 		}
+		// Pinned per type, so dropping one (the timeline's emphasis/accent) fails here.
+		const expected = {
+			sequence: "ink/bg muted/bg muted/surface onAccent/accent line/bg accent/bg emphasis/bg emphasis/accent",
+			"hub-spoke": "ink/surface onAccent/accent line/bg accent/bg emphasis/bg emphasis/accent",
+			timeline: "ink/bg muted/bg line/bg accent/bg emphasis/bg emphasis/accent",
+			stack: "ink/surface onAccent/accent line/bg accent/bg emphasis/bg emphasis/accent",
+			flowchart: "ink/bg muted/bg ink/surface onAccent/accent line/bg accent/bg emphasis/bg emphasis/accent",
+		};
+		for (const [type, list] of Object.entries(expected)) assert.deepEqual(SCENE_TYPE_PAIRS[type].map((p) => `${p.fg}/${p.bg}`).sort(), list.split(" ").sort(), type);
+		assert.equal(SCENE_TYPE_PAIRS["state-machine"], SCENE_TYPE_PAIRS["request-journey"]);
+		assert.ok(Object.keys(SCENE_TYPES).every((t) => SCENE_TYPE_PAIRS[t]), "every registered type has pairs");
 		for (const spec of EXAMPLES) assert.equal(createScene(spec, { format: "16:9", locale: "en" }).contrastPairs, SCENE_TYPE_PAIRS[spec.type], spec.type);
 		// The ring of a sequence or flowchart sits next to the reached node, the dots of hub-spoke,
 		// stack and walk ride over accent links and the timeline's axis runs into its now pill; no type draws all nine.

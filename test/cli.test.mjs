@@ -98,7 +98,7 @@ describe("cli", () => {
 
 		r = node(gate, join(dir, "scenes/labelled.scene.mjs"), "--format", "tall", "--style", join(dir, "low.json"), "--options", join(dir, "scenes/labels.mjs"));
 		assert.equal(r.status, 1);
-		assert.match(r.out, /⚠ style: low light: onAccent on accent is 2\.54:1, needs 4\.5:1 \(held against: .*custom scenes that declare no contrastPairs/);
+		assert.match(r.out, /⚠ style: low light: onAccent on accent is 2\.54:1, needs 4\.5:1 \(held against: .*custom scenes that declare no or empty contrastPairs, or name this pair/);
 		assert.match(r.out, /✗ .*labelled\.scene\.mjs · tall · en\n {2}- contrast: low light: onAccent on accent/);
 
 		writeFileSync(join(dir, "scenes/broken.json"), "{ not json");
@@ -184,6 +184,11 @@ describe("cli", () => {
 		r = both("build", undeclared, "-o", join(dir, "undeclared.html"), ...opts);
 		assert.equal(r.status, 1);
 		assert.match(r.out, /scene fails the gate/);
+		// The page paints the player too: a scene that never draws onAccent on accent still fails build on it.
+		writeFileSync(join(dir, "flat.json"), JSON.stringify({ name: "flat", light: { onAccent: "#2563eb", accent: "#2563eb" } }));
+		r = both("build", declared, "-o", join(dir, "flat.html"), "--options", join(dir, "labels.json"), "--style", join(dir, "flat.json"));
+		assert.equal(r.status, 1, r.out);
+		assert.match(r.out, /the player in the page fails the gate[\s\S]*onAccent on accent/);
 	});
 	it("export writes standalone steps, QC frames and a reproducible manifest", () => {
 		const dir = join(tmp, "exp");
