@@ -283,6 +283,8 @@ export function mountPlayer(container, scene, options = {}) {
 	let tStart = 0;
 	let stopAt = scene.duration;
 	let autoplayPending = false;
+	// Bumped by every takeover (play, pause, step calls); lets a start in flight see one.
+	let takeovers = 0;
 	let destroyed = false;
 	let liveRaf = 0;
 	// Last visibility the observer reported; until it reports, assume in view.
@@ -318,10 +320,16 @@ export function mountPlayer(container, scene, options = {}) {
 			}
 		}
 	}
-	/** @param {number} time */
+	/** Public seek: a valid call is a takeover, so a start in flight sees it. @param {number} time */
 	function seek(time) {
 		if (destroyed) return;
 		if (!Number.isFinite(time)) throw new RangeError("seek time must be finite");
+		takeovers++;
+		jump(time);
+	}
+	/** Internal reset to a time; not a takeover. @param {number} time */
+	function jump(time) {
+		if (destroyed) return;
 		autoplayPending = false;
 		playing = false;
 		suspended = false;
@@ -334,8 +342,11 @@ export function mountPlayer(container, scene, options = {}) {
 		if (destroyed || !playing || suspended) return;
 		t = Math.min(tStart + (now - wallStart) / 1000, stopAt);
 		if (t >= stopAt) playing = false;
+		const frame = raf;
 		draw();
-		if (playing) raf = requestAnimationFrame(tick);
+		// A subscriber that restarted the clock during draw() has queued the next frame itself, ahead of
+		// its own work: keep that one, and queue a continuation only when nothing replaced this frame.
+		if (playing && raf === frame) raf = requestAnimationFrame(tick);
 	}
 	/** Run the clock from the current time (or wait, while out of view). */
 	function run() {
@@ -354,11 +365,14 @@ export function mountPlayer(container, scene, options = {}) {
 	/** @param {number} target */
 	function start(target) {
 		autoplayPending = false;
+		takeovers++;
 		stopAt = target;
 		playing = true;
 		run();
 	}
 	function pause() {
+		autoplayPending = false;
+		takeovers++;
 		playing = false;
 		suspended = false;
 		cancelAnimationFrame(raf);
@@ -406,12 +420,14 @@ export function mountPlayer(container, scene, options = {}) {
 	function seekStep(ref) {
 		const target = scene.steps[stepIndex(scene, ref)].at;
 		autoplayPending = false;
+		takeovers++;
 		seek(target);
 	}
 	/** Play forward to a settled step, by index or by step id; backward/reduced-motion calls jump. @param {number | string} ref */
 	function playToStep(ref) {
 		const target = scene.steps[stepIndex(scene, ref)].at;
 		autoplayPending = false;
+		takeovers++;
 		if (destroyed) return;
 		if (reduced || target <= t) seek(target);
 		else start(target);
@@ -442,13 +458,16 @@ export function mountPlayer(container, scene, options = {}) {
 		if (playing && suspended) run();
 		if (autoplayPending && shown(e)) {
 			autoplayPending = false;
-			seek(0);
+			const before = takeovers;
+			jump(0);
+			// A step subscriber may have taken control while the reset frame published.
+			if (destroyed || takeovers !== before || t !== 0) return;
 			play();
 		}
 	}
 
 	// Initial state: final frame (also what reduced motion and no-autoplay keep).
-	seek(scene.duration);
+	jump(scene.duration);
 	const autoplay = options.autoplay ?? "visible";
 	if (!reduced) {
 		if (typeof IntersectionObserver === "function") {
@@ -457,7 +476,7 @@ export function mountPlayer(container, scene, options = {}) {
 			visibilityObserver.observe(container);
 		}
 		if (autoplay !== "none" && !autoplayPending) {
-			seek(0);
+			jump(0);
 			play();
 		}
 	}
@@ -480,6 +499,7 @@ export function mountPlayer(container, scene, options = {}) {
 	function destroy() {
 		if (destroyed) return;
 		destroyed = true;
+		autoplayPending = false;
 		stepListeners.clear();
 		if (mounted.get(container) === controller) mounted.delete(container);
 		playing = false;
@@ -489,7 +509,7 @@ export function mountPlayer(container, scene, options = {}) {
 		themeQuery?.removeEventListener?.("change", applyTheme);
 		if (g.__motionKit[id] === controller) delete g.__motionKit[id];
 	}
-	const controller = { seek, play, pause, seekStep, playToStep, onStep, destroy, get time() { return t; }, scene };
+	const controller = { seek, play, pause, seekStep, playToStep, onStep, destroy, get time() { return t; }, get playing() { return playing; }, get autoplayPending() { return autoplayPending; }, scene };
 	const g = /** @type {any} */ (globalThis);
 	g.__motionKit = g.__motionKit ?? {};
 	g.__motionKit[id] = controller;

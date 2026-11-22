@@ -1,19 +1,32 @@
 ---
 import Header from "../../components/Header.astro";
 import Base from "../../layouts/Base.astro";
+import { GROUPS, LIVE, PLANNED } from "../../scripts/catalog.mjs";
+const all = [...LIVE.map((e) => ({ ...e, built: true })), ...PLANNED.map((e) => ({ ...e, built: false }))];
 ---
 
 <Base title="Gallery · motion-kit" description="Live animated diagrams, grouped by what you are trying to explain. Step through each one, compare two, and open the spec.">
 <Header page="gallery" />
 <main class="page" id="main">
-	<div style="display:flex;flex-direction:column;gap:12px;max-width:760px">
+	<div style="display:flex;flex-direction:column;gap:16px;max-width:832px">
 		<h1>Gallery</h1>
 		<p class="lede">Grouped by what you are trying to explain. Every card is a live scene: press play or step through it. Cards marked <b>needs</b> are storyboards of scene types that are not built yet; they have no player because there is nothing to run.</p>
 	</div>
 	<div class="panel filters" id="filters"></div>
+	<noscript>
+		<p class="lede small">JavaScript is off, so the live cards and filters are not drawn. Every example has a page of its own:</p>
+		{GROUPS.map((g) => (
+			<section aria-label={g.label} style="display:flex;flex-direction:column;gap:16px;margin-top:24px">
+				<h2 class="h3">{g.label}</h2>
+				<ul class="sq-list" style="margin:0;padding:0;list-style:none">
+					{all.filter((e) => e.group === g.key).map((e) => <li><a href={`/examples/${e.id}/`}>{e.title}</a> <span class="mono" style="color:var(--muted)">{e.built ? e.type : `needs: ${e.type}`}</span></li>)}
+				</ul>
+			</section>
+		))}
+	</noscript>
 	<section class="compare" id="compare" aria-label="Compare" hidden></section>
-	<div id="groups" style="display:flex;flex-direction:column;gap:32px"></div>
-	<p class="lede" id="empty" hidden>Nothing matches these filters.</p>
+	<div id="groups" style="display:flex;flex-direction:column;gap:48px"></div>
+	<p class="lede small" id="empty" hidden>Nothing matches these filters.</p>
 </main>
 </Base>
 <script>import "../../scripts/gallery.mjs";</script>

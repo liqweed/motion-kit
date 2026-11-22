@@ -11,7 +11,7 @@ import { LIVE } from "./catalog.mjs";
 import { $, initPage, prefersDark, failNote, fetchText, h, loadScene, mount, onStep, styleFor, themeOpt } from "./site.mjs";
 
 initPage();
-const phone = matchMedia("(max-width: 640px)").matches;
+const phone = matchMedia("(max-width: 720px)").matches;
 const fmt = phone ? "tall" : "wide";
 
 /* -------------------------------------------------------- link the words */

@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Ophir Radnitz
 import { mountPlayer } from "../../../runtime/player.mjs";
 import { previewSpec, restoreSpec, shareSpec } from "./playground-data.mjs";
-import { initPage, themeOpt } from "./site.mjs";
+import { initPage, styleFor, themeOpt } from "./site.mjs";
 
 initPage();
 const source = /** @type {HTMLTextAreaElement} */ (document.getElementById("spec-source"));
@@ -27,7 +27,7 @@ function render() {
 	try {
 		const scene = previewSpec(source.value, { format: format.value, locale: locale.value });
 		controller?.destroy();
-		controller = mountPlayer(preview, scene, { autoplay: "none", scrubber: true, locale: locale.value, theme: themeOpt() });
+		controller = mountPlayer(preview, scene, { autoplay: "none", scrubber: true, locale: locale.value, theme: themeOpt(), style: styleFor("studio") });
 		error.hidden = true;
 		status.textContent = `Gate passed · ${scene.steps.length} steps · ${scene.duration.toFixed(2)} s. Press Play to animate.`;
 		link.hidden = true;

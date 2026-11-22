@@ -1,6 +1,9 @@
 ---
+import Diagram from "../../components/Diagram.astro";
 import Header from "../../components/Header.astro";
+import Plate from "../../components/Plate.astro";
 import Base from "../../layouts/Base.astro";
+import { buildScene } from "../../scripts/build-scene.mjs";
 import { GROUPS, LIVE, PLANNED, REPO, findExample } from "../../scripts/catalog.mjs";
 
 export function getStaticPaths() {
@@ -14,6 +17,8 @@ const group = GROUPS.find((g) => g.key === entry.group)?.label ?? "";
 const live = entry.built ? LIVE.find((e) => e.id === entry.id) : undefined;
 const file = live ? live.file : `diagrams/${entry.id}.scene.mjs`;
 const planned = entry.built ? undefined : PLANNED.find((e) => e.id === entry.id);
+const sceneWide = live ? buildScene(live, { format: "wide" }) : undefined;
+const sceneTall = live ? buildScene(live, { format: "tall" }) : undefined;
 const description = live
 	? `${entry.title}: a live ${entry.type} scene in every format and locale, with step frames, spec, export commands and gate results.`
 	: `${entry.title}: a storyboard for the ${entry.type} scene type, which is not built yet.`;
@@ -23,9 +28,9 @@ const description = live
 	<Header page="gallery" />
 	<main class="page" id="main">
 		<p class="crumbs"><a href="/gallery/">Gallery</a> / {group}</p>
-		<div style="display:flex;flex-direction:column;gap:10px">
+		<div style="display:flex;flex-direction:column;gap:16px">
 			<h1>{entry.title}</h1>
-			<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;font:13px var(--mono)">
+			<div style="display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-family:var(--mono)">
 				<span style="color:var(--muted)">{file}</span>
 				<span class="badge">{entry.type}</span>
 				{planned && <span class="badge needs">needs: {planned.type}</span>}
@@ -33,8 +38,15 @@ const description = live
 		</div>
 		{live ? (
 			<>
-				<div id="ex-app" data-id={entry.id} />
-				<p class="nojs-note lede">JavaScript is off, so the player and the tabs are unavailable. The scene is <code>{live.file}</code> in the <a href={REPO}>repository</a>.</p>
+				<div id="ex-app" data-id={entry.id}>
+					<div class="stage-wrap"><div class="stage-box" id="ex-stagebox">
+						<Plate fig="1" title="Live player" titleId="ex-fig-h" progress>
+							<Diagram scene={sceneWide} id="ex-wide" class="only-wide" scrubber />
+							<Diagram scene={sceneTall} id="ex-tall" class="only-tall" scrubber />
+						</Plate>
+					</div></div>
+				</div>
+				<noscript><p class="lede small">JavaScript is off, so the formats, the tabs and the step frames are unavailable. The scene is <code>{live.file}</code> in the <a href={REPO}>repository</a>.</p></noscript>
 			</>
 		) : planned && (
 			<>

@@ -87,7 +87,7 @@ const entry = (visible, { ratio = visible ? 1 : 0, height = visible ? 100 : 0, v
 	isIntersecting: visible, intersectionRatio: ratio, intersectionRect: { height }, rootBounds: { height: viewport },
 });
 
-function setup({ reduced = false, animateSteps = false, autoplay = "none", options = {}, sceneOverride = scene } = {}) {
+function setup({ reduced = false, animateSteps = false, autoplay = "none", options = {}, sceneOverride = scene, observer = true } = {}) {
 	const frames = new Map();
 	let now = 0;
 	let nextId = 0;
@@ -105,11 +105,11 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none", optio
 			addEventListener: (_name, callback) => themeListeners.add(callback),
 			removeEventListener: (_name, callback) => themeListeners.delete(callback),
 		}),
-		IntersectionObserver: class {
+		...(observer ? { IntersectionObserver: class {
 			constructor(callback, init) { this.callback = callback; this.init = init; this.disconnected = false; observers.push(this); }
 			observe() {}
 			disconnect() { this.disconnected = true; }
-		},
+		} } : {}),
 	});
 	vm.runInContext(source, context);
 	const container = doc.createElement("div");
@@ -545,4 +545,175 @@ it("nested seeks that return to the original step still supersede the outer disp
 	armed = true;
 	player.seek(0);
 	assert.deepEqual(seen, [2, 1, 0]);
+});
+
+it("a step subscriber that calls play() during a tick leaves exactly one pending frame", () => {
+	const env = setup();
+	env.player.play();
+	let armed = false;
+	let restarted = false;
+	env.player.onStep(() => { if (armed) { armed = false; restarted = true; env.player.play(); } });
+	armed = true;
+	env.advance(scene.steps[1].at * 1000 + 50);
+	assert.equal(restarted, true, "the subscriber restarted the clock during the tick");
+	assert.equal(env.player.playing, true);
+	assert.equal(env.frames.size, 1, "one callback, so pause and destroy can cancel it");
+	env.player.pause();
+	assert.equal(env.frames.size, 0);
+});
+
+it("a step subscriber's own frame, queued after play(), runs behind the player's and sees the advanced time", () => {
+	const env = setup();
+	env.player.play();
+	let armed = false;
+	let seenAtReader = null;
+	env.player.onStep(() => {
+		if (!armed) return;
+		armed = false;
+		env.player.play();
+		env.context.requestAnimationFrame(() => { seenAtReader = env.player.time; });
+	});
+	armed = true;
+	env.advance(scene.steps[1].at * 1000 + 50);
+	const queued = env.player.time;
+	env.advance(100);
+	assert.ok(seenAtReader !== null, "the subscriber's frame ran");
+	assert.ok(seenAtReader > queued, "the player's frame ran first, so the reader sees the time already advanced");
+	assert.equal(seenAtReader, env.player.time);
+});
+
+it("invalid seek, seekStep and playToStep calls leave the pending autoplay in place", () => {
+	const env = setup({ autoplay: "visible" });
+	assert.throws(() => env.player.seek(Number.NaN));
+	assert.throws(() => env.player.seekStep(99));
+	assert.throws(() => env.player.seekStep("no-such-step"));
+	assert.throws(() => env.player.playToStep(-1));
+	assert.throws(() => env.player.playToStep("no-such-step"));
+	assert.equal(env.player.autoplayPending, true, "no rejected command is a takeover");
+	env.show();
+	assert.equal(env.player.playing, true, "a qualifying report still starts playback");
+});
+
+it("without IntersectionObserver the default autoplay starts at mount", () => {
+	const env = setup({ autoplay: "visible", observer: false });
+	assert.equal(env.player.autoplayPending, false);
+	assert.equal(env.player.playing, true);
+	assert.equal(env.frames.size, 1, "a frame is queued immediately");
+});
+
+it("a destroyed controller reports no pending autoplay", () => {
+	const env = setup({ autoplay: "visible" });
+	assert.equal(env.player.autoplayPending, true);
+	env.player.destroy();
+	assert.equal(env.player.autoplayPending, false);
+});
+
+it("a pause before the diagram is shown cancels the pending autoplay", () => {
+	const env = setup({ autoplay: "visible" });
+	env.player.pause();
+	assert.equal(env.player.autoplayPending, false);
+	env.show();
+	assert.equal(env.player.playing, false, "showing it does not start a paused player");
+});
+
+it("a step subscriber that pauses while the reset frame publishes keeps autoplay from starting", () => {
+	const env = setup({ autoplay: "visible" });
+	let armed = false;
+	env.player.onStep(() => { if (armed) { armed = false; env.player.pause(); } });
+	armed = true;
+	env.show();
+	assert.equal(env.player.playing, false, "the takeover during the reset wins");
+	assert.equal(env.player.autoplayPending, false);
+});
+
+it("a step subscriber that seeks to 0 while the reset frame publishes keeps autoplay from starting", () => {
+	const env = setup({ autoplay: "visible" });
+	let armed = false;
+	env.player.onStep((i) => { if (armed && i === 0) { armed = false; env.player.seek(0); } });
+	armed = true;
+	env.show();
+	assert.equal(env.player.playing, false, "an explicit seek during the reset wins");
+	assert.equal(env.player.autoplayPending, false);
+});
+
+it("rejected commands from a step subscriber during the reset frame do not veto autoplay", () => {
+	const env = setup({ autoplay: "visible" });
+	let armed = false;
+	let reachedEnd = false;
+	env.player.onStep(() => {
+		if (!armed) return;
+		armed = false;
+		assert.throws(() => env.player.seek(Number.NaN));
+		assert.throws(() => env.player.seekStep(99));
+		assert.throws(() => env.player.seekStep("no-such-step"));
+		assert.throws(() => env.player.playToStep(-1));
+		assert.throws(() => env.player.playToStep("no-such-step"));
+		reachedEnd = true;
+	});
+	armed = true;
+	env.show();
+	// draw() swallows listener errors into reportError, so a failed assertion above would otherwise vanish.
+	assert.deepEqual(env.reported, [], "no assertion in the subscriber failed");
+	assert.equal(reachedEnd, true, "the subscriber ran every check");
+	assert.equal(env.player.playing, true, "a rejected command is no takeover, so autoplay still starts");
+	assert.equal(env.player.autoplayPending, false);
+});
+
+it("a step subscriber that retargets with playToStep during the reset keeps its stop point", () => {
+	const env = setup({ autoplay: "visible" });
+	const target = scene.steps[1].at;
+	let armed = false;
+	env.player.onStep(() => { if (armed) { armed = false; env.player.playToStep(1); } });
+	armed = true;
+	env.show();
+	assert.equal(env.player.playing, true);
+	env.advance((target + 1) * 1000);
+	assert.equal(env.player.time, target, "playback holds at the subscriber's target, not the scene's end");
+	assert.equal(env.player.playing, false);
+});
+
+it("omitting autoplay uses the visible default; none and reduced motion leave the final frame with nothing queued", () => {
+	const omitted = setup({ options: { autoplay: undefined }, observer: false });
+	assert.equal(omitted.player.playing, true, "the omitted option autoplays at mount");
+	assert.equal(omitted.frames.size, 1);
+	const none = setup({ autoplay: "none", observer: false });
+	assert.equal(none.player.playing, false);
+	assert.equal(none.player.time, scene.duration);
+	assert.equal(none.frames.size, 0);
+	const observed = setup({ options: { autoplay: undefined } });
+	assert.equal(observed.player.autoplayPending, true, "with an observer the omitted option waits for the view");
+	assert.equal(observed.player.playing, false);
+	assert.equal(observed.frames.size, 0, "nothing is queued before a qualifying report");
+	observed.show();
+	assert.equal(observed.player.playing, true, "a qualifying report starts it");
+	const reduced = setup({ options: { autoplay: undefined }, observer: false, reduced: true });
+	assert.equal(reduced.player.playing, false);
+	assert.equal(reduced.player.time, scene.duration);
+	assert.equal(reduced.frames.size, 0);
+});
+
+it("playing and autoplayPending follow the controller through play, completion and a seek", () => {
+	const waiting = setup({ autoplay: "visible" });
+	assert.deepEqual([waiting.player.playing, waiting.player.autoplayPending], [false, true], "autoplay waits for the view");
+	waiting.player.seek(0);
+	assert.equal(waiting.player.autoplayPending, false, "a seek cancels the pending autoplay");
+	assert.equal(waiting.player.playing, false);
+
+	const shown = setup({ autoplay: "visible" });
+	shown.show();
+	assert.deepEqual([shown.player.playing, shown.player.autoplayPending], [true, false], "entering the view starts it");
+	shown.advance(scene.duration * 1000 + 1000);
+	assert.equal(shown.player.time, scene.duration);
+	assert.equal(shown.player.playing, false, "completion ends playback");
+
+	const away = setup({ autoplay: "visible" });
+	away.show();
+	away.show(entry(false));
+	assert.equal(away.player.playing, true, "playback suspended offscreen still reports playing");
+
+	const manual = setup();
+	manual.player.play();
+	assert.equal(manual.player.playing, true);
+	manual.player.pause();
+	assert.equal(manual.player.playing, false);
 });

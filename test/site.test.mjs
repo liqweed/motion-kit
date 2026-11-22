@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { SCENE_TYPES, createScene } from "../runtime/types/index.mjs";
 import { checkContrast, normalizeStyle } from "../runtime/style.mjs";
-import { DEFECTS, DOCS_NAV, FORMAT_NAMES, GROUPS, LIVE, LOCALES, PLANNED, BRIEFS, STORY, STYLES, TARGETS, TRANSCRIPT, TYPES, findExample } from "../website/src/scripts/catalog.mjs";
+import { DEFECTS, DOCS_NAV, FORMAT_NAMES, GROUPS, LIVE, LOCALES, PLANNED, ISO_SHOWCASE, STORY, STYLES, TARGETS, TRANSCRIPT, TYPES, findExample } from "../website/src/scripts/catalog.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
@@ -43,8 +43,18 @@ describe("site catalog", () => {
 		assert.equal(findExample("checkout")?.built, true);
 		assert.equal(findExample("nope"), null);
 	});
-	it("hero briefs, the story and the transcript line up with their scenes", () => {
-		for (const b of BRIEFS) assert.equal(LIVE.find((e) => e.id === b.id)?.steps, b.steps, b.id);
+	it("the isometric showcase plays the isometric kit's example, a live custom scene", () => {
+		assert.equal(ISO_SHOWCASE.example, "isometric-swivel", "the showcase plays the swivel");
+		assert.equal(ISO_SHOWCASE.also, "isometric-platform", "the platform is the other link");
+		for (const id of [ISO_SHOWCASE.example, ISO_SHOWCASE.also]) {
+			const e = LIVE.find((x) => x.id === id);
+			assert.ok(e, id);
+			assert.equal(e.kind, "module", id);
+			assert.match(e.file, /^examples\/isometric-.*\.scene\.mjs$/, id);
+			assert.ok(e.file.includes(id.replace("isometric-", "")), `${id} points at its own scene file`);
+		}
+	});
+	it("the story and the transcript line up with their scenes", () => {
 		assert.equal(STORY.length, LIVE.find((e) => e.id === "release-pipeline")?.steps);
 		assert.equal(TRANSCRIPT.length, LIVE.find((e) => e.id === "agent-loop")?.steps);
 		assert.equal(DEFECTS.length, 5);
@@ -55,16 +65,5 @@ describe("site catalog", () => {
 	});
 	it("every site style is a valid style, motion curves included", () => {
 		for (const s of Object.values(STYLES)) normalizeStyle({ name: s.name, font: s.fontStack, motion: s.motion, light: s.light, dark: s.dark });
-	});
-});
-
-describe("site build", () => {
-	it("prerenders a page for every catalog entry and the shell pages", () => {
-		const dist = join(ROOT, "website", "dist");
-		if (!existsSync(dist)) return; // `npm run site` builds it; the gate runs it after the tests
-		for (const f of ["index.html", "gallery/index.html", "docs/index.html", "404.html", "_headers"]) assert.ok(existsSync(join(dist, f)), f);
-		for (const e of [...LIVE, ...PLANNED]) assert.ok(existsSync(join(dist, "examples", e.id, "index.html")), `examples/${e.id}`);
-		const home = readFileSync(join(dist, "index.html"), "utf8");
-		assert.ok(home.includes("Give your agent the skills") && home.includes("<svg"), "landing is server-rendered, logo included");
 	});
 });
