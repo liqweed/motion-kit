@@ -546,3 +546,10 @@ it("nested seeks that return to the original step still supersede the outer disp
 	player.seek(0);
 	assert.deepEqual(seen, [2, 1, 0]);
 });
+
+it("a destroyed controller reports no pending autoplay", () => {
+	const env = setup({ autoplay: "visible" });
+	assert.equal(env.player.autoplayPending, true);
+	env.player.destroy();
+	assert.equal(env.player.autoplayPending, false);
+});

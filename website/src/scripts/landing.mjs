@@ -57,10 +57,12 @@ function paintFrames(i, force = false) {
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => paintFrames(heroFrames?.shown ?? 0, true));
 
 responsive("hero", async (el, format, ctx) => {
+	/** @type {any} */
+	let controller = null;
 	try {
 		const sc = await loadScene(heroEntry, { format: format === "wide" ? "16:9" : "tall" });
 		if (!ctx.live()) return;
-		const { controller } = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: autoplayFor(ctx) });
+		controller = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: autoplayFor(ctx) }).controller;
 		resumeFrom(controller, sc, ctx);
 		const unsub = onStep(controller, (i) => {
 			heroStep = i;
@@ -76,7 +78,8 @@ responsive("hero", async (el, format, ctx) => {
 			return release(controller);
 		};
 	} catch (err) {
-		failNote(el, err);
+		controller?.destroy();
+		if (ctx.live()) failNote(el, err);
 	}
 });
 
@@ -200,10 +203,12 @@ showStyle("tidewater");
 	const plate = $("#isometric .plate");
 	const items = [...document.querySelectorAll("#iso-steps li")];
 	responsive("iso", async (el, format, ctx) => {
+		/** @type {any} */
+		let controller = null;
 		try {
 			const sc = await loadScene(isoEntry, { format: format === "wide" ? "16:9" : "tall" });
 			if (!ctx.live()) return;
-			const { controller } = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: autoplayFor(ctx) });
+			controller = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: autoplayFor(ctx) }).controller;
 			resumeFrom(controller, sc, ctx);
 			const unsub = onStep(controller, (i) => {
 				paintProgress($("[data-progress]", plate), i, sc.steps.length);
@@ -214,7 +219,8 @@ showStyle("tidewater");
 				return release(controller);
 			};
 		} catch (err) {
-			failNote(el, err);
+			controller?.destroy();
+			if (ctx.live()) failNote(el, err);
 		}
 	});
 }

@@ -73,6 +73,26 @@ describe("breakpoint handoff", () => {
 		resumeFrom(next, scene, ctxs[1]);
 		assert.deepEqual(next.log, [], "nothing is seeked, so the autoplay is not consumed");
 	});
+	it("a player that will not play settles an interrupted playback at the end", () => {
+		const still = { ...fakeController(), play() { this.log.push(["play"]); }, seek(t) { this.log.push(["seek", t]); } };
+		still.log = [];
+		resumeFrom(still, scene, { live: () => true, resume: { time: 2, playing: true, pending: false } });
+		assert.deepEqual(still.log, [["seek", 2], ["play"], ["seek", 8]]);
+	});
+	it("a cancelled mount's late teardown runs at once, and the released figure is inert until its next mount", async () => {
+		const w = windowWith("wide");
+		w.doc.getElementById("f-wide").inert = false;
+		let stops = 0;
+		let first = true;
+		responsive("f", async () => { const late = first; first = false; if (late) await tick(); return () => { stops++; return { time: 0, playing: false, pending: false }; }; }, w);
+		w.cross("tall");
+		assert.equal(w.doc.getElementById("f-wide").inert, true, "the hidden figure is inert");
+		await tick();
+		await tick();
+		assert.equal(stops, 1, "the cancelled mount's teardown ran");
+		w.cross("wide");
+		assert.equal(w.doc.getElementById("f-wide").inert, false, "a new mount makes it live again");
+	});
 	it("a mount that was still loading when the window crossed never goes live", async () => {
 		const w = windowWith("wide");
 		const lives = [];

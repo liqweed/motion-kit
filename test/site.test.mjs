@@ -51,6 +51,7 @@ describe("site catalog", () => {
 			assert.ok(e, id);
 			assert.equal(e.kind, "module", id);
 			assert.match(e.file, /^examples\/isometric-.*\.scene\.mjs$/, id);
+			assert.ok(e.file.includes(id.replace("isometric-", "")), `${id} points at its own scene file`);
 		}
 	});
 	it("the story and the transcript line up with their scenes", () => {

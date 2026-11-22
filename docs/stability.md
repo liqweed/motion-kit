@@ -65,7 +65,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
 | `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` (and its optional pair list), `contrastReport`, `sharedPairs`, `CONTRAST_PAIRS`, `CONTRAST_EXEMPT` |
 | `runtime/patch.mjs` | `patchMarkup` |
-| `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `onStep`, `destroy`, `time`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
+| `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `onStep`, `destroy`, `time`, `playing`, `autoplayPending`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
 | `runtime/links.mjs` | `scrollSteps` and `linkSteps` (their options, the `data-mk-step` attribute, the `aria-current="step"` marks, the returned dispose function), `stepRef`, `sectionSteps`, `activeSection`, `scrollMove` |
 | `runtime/bake.mjs` | `bake`, `bakeStats` |
 

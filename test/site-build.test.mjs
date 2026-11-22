@@ -58,7 +58,7 @@ function assertPlayer(html, id, scene) {
 	assert.ok(list, `${id} has its own step list`);
 	const items = [...list[1].matchAll(/<li>([\s\S]*?)<\/li>/g)];
 	assert.equal(items.length, scene.steps.length, `${id} lists every step`);
-	scene.steps.forEach((s, i) => assert.ok(items[i][1].includes(String(s.label).replace(/&/g, "&amp;")), `${id} step ${i + 1} reads "${s.label}"`));
+	scene.steps.forEach((s, i) => assert.ok(items[i][1].includes(String(s.label).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")), `${id} step ${i + 1} reads "${s.label}"`));
 }
 
 describe("site build", () => {

@@ -24,7 +24,7 @@ fixed. Building the site from them is #61.
 |---|---|
 | **Typeface** | Instrument Sans for all text; DM Mono for callout numerals, parameter names, commands and spec strips. Both SIL OFL 1.1, self-hosted (Latin and Latin Extended). Never Space Grotesk or Inter. |
 | **Heading case** | Sentence case. Weight 600, tracking 0, no uppercase headings. Small labels may be uppercase with +0.06em tracking. |
-| **Easing curve** | `cubic-bezier(0.4, 0, 0.2, 1)` for everything, the curve the logo draws and the diagrams use. No bounce, no elastic. |
+| **Easing curve** | `cubic-bezier(0.4, 0, 0.2, 1)` for the site's own motion and the logo; scene styles may set their own enter and move curves. No bounce, no elastic. |
 | **Press scale** | `scale(0.97)` on `:active` for buttons and square controls, 100 ms, the easing curve above. Proposed by Claude, confirmed by Ophir on 2026-11-21. |
 
 **Typeface: resolved.** Impeccable's detector flags Instrument Sans as an
@@ -55,7 +55,7 @@ falls back to a system glyph; subset it in if that shows.
 
 - A 12-column grid with 16 px gutters. The unit is 8 px: every block is a whole
   number of modules, except the 44 px interactive control target below. The
-  design shows an 8 px ruler on every plate edge.
+  design shows an 8 px ruler on a plate's top and left edges.
 - Square corners everywhere (`border-radius: 0`). The logo is the only rounded
   shape.
 - 1 px rules, 2 px plate edges, 24 px square callout markers, 44 px controls.

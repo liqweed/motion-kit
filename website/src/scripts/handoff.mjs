@@ -34,7 +34,11 @@ export function resumeFrom(controller, sc, ctx) {
 	const r = ctx.resume;
 	if (!r || r.pending) return;
 	controller.seek(Math.min(r.time, sc.duration));
-	if (r.playing && r.time < sc.duration) controller.play();
+	if (r.playing && r.time < sc.duration) {
+		controller.play();
+		// A player that will not play (reduced motion) settles an interrupted playback instead of freezing it mid-way.
+		if (!controller.playing) controller.seek(sc.duration);
+	}
 }
 
 /**
@@ -71,13 +75,20 @@ export function responsive(base, mountOne, env = { doc: document, query: matchMe
 					mounted.delete(other);
 					m.cancel();
 					if (m.stop) resume = m.stop();
+					// The released figure's markup stays until the next mount replaces it: keep it unfocusable meanwhile.
+					const old = env.doc.getElementById(`${base}-${other}`);
+					if (old) old.inert = true;
 				}
 				let alive = true;
 				const entry = { stop: /** @type {(() => Handoff) | null} */ (null), cancel: () => (alive = false) };
+				el.inert = false;
 				mounted.set(format, entry);
 				mountOne(el, format, { live: () => alive, resume }).then((stop) => {
-					if (stop) entry.stop = stop;
-				});
+					if (!stop) return;
+					// A mount cancelled while it was loading still returns its teardown: run it now, so nothing it acquired outlives the switch.
+					if (alive) entry.stop = stop;
+					else stop();
+				}, () => {});
 			}
 		}
 	};

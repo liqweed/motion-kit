@@ -101,7 +101,7 @@ button { font: inherit; cursor: pointer; color: inherit; border-radius: 0; }
 .site-footer .meta { display: flex; flex-direction: column; gap: 0; }
 
 /* ---- buttons and fields */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border: 2px solid var(--accent); background: var(--accent); color: var(--onAccent); font-weight: 600; text-decoration: none; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 24px; border: 2px solid var(--accent); background: var(--accent); color: var(--onAccent); font-weight: 600; text-decoration: none; box-shadow: 0 0 0 1px var(--keyline); }
 .btn:hover { text-decoration: underline; }
 .btn.line { background: var(--bg); color: var(--ink); border-color: var(--ink); }
 .btn.sm { min-height: 44px; padding: 0 16px; }
@@ -248,8 +248,8 @@ button { font: inherit; cursor: pointer; color: inherit; border-radius: 0; }
 .not-checked > ul { grid-column: 7 / -1; }
 .not-checked h3 { font-size: 24px; line-height: 32px; }
 .not-checked ul, .sq-list, .article ul.sq-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.not-checked li, .sq-list li, .article ul.sq-list li { display: flex; gap: 16px; }
-.not-checked li::before, .sq-list li::before, .article ul.sq-list li::before { content: ""; flex: none; width: 8px; height: 8px; margin-top: 8px; background: var(--accent); box-shadow: 0 0 0 1px var(--keyline); }
+.not-checked li, .sq-list li, .article ul.sq-list li { position: relative; padding-left: 24px; }
+.not-checked li::before, .sq-list li::before, .article ul.sq-list li::before { content: ""; position: absolute; left: 0; top: 8px; width: 8px; height: 8px; background: var(--accent); box-shadow: 0 0 0 1px var(--keyline); }
 
 /* ---- styles overlay */
 .style-tabs .group { gap: 8px; }

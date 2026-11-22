@@ -211,19 +211,6 @@ export function chipGroup({ label, options, value, onChange, className = "chip",
 /* ----------------------------------------------------------------- figures */
 
 /**
- * A figure plate as DOM, for figures a script builds (the Plate component does the same at build time).
- * @param {{ fig: string, title: string, level?: "h2" | "h3", progress?: boolean }} o
- * @param {...any} kids
- */
-export function plate({ fig, title, level = "h2", progress = false }, ...kids) {
-	return h("section", { class: "plate", "aria-label": title },
-		h("span", { class: "corner", "aria-hidden": "true" }),
-		h("div", { class: "plate-body" },
-			h("div", { class: "fig-head" }, h("span", { class: "fig-no" }, `Fig. ${fig}`), h(level, null, title), progress ? h("div", { class: "progress", "aria-hidden": "true", "data-progress": "" }) : null),
-			...kids));
-}
-
-/**
  * The step squares in a plate's header: done, now, still to come.
  * @param {Element | null} el the `[data-progress]` element
  * @param {number} index current step, -1 before the first

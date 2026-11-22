@@ -480,6 +480,7 @@ export function mountPlayer(container, scene, options = {}) {
 	function destroy() {
 		if (destroyed) return;
 		destroyed = true;
+		autoplayPending = false;
 		stepListeners.clear();
 		if (mounted.get(container) === controller) mounted.delete(container);
 		playing = false;
