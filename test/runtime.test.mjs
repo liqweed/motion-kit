@@ -711,6 +711,10 @@ describe("advice and acknowledgements", () => {
 		assert.deepEqual(r.problems, ["strict mode: unacknowledged advice [nothing-animates, step-labels-in-frame] (fix it, or acknowledge it with a reason)"]);
 		assert.deepEqual(r.advice.filter((a) => a.acknowledged).map((a) => a.rule), ["duration"]);
 	});
+	it("checks the hard frame rules at every step time, however long the scene", () => {
+		const long = { ...still, duration: 1200, steps: [{ at: 10.5, label: "Mark" }, { at: 1200, label: "Mark" }], frame: (t) => (t > 10.4 && t < 10.6 ? "<g" : `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Mark</text>`) };
+		assert.match(checkScene(long).problems.join("\n"), /malformed at t=10\.500/);
+	});
 	it("finds a step label wrapped at a slash", () => {
 		const wrapped = { ...still, steps: [{ at: 1, label: "Archive/Dispose" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20"><tspan>Archive/</tspan><tspan>Dispose</tspan></text>` };
 		assert.deepEqual(ruleOf(checkScene(wrapped)), []);

@@ -171,8 +171,9 @@ async function main() {
 					// The tall layout ships too, so it passes the same gate; its report is told apart from the primary's.
 					const tr = checkScene(tall, { style, strict });
 					reportGate({ ...tr, warnings: [], advice: tr.advice.map((x) => ({ ...x, found: `tall layout: ${x.found}` })) });
-					if (!tr.ok) fail(`the tall layout fails the gate:\n  - ${tr.problems.join("\n  - ")}`);
-					phone.scene = tall;
+					// An optional preview: a tall layout that fails the gate is left out, as one that cannot be built is.
+					if (tr.ok) phone.scene = tall;
+					else phone.error = `the tall layout fails the gate: ${tr.problems.join("; ")}`;
 				}
 			}
 			const m = await exportSteps(scene, { out: need(a.out, "--out"), advice: r.advice, style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION, phone, ...sopts });
