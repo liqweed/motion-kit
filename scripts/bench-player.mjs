@@ -80,7 +80,7 @@ const PAGE = String.raw`
 globalThis.bench = (which, spec) => {
 	// Each custom scene is bundled with its own copy of the runtime, under its own global.
 	const { createScene, sceneFromModule, renderSvg, normalizeStyle, cssVars, patchMarkup } = MotionKit;
-	const modules = { fleet: MotionKit.default, isometric: globalThis.MotionKitIso?.default };
+	const modules = { fleet: MotionKit.default, isometric: globalThis.MotionKitIso?.default, reveal: globalThis.MotionKitReveal?.default };
 	const scene = which in modules ? sceneFromModule(modules[which], { format: "16:9" }) : createScene(JSON.parse(spec), { format: "16:9" });
 	const style = normalizeStyle();
 	const render = (t) => renderSvg(scene, t, { style, idPrefix: "b", live: true });
@@ -158,6 +158,7 @@ try {
 	const runtime = ["scene", "style", "patch", "types/index", "kit"].map((m) => join(ROOT, "runtime", `${m}.mjs`));
 	await evaluate(bundle([...runtime, join(ROOT, "bench/fleet.scene.mjs")]));
 	await evaluate(bundle([...runtime, join(ROOT, "examples/isometric-swivel.scene.mjs")], { globalName: "MotionKitIso" }));
+	await evaluate(bundle([...runtime, join(ROOT, "examples/text-reveal.scene.mjs")], { globalName: "MotionKitReveal" }));
 	await evaluate(PAGE);
 	await cdp.send("Emulation.setCPUThrottlingRate", { rate: RATE }, sessionId);
 
@@ -166,7 +167,7 @@ try {
 	console.log(`live player frame cost, headless Chromium at ${RATE}x CPU slowdown (${chrome.split("/").pop()})`);
 	console.log("scene                     KB/frame  frames   render only     innerHTML median / p90   patch median / p90   median ratio");
 	let failed = false;
-	for (const [label, which] of [["bench/fleet.scene.mjs", "fleet"], ["smart-home 16:9", "smart-home"], ["isometric-swivel 16:9", "isometric"]]) {
+	for (const [label, which] of [["bench/fleet.scene.mjs", "fleet"], ["smart-home 16:9", "smart-home"], ["isometric-swivel 16:9", "isometric"], ["text-reveal 16:9", "reveal"]]) {
 		const r = await evaluate(`bench(${JSON.stringify(which)}, ${JSON.stringify(spec)})`);
 		console.log(
 			`${label.padEnd(26)}${r.kb.toFixed(1).padStart(8)}${String(r.frames).padStart(8)}   ${ms(r.render.median)} ms       ${ms(r.innerHTML.median)} / ${ms(r.innerHTML.p90)} ms     ${ms(r.patch.median)} / ${ms(r.patch.p90)} ms    ${(r.patch.median / r.innerHTML.median).toFixed(2)}`,

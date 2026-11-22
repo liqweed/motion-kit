@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-22
+
+### Added
+
+- A blur-and-fade reveal and a highlighter sweep for text, in `kit` beside the rest of the runtime. `blurReveal(enter, { id, rise, blur }, ...markup)` fades markup in while it rises a few units and a blur goes to zero, on the style's entrance curve. Once `enter` reaches 1 it returns the markup bare, with no group, no filter and no `<defs>`, so every step frame, the final frame, a baked last slice and a reduced-motion frame are byte-identical to the same text drawn without the reveal. The filter id comes from `idPrefix`, so two instances on a page and the slices of a baked SVG never share one, and the live player, `bake`, PNG export and video use the same filter parameters (raster appearance can vary with renderer). `highlightSweep(p, { x, y, width, height, token, opacity })` grows a token-coloured band at low opacity behind a line of text. **Consumer action:** none.
+- A generic example, `examples/text-reveal.scene.mjs`: three labels reveal in reading order, then a quoted line reveals and is marked, one band per wrapped line. It lasts 2.6 s and passes the gate in every format and in English and Dutch. The `animated-diagram` skill's custom-scenes and motion-vocabulary references say when the blur reveal earns its cost and when a plain fade is enough. **Consumer action:** none.
+
+### Changed
+
+- **Breaking:** the label gate (`labelBoxes()`) now fails a box with a negative `width` or `height` as malformed, which it used to pass. **Consumer action:** required at configuration. Give every label box a `width` and `height` of zero or more, Fix any custom scene whose label boxes have a negative size, or whose footprints repeat a vertex (see Fixed), as it now fails the gate.
+- `labelAnchor` returns its box and stem rounded to two decimals, as the SVG attributes are drawn, so the gate and the picture agree: a label whose left edge is -0.004 is drawn at x = 0 and no longer fails as outside the picture. Each coordinate and dimension is rounded independently, so a raw gap of 3.999 px is not always drawn as 4 px. `labelPill` boxes are rounded the same way.
+- `labelProblems(boxes, { width, height, limit })` takes a `limit` (a whole number from 0, or Infinity; default all) and the gate stops collecting once it has the problems it reports, so a scene of a thousand colliding labels no longer builds half a million messages. The limit bounds the diagnostics collected; the collision scan can end early after the boxes are prepared. Code that counts `labelProblems` results sees one sentence per distinct diagnostic string, not one per collision.
+
+### Fixed
+
+- A solid's footprint that repeats a vertex in a way the old check missed (the unit square traversed twice, say) was accepted and drew faces and sides twice. `prism` and every solid built on a caller-supplied footprint now throw "a solid's footprint has a repeated point" for such a nonadjacent repeat.
+
+## [0.12.0] - 2026-11-22
+
+### Added
+
+- Rounded solids for the isometric kit's custom scenes: `roundedBox` and `roundedSlab` give a box rounded corners, and the rounded sides draw as one smooth wall, outlined once, instead of a stroked face per sample. They take the same tokens, shade and depth order as `box` and `slab`.
+- `drawGrid`, a faint diamond-grid backdrop in the floor plane that follows the camera, fades out radially from the centre and sits under the solids. It is static: nothing shimmers or pans while a step rests.
+- 2D content on a horizontal plane: a solid's `top` draws ordinary SVG (an icon, text, rects) on its top face, in its own units, and `drawOnPlane` and `planeMatrix` do the same for any plane at a height. The content follows the camera, through a `lerpCamera` swivel included.
+- `labelPill`, a stemless pill tag whose box the label gate checks with the other labels.
+- A generic example, `examples/isometric-platform.scene.mjs`: a rounded platform with a mark on its top face, seen in plan and then turned isometric, with two pill tags. It plays once, holds its final frame, lasts 4.6 s and passes the gate in every format and in English and Dutch. The `animated-diagram` skill's custom-scenes and motion-vocabulary references describe the new parts. **Consumer action:** none.
+
 ## [0.11.0] - 2026-11-21
 
 ### Added
@@ -148,7 +175,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/liqweed/motion-kit/compare/v0.12.0...v0.13.0
+[0.12.0]: https://github.com/liqweed/motion-kit/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/liqweed/motion-kit/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/liqweed/motion-kit/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/liqweed/motion-kit/compare/v0.9.0...v0.9.1

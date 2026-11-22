@@ -65,6 +65,13 @@ export async function loadResvg() {
 }
 
 /**
+ * Frames between steps, for scenes whose motion a step frame never shows (a
+ * settled frame has no filter in it): scene file basename -> [name, time].
+ */
+/** @type {Record<string, [string, number][]>} */
+const MID_FRAMES = { "text-reveal": [["mid-reveal", 0.3]] };
+
+/**
  * Every frame in the snapshot set, with the scene it comes from.
  * @returns {Promise<{ frame: SnapshotFrame, scene: any }[]>}
  */
@@ -80,6 +87,9 @@ export async function snapshotFrames() {
 		};
 		scene.steps.forEach((_, i) => out.push(step("light", i)));
 		out.push(step("dark", scene.steps.length - 1));
+		for (const [name, t] of MID_FRAMES[base] ?? []) {
+			out.push({ frame: { name: `${base}/light-${name}`, file, theme: "light", t, label: name }, scene });
+		}
 	}
 	return out;
 }

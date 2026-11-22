@@ -25,6 +25,23 @@ custom scene's `frame` rather than importing the constants.
 | Pause between beats | ≥ 50 ms, so step frames settle |
 | Whole explainer | aim for ≤ 8 s, then hold; gate limit 12 s |
 
+## Blur reveal or plain fade (`blurReveal`, `highlightSweep`)
+
+| | Plain fade (`fade`, the node parts' 8-unit rise) | Blur reveal (`blurReveal`) |
+|---|---|---|
+| Use it for | Nodes, connectors, anything in a dense diagram; text that is not the point of the beat | Text the viewer should watch land: a heading, the label of the one thing the beat introduces, a quoted line, a card |
+| Looks like | Appears from transparent, rising a few units | The same, and starts soft: sharpens into place over the same 300–600 ms |
+| Cost | Opacity and transform only | An SVG filter per revealing element, every frame of the reveal. Keep to a few elements at a time |
+| Settled | No opacity or transform left; `fade` still wraps the markup in a `<g>` | No trace: the markup comes back bare, byte-identical |
+
+Reveal in reading order, siblings 80–150 ms apart, on the style's entrance
+curve. A reveal that does not carry a beat is decoration: use the fade. A
+`highlightSweep` marks one thing in a scene (it uses the `emphasis` token, and
+there is one emphasis element), grows left to right behind its text over about
+0.6 s on the entrance curve, and starts while the text is still sharpening or
+once it has. Neither helper loops; a blinking cursor is ambient motion, so a
+cursor stays static.
+
 ## Springs, without breaking random access (derived)
 
 Frame-by-frame spring simulation depends on earlier frames. Use the closed form.
@@ -69,6 +86,10 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   height is invisible. Draw a flat top first (`h` > 0 only so the faces exist).
 - **Depth:** `orderSolids` is the order; never draw by hand. Heights and
   footprints decide it; a floor slab is drawn first.
+- **Backdrop, faces and tags:** the grid backdrop is static: it fades in with
+  the floor and then rests (a shimmer or pan is ambient motion). Content on a
+  top face fades in after its solid has settled, and turns with the camera
+  like any face. Pill tags fade in like labels, once the camera rests.
 - **Several tokens:** stagger their starts by 0.25–0.4 s on a trip of 1.2–2 s,
   so 3–4 are in flight at once without touching. Use `linear` for tokens that
   travel a conveyor at a steady speed, and grow them in and out over the first

@@ -24,8 +24,8 @@
 import { DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 } from "./motion.mjs";
 import { FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId } from "./scene.mjs";
 import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, resolveTokens, sharedPairs, tok } from "./style.mjs";
-import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab } from "./iso.mjs";
-import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment } from "./svg.mjs";
+import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawGrid, drawOnPlane, drawSolid, drawSolids, fitCamera, labelAnchor, labelPill, labelProblems, lerpCamera, orderSolids, path3, planeMatrix, prism, project, projector, regularPolygon, roundedBox, roundedSlab, slab } from "./iso.mjs";
+import { attrString, blurReveal, cubic, dist, drawOn, el, esc, fade, highlightSweep, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment } from "./svg.mjs";
 import { PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead } from "./connectors.mjs";
 import { CODE_BAND_LAG, CODE_FONT, CODE_ROLES, codeBlock, codeEnd, codeFocus, codePairs, drawCode } from "./code.mjs";
 import { estimateWidth, wrapLabel } from "./wrap.mjs";
@@ -40,8 +40,8 @@ export const KIT = Object.freeze({
 	...{ DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 },
 	...{ FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId },
 	...{ CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, resolveTokens, sharedPairs, tok },
-	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment },
-	...{ CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab },
+	...{ attrString, blurReveal, cubic, dist, drawOn, el, esc, fade, highlightSweep, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment },
+	...{ CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawGrid, drawOnPlane, drawSolid, drawSolids, fitCamera, labelAnchor, labelPill, labelProblems, lerpCamera, orderSolids, path3, planeMatrix, prism, project, projector, regularPolygon, roundedBox, roundedSlab, slab },
 	...{ PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead },
 	...{ CODE_BAND_LAG, CODE_FONT, CODE_ROLES, codeBlock, codeEnd, codeFocus, codePairs, drawCode },
 	...{ estimateWidth, wrapLabel },
