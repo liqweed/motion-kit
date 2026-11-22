@@ -342,12 +342,11 @@ export function mountPlayer(container, scene, options = {}) {
 		if (destroyed || !playing || suspended) return;
 		t = Math.min(tStart + (now - wallStart) / 1000, stopAt);
 		if (t >= stopAt) playing = false;
+		const frame = raf;
 		draw();
-		if (playing) {
-			// A subscriber may have restarted the clock during draw(): keep one pending callback.
-			cancelAnimationFrame(raf);
-			raf = requestAnimationFrame(tick);
-		}
+		// A subscriber that restarted the clock during draw() has queued the next frame itself, ahead of
+		// its own work: keep that one, and queue a continuation only when nothing replaced this frame.
+		if (playing && raf === frame) raf = requestAnimationFrame(tick);
 	}
 	/** Run the clock from the current time (or wait, while out of view). */
 	function run() {

@@ -551,9 +551,11 @@ it("a step subscriber that calls play() during a tick leaves exactly one pending
 	const env = setup();
 	env.player.play();
 	let armed = false;
-	env.player.onStep(() => { if (armed) { armed = false; env.player.play(); } });
+	let restarted = false;
+	env.player.onStep(() => { if (armed) { armed = false; restarted = true; env.player.play(); } });
 	armed = true;
 	env.advance(scene.steps[1].at * 1000 + 50);
+	assert.equal(restarted, true, "the subscriber restarted the clock during the tick");
 	assert.equal(env.player.playing, true);
 	assert.equal(env.frames.size, 1, "one callback, so pause and destroy can cancel it");
 	env.player.pause();
