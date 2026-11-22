@@ -7,9 +7,10 @@
 # fails closed to the deepest profile, so everything else is still validated in
 # full.
 #
-# No area is `serialize: true`. `history.ts --propose-serialize` (jig's
+# Only `spec-text` is `serialize: true`. `history.ts --propose-serialize` (jig's
 # resolve-conflicts skill) was run against this catalog; see the pull request
-# that added it for the proposal.
+# that added it for the proposal. It also recommended `kit-runtime`, which is
+# left unserialized on purpose.
 
 # Profiles, shallowest first; the last is the deepest and the default.
 profiles:
@@ -36,6 +37,7 @@ areas:
     impliedBy: []
     deployTier: none
     validation: { profile: core }
+    serialize: true  # hotspots: docs/spec/technique.md (7 merges), docs/stability.md (3 merges), over 30 days
     notes: >-
       docs/spec/technique.md, docs/stability.md and the custom-scenes.md
       reference are touched by most pull requests; AGENTS.md says to update the
