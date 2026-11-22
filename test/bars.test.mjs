@@ -108,10 +108,10 @@ describe("drawBar", () => {
 		assert.throws(() => bar(1, { fill: "nope" }), /nope/);
 	});
 	it("can clip a short bar to its track silhouette", () => {
-		const out = drawBar({ x: 0, y: 0, width: 19.2, trackWidth: 100, height: 26, p: 1, id: "row" });
-		assert.match(out, /clip-path="url\(#row-bar-clip\)"/);
-		assert.match(out, /<clipPath id="row-bar-clip"><rect x="0" y="0" width="100" height="26" rx="13"/);
-		assert.throws(() => drawBar({ x: 0, y: 0, width: 10, trackWidth: 20, height: 10, p: 1 }), /needs an id/);
+		const out = drawBar({ x: 0, y: 0, width: 19.2, trackWidth: 100, height: 26, p: 1, idPrefix: "scene", id: "row" });
+		assert.match(out, /clip-path="url\(#scene-bar-row-clip\)"/);
+		assert.match(out, /<clipPath id="scene-bar-row-clip"><rect x="0" y="0" width="100" height="26" rx="13"/);
+		assert.throws(() => drawBar({ x: 0, y: 0, width: 10, trackWidth: 20, height: 10, p: 1 }), /needs the frame idPrefix/);
 	});
 	it("refuses a p that is not a number", () => {
 		assert.throws(() => bar(NaN), /finite/);
@@ -248,7 +248,7 @@ describe("examples/bars.scene.mjs", () => {
 	});
 	it("grows each bar in its own step's beat and lets it rest before the step", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9" });
-		const widths = (/** @type {number} */ t) => [...scene.frame(t, { idPrefix: "x" }).matchAll(/data-bar="x-row-\d"[\s\S]*?<\/clipPath><\/defs><g[^>]*><rect[^>]* width="([\d.]+)"/g)].map((m) => Number(m[1]));
+		const widths = (/** @type {number} */ t) => [...scene.frame(t, { idPrefix: "x" }).matchAll(/data-bar="row_\d"[\s\S]*?<\/clipPath><\/defs><g[^>]*><rect[^>]* width="([\d.]+)"/g)].map((m) => Number(m[1]));
 		scene.steps.forEach((s, i) => {
 			const at = widths(s.at);
 			assert.equal(at.length, i + 1);

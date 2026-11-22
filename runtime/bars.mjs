@@ -33,8 +33,8 @@ const finite = (n) => typeof n === "number" && Number.isFinite(n);
 const ID_PART = /^[A-Za-z0-9_]+$/;
 /** Names `renderSvg` already uses for ids (`${id}-title`, `${id}-desc`). */
 const RESERVED_NAMES = new Set(["title", "desc"]);
-/** Every hatch `hatchPattern` has made in this JavaScript realm. */
-const ISSUED = globalThis[Symbol.for("@liqweed/motion-kit/issued-hatches")] ??= new WeakSet();
+/** Every hatch this module instance has made. This capability stays private. */
+const ISSUED = new WeakSet();
 
 /**
  * @typedef {{ readonly id: string, readonly fill: string, readonly markup: string }} Hatch
@@ -59,8 +59,8 @@ export function hatchPattern({ idPrefix, name = "hatch", stroke = "line", spacin
 	if (RESERVED_NAMES.has(name)) throw new Error(`hatchPattern: name "${name}" is reserved for the picture's own ids`);
 	const drawnSpacing = Number(num(spacing));
 	const drawnWidth = Number(num(width));
-	if (!finite(spacing) || spacing <= 0 || drawnSpacing <= 0) throw new Error(`hatchPattern: spacing must remain positive after SVG rounding, got ${spacing}`);
-	if (!finite(width) || width <= 0 || width >= spacing || drawnWidth <= 0 || drawnWidth >= drawnSpacing) throw new Error(`hatchPattern: width must remain more than 0 and less than the spacing after SVG rounding, got ${width} of ${spacing}`);
+	if (!finite(spacing) || spacing <= 0 || !finite(drawnSpacing) || drawnSpacing <= 0) throw new Error(`hatchPattern: spacing must remain finite and positive after SVG rounding, got ${spacing}`);
+	if (!finite(width) || width <= 0 || width >= spacing || !finite(drawnWidth) || drawnWidth <= 0 || drawnWidth >= drawnSpacing) throw new Error(`hatchPattern: width must remain finite, more than 0 and less than the spacing after SVG rounding, got ${width} of ${spacing}`);
 	const id = `${safeId(idPrefix)}-${name}`; // the frame's prefix is a safe id already; the gate's own call passes the raw scene id
 	// One vertical line in the middle of a square tile, turned 45° by the pattern.
 	const line = el("path", { d: `M${num(spacing / 2)} 0 V${num(spacing)}`, fill: "none", stroke: tok(stroke), "stroke-width": width });
@@ -106,24 +106,24 @@ export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius
  * up to fraction `p` of it from its start at (`x`, `y`): `p` is the eased progress of its
  * growth (`barProgress`), and the bar is rounded at both ends all the way, so
  * it grows as a pill. Nothing for `p` ≤ 0; `p` ≥ 1 is the full bar it rests as.
- * `trackWidth` clips a short bar to its track's pill silhouette; with it, `id`
- * must be unique in the frame.
- * @param {{ x: number, y: number, width: number, height: number, p: number, fill?: string, radius?: number, opacity?: number, id?: string, trackWidth?: number }} o
+ * `trackWidth` clips a short bar to its track's silhouette; with it, `idPrefix`
+ * is the frame instance prefix and `id` is a safe, instance-local key.
+ * @param {{ x: number, y: number, width: number, height: number, p: number, fill?: string, radius?: number, trackRadius?: number, opacity?: number, id?: string, idPrefix?: string, trackWidth?: number }} o
  * @returns {string}
  */
-export function drawBar({ x, y, width, height, p, fill = "accent", radius, opacity = 1, id, trackWidth }) {
+export function drawBar({ x, y, width, height, p, fill = "accent", radius, trackRadius, opacity = 1, id, idPrefix, trackWidth }) {
 	checkRect("drawBar", { x, y, width, height }, true); // a zero value is a zero-width bar: nothing to draw
 	if (!finite(p)) throw new Error(`drawBar: p must be a finite number, got ${p}`);
 	if (trackWidth !== undefined && (!finite(trackWidth) || trackWidth <= 0 || trackWidth < width)) throw new Error(`drawBar: trackWidth must be finite and at least the bar width, got ${trackWidth}`);
-	if (trackWidth !== undefined && !id) throw new Error("drawBar: trackWidth needs an id for its clip path");
+	if (trackWidth !== undefined && (typeof idPrefix !== "string" || idPrefix === "" || typeof id !== "string" || !ID_PART.test(id))) throw new Error("drawBar: trackWidth needs the frame idPrefix and an id using letters, digits and _");
 	const share = clamp01(p);
 	if (share <= 0) return "";
 	const w = width * share;
 	if (w <= 0) return "";
 	const bar = el("rect", { x, y, width: w, height, rx: corner(radius, w, height), fill: tok(fill) });
 	if (trackWidth === undefined) return fade(opacity, id ? { "data-bar": id } : {}, bar);
-	const clipId = `${id}-bar-clip`;
-	const clip = el("defs", {}, el("clipPath", { id: clipId }, el("rect", { x, y, width: trackWidth, height, rx: corner(radius, trackWidth, height) })));
+	const clipId = `${safeId(idPrefix)}-bar-${id}-clip`;
+	const clip = el("defs", {}, el("clipPath", { id: clipId }, el("rect", { x, y, width: trackWidth, height, rx: corner(trackRadius, trackWidth, height) })));
 	return fade(opacity, { "data-bar": id }, clip, el("g", { "clip-path": `url(#${clipId})` }, bar));
 }
 
@@ -159,7 +159,9 @@ export function barProgress(t, run, style) {
  */
 export function barEnd(run) {
 	checkRun(run);
-	return run.start + run.duration;
+	const end = run.start + run.duration;
+	if (!finite(end) || end <= run.start) throw new Error(`bar run: end must be finite and after start, got ${run.start} + ${run.duration}`);
+	return end;
 }
 
 /** @param {BarRun} run */

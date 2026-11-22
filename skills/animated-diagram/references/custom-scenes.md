@@ -198,19 +198,18 @@ ambient motion, which the canon rules out.
 |---|---|
 | A hatched fill | `hatchPattern({ idPrefix, name?, stroke?, spacing?, width? })` returns `{ id, fill, markup }`: lines at 45° in a token colour (default `line`). Its id is `${safeId(idPrefix)}-${name}`, so pass the `idPrefix` from `frame(t, { idPrefix, style })` and ensure prefixes stay unique after normalization; give each hatching its own `name` (letters, digits and `_`; no `-`, `title` or `desc`). Put `markup` (a `<defs>`) in the frame once, first, on every frame |
 | An empty track | `drawTrack({ x, y, width, height, hatch, fill?, radius?, opacity?, id? })`: a rounded rect in the token `fill` (default `surface`) with the hatch over it |
-| A bar | `drawBar({ x, y, width, height, p, fill?, radius?, opacity?, id?, trackWidth? })`: `width` is the bar's length when done (its value's share of the track's), the bar is `width * p` long and rounded at both ends as it grows. Pass the track's width and a frame-unique `id` to clip a short bar inside its pill. `p` is `barProgress(t, { start, duration }, style)`, which runs on the style's movement curve and is exactly 1 from `barEnd(run)` on |
-| A value | `drawValue({ x, y, to, from?, p, format?, fontSize?, anchor?, family?, opacity?, id? })` draws `format(rollingValue(from, to, p))`: the same `p` as the bar, so the number and the bar arrive together, and exactly `to` once the bar has settled. Without `format`, it rounds to a whole number (`to: 0.8` settles as `1`). `format` is yours (units, decimals, locale: `(v) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(v) + " s"`) and returns a string |
+| A bar | `drawBar({ x, y, width, height, p, fill?, radius?, trackRadius?, opacity?, idPrefix?, id?, trackWidth? })`: `width` is the bar's length when done (its value's share of the track's), the bar is `width * p` long and rounded at both ends as it grows. Pass the frame's `idPrefix`, a local safe row `id` (letters, digits and `_`), and the track's width to clip a short bar inside its pill; pass the track radius as `trackRadius`. `p` is `barProgress(t, { start, duration }, style)`, which runs on the style's movement curve and is exactly 1 from `barEnd(run)` on |
+| A value | `drawValue({ x, y, to, from?, p, format?, fontSize?, anchor?, family?, opacity?, id? })` draws `format(rollingValue(from, to, p))`: it shares the bar's raw progress, and exactly `to` once the bar has settled. A formatter may round to its final display early, so do not claim intermediate visible digits are synchronized. Without `format`, it rounds to a whole number (`to: 0.8` settles as `1`). `format` is yours (units, decimals, locale: `(v) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(v) + " s"`) and returns a string |
 
 Anchor the value at a fixed x with `anchor: "end"` so the digits do not push the
 text sideways, and set `family` to a monospace face so they do not jitter as
 they change (the style's own monospace face is a separate piece of work). The
 bar's accent sits on the track's colour: declare `{ fg: "accent", bg: "surface",
 min: 3, use: "the bar's fill on its track" }` and `{ fg: "line", bg: "surface",
-min: 2.5, use: "the hatching on the track" }` in `contrastPairs`.
+min: 2.5, use: "decorative hatching on the track" }` in `contrastPairs`. Hatching that conveys information is a shape and needs 3:1.
 
-**One bar per step, inside the beat.** A bar grows once and rests, and its value
-rolls with it, within one beat. Put the step's `at` at least 50 ms after
-`barEnd(run)`, and start the next motion no earlier than 50 ms after `at`; the settled-frame rule in the
+**Bars settle inside each beat.** A bar grows once and rests, and its value
+rolls with it, within a beat; several bars may share one. Put the step's `at` at least 50 ms after the last motion in the beat (including track entrance and every `barEnd(run)`), and start the next motion no earlier than 50 ms after `at`; the settled-frame rule in the
 gate then holds. A value that keeps updating beside live footage is not this
 part, and a bar that grows again or pulses while a step rests is ambient motion,
 which the canon rules out.

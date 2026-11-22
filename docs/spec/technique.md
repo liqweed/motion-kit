@@ -366,7 +366,7 @@ functions; a colour is a token name (G4 applies).
 - **Hatch.** `hatchPattern({idPrefix, name, stroke, spacing, width})` returns
   `{id, fill, markup}`: a `<pattern>` of lines at 45°, rising to the right,
   `spacing` px apart (default 7) and `width` px wide (default 1.5), in the token
-  `stroke` (default `line`). Its id is `${idPrefix}-${name}` (`name` defaults to
+  `stroke` (default `line`). Its id is `${safeId(idPrefix)}-${name}` (`name` defaults to
   `hatch`), so it satisfies G14; a scene that draws several hatchings gives each
   its own `name`, of letters, digits and `_` only, so the last `-` ends the prefix
   and prefixes must be unique after `safeId` normalizes them. `name` also cannot be `title` or `desc`,
@@ -381,19 +381,21 @@ functions; a colour is a token name (G4 applies).
   `surface`, `null` for none) and the `hatch` over it. It needs one of the two.
   `radius` defaults to half the height and is never more than half a side. It
   throws for a size of 0 or less and for a `hatch` not from `hatchPattern`.
-- **Bar.** `drawBar({x, y, width, height, p, fill, radius, opacity, id})` draws a
+- **Bar.** `drawBar({x, y, width, height, p, fill, radius, trackRadius, opacity, idPrefix, id, trackWidth})` draws a
   bar from `x` that is `width * p` long (`width` is its length when done, a share
   of the track's, `p` the eased
   progress 0..1 of its growth), rounded at both ends all the way, so it grows as
   a pill. Nothing for `p ≤ 0`; `p ≥ 1` is the bar it rests as. `fill` is a token
-  (default `accent`). Give `trackWidth` and a frame-unique `id` to clip a short bar
-  to its rounded track.
+  (default `accent`). Give `trackWidth`, the frame's `idPrefix`, and a local safe
+  `id` (letters, digits and `_`) to clip a short bar to its rounded track; use
+  `trackRadius` when that silhouette differs from the bar's own radius.
 - **Growth.** `barProgress(t, {start, duration}, style)` is the bar's `p`: 0
   before `start` and exactly 1 from `barEnd(run)` = `start + duration` on, on the
   style's movement curve (`style.motion.move`, through `easings`, so it settles
   whatever curve the style names), the default curve for no style. `style` is the
   one `frame(t, {idPrefix, style})` receives. A run has a finite `start` and a
-  finite, positive `duration`; invalid runs throw rather than producing an invalid end time.
+  finite, positive `duration` and a finite end strictly after its start; invalid
+  runs throw rather than producing an invalid end time.
 - **Value.** `rollingValue(from, to, p)` is `from` at `p ≤ 0`, `to` itself, not a
   sum that rounds to it, at `p ≥ 1`, and between them a straight line in `p`, so
   the number and the bar, which `p` has already eased, arrive together.
@@ -411,7 +413,9 @@ functions; a colour is a token name (G4 applies).
   frame (G6). Nothing repeats. A value that updates live beside footage is not
   this part. A scene that draws the bar's accent on the track's colour declares
   the pairs in `contrastPairs` (G12), for example `accent` on `surface` at 3 and
-  `line` on `surface` at 2.5 for the hatch.
+  `line` on `surface` at 2.5 for decorative hatch texture. Informative hatching
+  is a shape and needs 3:1; the opaque bar itself is adjacent to `surface`, not
+  to the hatch beneath it.
 
 ## 5. Markup
 

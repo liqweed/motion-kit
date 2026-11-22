@@ -30,7 +30,7 @@ README and follow your GitHub theme. Regenerate with `npm run media`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/media/bars-dark.svg">
-  <img src="docs/media/bars-light.svg" alt="bars: a three-row benchmark chart" width="720">
+  <img src="docs/media/bars-light.svg" alt="bars: a three-row benchmark chart comparing cached 0.8 s, incremental 2.4 s, and clean 6.5 s builds" width="720">
 </picture>
 
 The interactive player (scrubber, steps, captions) needs scripts, which
