@@ -18,7 +18,8 @@ function windowWith(shown) {
 		cross(to) { els["f-wide"].offsetParent = to === "wide" ? {} : null; els["f-tall"].offsetParent = to === "tall" ? {} : null; change(); },
 	};
 }
-const tick = () => new Promise((r) => setTimeout(r, 0));
+/** Flush pending promise jobs; no clock. */
+const tick = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 const scene = { duration: 8 };
 
 /** Mount stub: each mount makes a controller; `ctxs` and `made` record what each was told and built. */
