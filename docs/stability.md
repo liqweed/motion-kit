@@ -60,7 +60,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/kit.mjs` | `KIT`, `sceneFromModule` |
 | `runtime/motion.mjs` | `clamp01`, `lerp`, `cubicBezier`, `linear`, `easeOut`, `easeStandard`, `easeIn`, `progress`, `window01`, `springStep`, `springSettleTime`, `springTo`, `SPRING_SETTLE_X`, `splitEdge`, `stagger` |
 | `runtime/svg.mjs` | `esc`, `num`, `attrString`, `el`, `text`, `translate`, `scaleAbout`, `fade`, `dist`, `pointOnLine`, `trimSegment`, `polyline`, `cubic`, `drawOn`, `tokenPoints`, `tokensAlong` |
-| `runtime/iso.mjs` | `camera`, `CAMERA_PLAN`, `CAMERA_ISOMETRIC`, `ISO_ELEVATION`, `lerpCamera`, `fitCamera`, `projector`, `project`, `path3`, `box`, `slab`, `prism`, `regularPolygon`, `orderSolids`, `drawSolid`, `drawSolids`, `labelAnchor`, `labelProblems` (the solid and label-box shapes they take and return) |
+| `runtime/iso.mjs` | `camera`, `CAMERA_PLAN`, `CAMERA_ISOMETRIC`, `ISO_ELEVATION`, `lerpCamera`, `fitCamera`, `projector`, `project`, `path3`, `box`, `slab`, `roundedBox`, `roundedSlab`, `prism`, `regularPolygon`, `orderSolids`, `drawSolid`, `drawSolids`, `drawGrid`, `planeMatrix`, `drawOnPlane`, `labelAnchor`, `labelPill`, `labelProblems` (the solid, plane and label-box shapes they take and return) |
 | `runtime/connectors.mjs` | `connectorPath` (its `at`, `cut`, `tip`), `drawConnector`, `drawJunction`, `drawPulse`, `pulseEnd`, `pulseHead`, `PULSE_LAG` (the option and `run` shapes they take) |
 | `runtime/bars.mjs` | `hatchPattern` (its `{ id, fill, markup }`), `drawTrack`, `drawBar`, `drawValue`, `rollingValue`, `barProgress`, `barEnd` (the option and `run` shapes they take) |
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
