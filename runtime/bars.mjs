@@ -42,7 +42,8 @@ const hatchParts = (hatch) => {
 	if (fields.some((field) => !field || !("value" in field))) return null;
 	const [idField, fillField, markupField] = /** @type {[PropertyDescriptor, PropertyDescriptor, PropertyDescriptor]} */ (fields);
 	const [id, fill, markup] = [idField.value, fillField.value, markupField.value];
-	if (typeof id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(id) || fill !== `url(#${id})` || typeof markup !== "string" || !markup.includes(`<pattern id="${id}"`)) return null;
+	if (typeof id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(id) || fill !== `url(#${id})` || typeof markup !== "string") return null;
+	if (!new RegExp(`<pattern id="${id}"[^>]*><path [^>]+/></pattern>`).test(markup)) return null;
 	return { id, fill, markup };
 };
 
@@ -135,8 +136,7 @@ export function drawBar({ x, y, width, height, p, fill = "accent", radius, track
 	if (w <= 0) return "";
 	if (Number(num(w)) <= 0) return "";
 	if (!renderedFinite(w)) throw new Error(`drawBar: rendered width must remain finite, got ${w}`);
-	const paint = tok(fill);
-	const bar = el("rect", { x, y, width: w, height, rx: corner(radius, w, height), fill: paint, stroke: paint, "stroke-width": 1 });
+	const bar = el("rect", { x, y, width: w, height, rx: corner(radius, w, height), fill: tok(fill) });
 	if (trackWidth === undefined) return fade(opacity, id ? { "data-bar": id } : {}, bar);
 	const clipId = `${safeId(idPrefix)}-clip-${id}`;
 	const clip = el("defs", {}, el("clipPath", { id: clipId }, el("rect", { x, y, width: trackWidth, height, rx: corner(trackRadius, trackWidth, height) })));

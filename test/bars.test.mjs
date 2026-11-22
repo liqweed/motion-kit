@@ -96,7 +96,7 @@ describe("drawBar", () => {
 	it("draws nothing at the start and the full bar once done", () => {
 		assert.equal(bar(0), "");
 		assert.equal(bar(-1), "");
-		assert.match(bar(1), /<rect x="10" y="20" width="200" height="24" rx="12" fill="var\(--mk-accent\)" stroke="var\(--mk-accent\)" stroke-width="1"\/>/);
+		assert.match(bar(1), /<rect x="10" y="20" width="200" height="24" rx="12" fill="var\(--mk-accent\)"\/>/);
 		assert.equal(bar(1), bar(2));
 	});
 	it("grows from its start, rounded at both ends all the way", () => {
@@ -358,6 +358,7 @@ describe("bars: review edge cases", () => {
 		const accessor = Object.freeze({ get id() { return hatch.id; }, fill: hatch.fill, markup: hatch.markup });
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: accessor }), /hatchPattern/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: "<defs/>" }) }), /hatchPattern/);
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: `<!-- <pattern id="${hatch.id}"><path/></pattern> -->` }) }), /hatchPattern/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 1e307, height: 4 }), /after SVG rounding/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 0.004, height: 4 }), /positive after SVG rounding/);
 		assert.throws(() => barEnd({ start: 1e308, duration: 1e308 }), /end must be finite/);
