@@ -405,6 +405,15 @@ describe("instance ids", () => {
 		assert.doesNotMatch(bake(upper, { fps: 4 }), /\sID="/);
 		assert.ok((bake(upper, { fps: 4 }).match(/\sid="/g) ?? []).length >= all.length);
 	});
+	it("standalone output normalizes id attributes by whole attribute", () => {
+		const odd = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-p" ID="${o.idPrefix}-q" aria-label="Node ID="/><g aria-label="Node ID=" ID="${o.idPrefix}-r"/>` };
+		for (const svg of [renderSvg(odd, 0, { standalone: true }), bake(odd, { fps: 4 })]) {
+			assert.equal(wellFormed(svg), null);
+			assert.match(svg, /aria-label="Node ID="/, "quoted values are untouched");
+			assert.doesNotMatch(svg, /"\sID="/, "no uppercase attribute is left");
+			assert.doesNotMatch(svg, /<g id="[^"]*-p" id=/, "one id per element");
+		}
+	});
 	it("bake gives each slice that defines ids its own prefix", () => {
 		const svg = bake(clipped, { fps: 4 });
 		const all = ids(svg);

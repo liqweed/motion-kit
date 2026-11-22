@@ -340,6 +340,7 @@ const VENDOR_CHECK = `#!/usr/bin/env node
 // Exits 1 if anything fails; a file that cannot be loaded fails on its own.
 import { parseArgs } from "node:util";
 import { checkFiles } from "./lib/gate.mjs";
+import { printable } from "./runtime/advice.mjs";
 import { isStrict, loadOptions, loadStyle } from "./lib/load.mjs";
 
 const { values, positionals } = parseArgs({
@@ -362,7 +363,7 @@ try {
 	process.exit(bad ? 1 : 0);
 } catch (e) {
 	// Control and bidirectional characters in a message never reach the terminal raw.
-	console.error(\`✗ \${String(e instanceof Error ? e.message : e).replace(/[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u061c\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]/g, (c) => \`\\\\u\${c.charCodeAt(0).toString(16).padStart(4, "0")}\`)}\`);
+	console.error(\`✗ \${printable(String(e instanceof Error ? e.message : e))}\`);
 	process.exit(1);
 }
 `;

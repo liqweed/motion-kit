@@ -35,7 +35,7 @@ export function bake(scene, options = {}) {
 	// The loop samples frame 0 through `total`: total + 1 frames.
 	if (!Number.isFinite(total) || total + 1 > MAX_FRAMES) throw new Error(`bake: ${scene.duration} s at ${fps} fps is ${total + 1} frames; the limit is ${MAX_FRAMES} (lower the fps or shorten the scene)`);
 	/** @param {number} t @param {string} idPrefix */
-	const render = (t, idPrefix) => lowerIdAttributes(renderSvg(scene, t, { ...options, standalone: true, idPrefix }));
+	const render = (t, idPrefix) => renderSvg(scene, t, { ...options, standalone: true, idPrefix });
 	const frames = [];
 	for (let f = 0; f <= total; f++) {
 		const t = Math.min(f / fps, scene.duration);
@@ -68,16 +68,6 @@ export function bake(scene, options = {}) {
 		return `<g class="mk-f${isLast ? " mk-last" : ""}" style="${style}">${fr.body}</g>`;
 	});
 	return `${open}${head}<style>${css.join("")}</style>${groups.join("")}</svg>`;
-}
-
-/**
- * A standalone SVG is XML, which reads only a lowercase `id` attribute; the live
- * patcher reads any letter case. Spell every `id` attribute in lowercase so a clip
- * path or gradient a slice references resolves outside the page too.
- * @param {string} svg
- */
-function lowerIdAttributes(svg) {
-	return svg.replace(/<[a-zA-Z][\w:-]*(?:\s+[\w:-]+="[^"]*")*\s*\/?>/g, (tag) => tag.replace(/(\s)([iI][dD])(?==")/g, (m, sp, name) => `${sp}id`));
 }
 
 function innerOf(svg) {

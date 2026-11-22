@@ -250,9 +250,11 @@ A spec of any scene type may carry the same `acknowledge` field. The check then
 reports it as acknowledged, with the reason, and `export` records it in
 `manifest.json`. A reason is required, a hard rule cannot be named, and an
 acknowledgement of a rule the scene does not break is reported so it can go.
-`--strict` (or `MOTION_KIT_STRICT=1`) fails the run if even one checked format
+`--strict` (or `MOTION_KIT_STRICT=1`) makes `check` fail if even one checked format
 or locale variant has advice that is not acknowledged (the message names which variants it found it in);
-it is off by default.
+it is off by default. `export --strict` enforces the variant it exports: the optional
+tall preview is checked too, but open advice there only omits the preview and does not
+change the exit status, so use `check --strict` in CI to enforce every shipped variant.
 
 ## Text that sharpens into place, and a highlighter
 
