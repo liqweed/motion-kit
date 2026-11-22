@@ -359,9 +359,9 @@ functions; a colour is a token name (G4 applies).
   non-`#rrggbb` value (`normalizeStyle`). If `dark` is absent, dark
   takes the `light` overrides on top of neutral dark (`normalizeStyle`).
 - **Live** output MUST carry tokens as CSS custom properties on the container
-  (`runtime/player.mjs:52`, `lib/build.mjs:39-40`) so light/dark can switch
+  (`cssVars`; the player and `lib/build.mjs` set them) so light/dark can switch
   without re-rendering. **Standalone** output MUST resolve every token to a
-  literal (`runtime/scene.mjs:84`, `runtime/style.mjs:86-93`), because slide
+  literal (`renderSvg` in `runtime/scene.mjs`, `resolveTokens` in `runtime/style.mjs`), because slide
   apps, rasterizers and image viewers ignore CSS variables; an unresolvable
   token throws.
 - **Contrast** (`runtime/style.mjs`, `checkContrast`, `contrastReport`, WCAG

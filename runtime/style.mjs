@@ -165,7 +165,8 @@ export function normalizeStyle(style) {
  */
 export function cssVars(style, theme = "light", markup) {
 	const s = normalizeStyle(style);
-	const paint = markup === undefined ? "" : paintSource(markup);
+	// A token can only be used through `--mk-`, or through a numeric reference spelling it.
+	const paint = markup === undefined || !/--mk-|&#/.test(markup) ? "" : paintSource(markup);
 	const used = (/** @type {string} */ t) => markup === undefined || !OPTIONAL_TOKENS.includes(t) || paint.includes(`var(--mk-${t})`);
 	return TOKENS.filter(used).map((t) => `--mk-${t}:${s[theme][t]}`).join(";");
 }
@@ -220,13 +221,23 @@ export function styleBodies(markup, all = false) {
 		if (t.closing || t.selfClosing || t.name.toLowerCase() !== "style" || (t.inMetadata && !all)) continue;
 		// Only a CSS stylesheet styles anything: another `type` is plain data.
 		const type = t.attrs.find((a) => a.name === "type");
-		if (type && unescapeAttr(type.raw).trim().toLowerCase() !== "text/css") continue;
+		// An empty `type` is the default, CSS.
+		if (type && !/^(?:text\/css)?$/i.test(unescapeAttr(type.raw).trim())) continue;
 		const close = /<\/style\s*>/i.exec(t.bare.slice(t.end));
 		const body = t.bare.slice(t.end, close ? t.end + close.index : undefined);
-		// Character data: an XML parser decodes references, except inside CDATA.
-		out.push(body.includes("<![CDATA[") ? body : unescapeAttr(body));
+		out.push(decodeCharacterData(body));
 	}
 	return out;
+}
+
+/**
+ * Character data as an XML parser reads it: references decoded, except inside
+ * CDATA sections, which stay as written (without their delimiters' effect on
+ * the text around them).
+ * @param {string} body
+ */
+function decodeCharacterData(body) {
+	return body.split(/(<!\[CDATA\[[\s\S]*?\]\]>)/).map((part, i) => (i % 2 ? part : unescapeAttr(part))).join("");
 }
 
 /**
@@ -268,7 +279,7 @@ export function paintSource(markup) {
 	for (const tag of scanTags(markup)) {
 		if (tag.closing || tag.inMetadata) continue;
 		for (const { name, raw } of tag.attrs) {
-			if (/^(data-|aria-)|^(id|class)$/.test(name)) continue;
+			if (/^(data-|aria-)|^(id|class|title|xlink:title|href|xlink:href|lang|xml:lang|xml:space|role|tabindex|alt)$/i.test(name)) continue;
 			const value = unescapeAttr(raw);
 			out.push(name === "style" ? maskCssStrings(stripCssComments(value)) : value);
 		}
@@ -290,15 +301,22 @@ export function resolveTokens(markup, style, theme = "light") {
 	// A reference spelling (`var(&#45;&#45;mk-caution)`) reads as the same token to an XML parser:
 	// decode such a value or style body, resolve it, and write it back with the markup characters escaped.
 	const escaped = (/** @type {string} */ v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+	const viaDecodedBody = (/** @type {string} */ body) =>
+		body.split(/(<!\[CDATA\[[\s\S]*?\]\]>)/).map((part, k) => (k % 2 ? part : viaDecoded(part, false))).join("");
 	const viaDecoded = (/** @type {string} */ raw, /** @type {boolean} */ attr) => {
 		if (!raw.includes("&#")) return resolve(raw);
 		const decoded = unescapeAttr(raw);
 		if (!decoded.includes("var(--mk-")) return resolve(raw);
 		return attr ? escaped(resolve(decoded)) : resolve(decoded).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 	};
-	return resolve(markup)
-		.replace(/(\s[\w:.-]+\s*=\s*)(["'])([\s\S]*?)\2/g, (m, pre, q, raw) => (raw.includes("&#") ? `${pre}${q}${viaDecoded(raw, true)}${q}` : m))
-		.replace(/(<style\b[^>]*>)([^<]*)(<\/style\s*>)/gi, (m, open, body, close) => (body.includes("&#") ? open + viaDecoded(body, false) + close : m));
+	// Only tag spans and style bodies are rewritten: a quote in text content is text.
+	const attrs = (/** @type {string} */ span) => span.replace(/(\s[\w:.-]+\s*=\s*)(["'])([\s\S]*?)\2/g, (m, pre, q, raw) => (raw.includes("&#") ? `${pre}${q}${viaDecoded(raw, true)}${q}` : m));
+	const A = `((?:"[^"]*"|'[^']*'|[^>"'])*)`;
+	return resolve(markup).replace(new RegExp(`<!--[\\s\\S]*?-->|<style(?=[\\s>/])${A}>([\\s\\S]*?)(</style\\s*>)|<([a-zA-Z][\\w:-]*)${A}>`, "gi"), (m, sAttrs, body, close, name, tAttrs) => {
+		if (m.startsWith("<!--")) return m;
+		if (name !== undefined) return `<${name}${attrs(tAttrs)}>`;
+		return `<style${attrs(sAttrs)}>${body.includes("&#") ? viaDecodedBody(body) : body}${close}`;
+	});
 }
 
 /* ---------------------------------------------------------------- contrast */

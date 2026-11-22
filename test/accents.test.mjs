@@ -310,8 +310,36 @@ describe("optional token use and warnings", () => {
 		});
 		it("checks the exact step frames, not only the sampled grid", () => {
 			const caution = `<rect width="5" height="5" fill="var(--mk-caution)"/>`;
-			const sc = { id: "s", width: 100, height: 50, duration: 1, title: "t", description: "d", steps: [{ at: 0.5035, label: "a" }, { at: 1, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.5 && t < 0.504 ? caution : t >= 1 ? "<g/>" : "<circle r=\"1\"/>") };
-			assert.ok(checkScene(sc).problems.some((p) => p.includes("draws caution")));
+			const sc = { id: "s", width: 100, height: 50, duration: 4, title: "t", description: "d", stepLabelsInFrame: false, steps: [{ at: 0.5035, label: "a" }, { at: 4, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.5 && t < 0.6 ? caution : t >= 3.5 ? "<g/>" : "<circle r=\"1\"/>") };
+			const problems = checkScene(sc).problems;
+			assert.ok(problems.some((p) => p.includes("draws caution")), problems.join("; "));
+			// The plateau covers the step's whole look-ahead, so the draw is the only problem it causes.
+			assert.ok(!problems.some((p) => p.includes("not settled")), problems.join("; "));
+		});
+		it("reads an empty stylesheet type as CSS and attribute names in any case", () => {
+			assert.match(findFontLiteral(`<style type="">text{font-family:Courier}</style>`, style) ?? "", /Courier/);
+			assert.ok(paintSource(`<style type="">rect{fill:var(--mk-caution)}</style>`).includes("caution"));
+			assert.match(findFontLiteral(`<text FONT-FAMILY="Courier">x</text>`, style) ?? "", /Courier/);
+			assert.match(findFontLiteral(`<text STYLE="font-family:Courier">x</text>`, style) ?? "", /Courier/);
+		});
+		it("accepts !important with spaces or comments, and a bare font: selector", () => {
+			assert.equal(findFontLiteral(`<style>text{font-family:inherit !/**/important}</style>`, style), null);
+			assert.equal(findFontLiteral(`<style>text{font-family:inherit ! important}</style>`, style), null);
+			assert.equal(findFontLiteral(`<style>font:hover{font-weight:600}</style>`, style), null);
+			assert.equal(findFontLiteral(`<style>a{x:y}font:hover{font-weight:600}</style>`, style), null);
+		});
+		it("does not treat a title-like attribute as paint, and decodes text beside CDATA", () => {
+			assert.ok(!paintSource(`<a xlink:title="var(&#45;&#45;mk-caution)"/>`).includes("caution"));
+			assert.ok(paintSource(`<style>rect{fill:var(&#45;&#45;mk-caution)}<![CDATA[ ]]></style>`).includes("var(--mk-caution)"));
+		});
+		it("resolves a standalone export only inside tags and stylesheets", () => {
+			const out = resolveTokens(`<style data-note=">">rect{fill:var(&#45;&#45;mk-caution)}</style><text>Example x="var(&#45;&#45;mk-caution)"</text>`, "neutral");
+			assert.ok(out.includes(`<style data-note=">">rect{fill:${NEUTRAL.light.caution}}</style>`), out);
+			assert.ok(out.includes(`<text>Example x="var(&#45;&#45;mk-caution)"</text>`), out);
+		});
+		it("validates malformed or unrounded markup at a step between grid samples", () => {
+			const sc = { id: "n", width: 100, height: 50, duration: 12, title: "t", description: "d", steps: [{ at: 0.242, label: "a" }, { at: 12, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.24 && t < 0.29 ? `<circle r="NaN"/>` : t >= 12 ? "<g/>" : `<circle r="1"/>`) };
+			assert.ok(checkScene(sc).problems.some((p) => p.includes("NaN") && p.includes("step")));
 		});
 		it("keeps a comment marker inside a quoted family", () => {
 			const s = normalizeStyle({ ...NEUTRAL, name: "t", mono: '"ACME/*Mono*/", monospace' });

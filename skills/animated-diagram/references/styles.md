@@ -126,7 +126,10 @@ one declares it and is held to it:
 
 A scene that uses `caution`, `onCaution`, `alert` or `onAlert` without declaring a
 pair that names the token fails the gate (`draws caution but declares no contrast
-pair for it`), so the style is never judged against less than the scene draws. A
+pair for it`). That check is for the token's presence: the gate does not know
+which pairs the scene really draws, so declare each pair you draw, with the
+minimum it needs (a `min: 1` on `caution/ink` passes the check and judges
+nothing). A
 style that sets one of these tokens is warned, once per run, when it misses its
 pair; a style that leaves them at neutral's is not.
 
@@ -184,6 +187,7 @@ yes before applying it everywhere.
 ## Fonts
 
 Live: the page's font stack (`font`, and `mono` where a scene asks for it). Exports: the rasterizer uses system fonts (resvg
-falls back to Helvetica on macOS, and to its own default where no `mono` family is
-installed). For brand fonts in PNG/video, install the font on the rendering
+falls back to the `defaultFontFamily` `lib/raster.mjs` passes, Helvetica by
+default, and a generic `monospace` maps to that same family, so metrics can
+render in a proportional face where no monospace family is installed). For brand fonts in PNG/video, install the font on the rendering
 machine, the monospace one included. Embedding fonts in SVG is out of scope.
