@@ -384,13 +384,26 @@ describe("instance ids", () => {
 	});
 	it("G10 reads a drawn label by what it displays, not how its characters are spelled", () => {
 		const s = { id: "ship", width: 100, height: 40, duration: 1, title: "Ship", description: "A label spelled with a reference.", steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>&#83;hip</text>` };
-		assert.ok(!checkScene(s).advice.some((a) => a.rule === "step-labels-in-frame"));
+		const r = checkScene(s, { strict: true });
+		assert.deepEqual(r.problems, []);
+		assert.deepEqual(r.advice, []);
+		// A reference splits no word, a continuing span joins one, a positioned line span ends one.
+		const frame = (body) => ({ ...s, steps: [{ at: 1, label: "Archive/Dispose now" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/>${body}` });
+		assert.deepEqual(checkScene(frame("<text>Archive&#47;Dispose&#32;now</text>"), { strict: true }).advice, []);
+		const split = { ...s, steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Ship<tspan>ment</tspan></text>` };
+		assert.ok(checkScene(split).advice.some((a) => a.rule === "step-labels-in-frame"), "Ship<tspan>ment</tspan> draws Shipment");
+		// XML keeps a C1 reference as written; HTML's table would turn &#150; into an en dash.
+		const dash = { ...s, steps: [{ at: 1, label: "A\u2013B" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>A&#150;B</text>` };
+		assert.ok(checkScene(dash).advice.some((a) => a.rule === "step-labels-in-frame"));
 	});
 	it("bake prefixes slices whose only id attribute is uppercase", () => {
 		const upper = { ...clipped, frame: (t, o) => clipped.frame(t, o).replaceAll(' id="', ' ID="') };
 		const all = elementIds(bake(upper, { fps: 4 }));
 		assert.ok(all.length > 2);
 		assert.equal(new Set(all).size, all.length);
+		// The standalone SVG is XML: only a lowercase `id` attribute declares an id.
+		assert.doesNotMatch(bake(upper, { fps: 4 }), /\sID="/);
+		assert.ok((bake(upper, { fps: 4 }).match(/\sid="/g) ?? []).length >= all.length);
 	});
 	it("bake gives each slice that defines ids its own prefix", () => {
 		const svg = bake(clipped, { fps: 4 });

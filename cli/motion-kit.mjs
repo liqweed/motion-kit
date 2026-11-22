@@ -140,7 +140,7 @@ async function main() {
 			// The page also paints the player: button text and borders, the selected step,
 			// captions, the focus outline, and (unless --no-heading) the heading on the canvas.
 			const player = checkContrast(style, sharedPairs(...(a["no-heading"] ? [] : ["ink/bg"]), "ink/surface", "onAccent/accent", "muted/bg", "emphasis/bg", "line/bg", "accent/bg"));
-			if (player.length) fail(`the player in the page fails the gate:\n  - ${player.join("\n  - ")}`);
+			if (player.length) fail(`the player in the page fails the gate:\n  - ${player.map(printable).join("\n  - ")}`);
 			const html = buildHtml(loaded, { style, ...where, options: sopts.options, scrubber: !a["no-scrubber"], heading: !a["no-heading"] });
 			if (/<\/script/i.test(html.slice(html.indexOf("<script>") + 8, html.lastIndexOf("</script>")))) fail("bundled code contains </script>");
 			const out = need(a.out, "--out");
@@ -361,9 +361,10 @@ try {
 	const bad = await checkFiles(positionals, { formats: values.format, locales: values.locale, style: loadStyle(values.style), options: await loadOptions(values.options), strict: isStrict(values.strict) });
 	process.exit(bad ? 1 : 0);
 } catch (e) {
-	console.error(\`✗ \${e instanceof Error ? e.message : e}\`);
+	// Control and bidirectional characters in a message never reach the terminal raw.
+	console.error(\`✗ \${String(e instanceof Error ? e.message : e).replace(/[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u061c\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]/g, (c) => \`\\\\u\${c.charCodeAt(0).toString(16).padStart(4, "0")}\`)}\`);
 	process.exit(1);
 }
 `;
 
-main().catch((e) => fail(e.stack ?? e.message));
+main().catch((e) => fail(String(e?.stack ?? e?.message ?? e).split("\n").map(printable).join("\n")));

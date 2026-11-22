@@ -250,8 +250,8 @@ A spec of any scene type may carry the same `acknowledge` field. The check then
 reports it as acknowledged, with the reason, and `export` records it in
 `manifest.json`. A reason is required, a hard rule cannot be named, and an
 acknowledgement of a rule the scene does not break is reported so it can go.
-`--strict` (or `MOTION_KIT_STRICT=1`) fails advice that is not acknowledged in
-any checked format or locale variant (the message names which variants it found it in);
+`--strict` (or `MOTION_KIT_STRICT=1`) fails the run if even one checked format
+or locale variant has advice that is not acknowledged (the message names which variants it found it in);
 it is off by default.
 
 ## Text that sharpens into place, and a highlighter
