@@ -145,7 +145,7 @@ const UNASSIGNED = /\p{Cn}/u;
  */
 const FONT_ITEM = /[ \t\n\r\f]*(?:"[^"<>{};\\\t\r\n\f]*"|'[^'<>{};\\\t\r\n\f]*'|-?[A-Za-z_][A-Za-z0-9_-]*(?: -?[A-Za-z_][A-Za-z0-9_-]*)*)[ \t\n\r\f]*(,|$)/y;
 /** A generic family keyword: it starts a multiword unquoted name that Chromium reads as the keyword followed by stray text. */
-const GENERIC_FIRST = /^(?:serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-(?:serif|sans-serif|monospace|rounded)|math|emoji|fangsong) /i;
+const GENERIC_FIRST = /^(?:-webkit-body|serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-(?:serif|sans-serif|monospace|rounded)|math|emoji|fangsong) /i;
 const CSS_WIDE = /^(?:inherit|initial|unset|revert|revert-layer|default)$/i;
 
 /**

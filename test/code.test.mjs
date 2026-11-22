@@ -424,7 +424,7 @@ describe("codeBlock input hardening", () => {
 		assert.throws(() => block({ font: `${"a ".repeat(50000)}, 1` }), /font-family/);
 	});
 	it("reads a font as a plain family list: no comments, calls or other CSS outside quotes", () => {
-		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial ", "Hawaii 5-0, monospace", "Mono.Name, monospace", "Mono, initial", "a, default", '"Mono\nRegular", monospace', "DejaVu  Sans Mono, monospace", "DejaVu Sans\u00A0Mono, monospace", "monospace Display, serif"]) assert.throws(() => block({ font }), /font-family/, font);
+		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial ", "Hawaii 5-0, monospace", "Mono.Name, monospace", "Mono, initial", "a, default", '"Mono\nRegular", monospace', "DejaVu  Sans Mono, monospace", "DejaVu Sans\u00A0Mono, monospace", "monospace Display, serif", "-webkit-body Display, monospace"]) assert.throws(() => block({ font }), /font-family/, font);
 		for (const font of [CODE_FONT, "DejaVu Sans Mono, monospace", 'Fira Code,"Mono(Regular)", monospace', "'SF Mono', monospace", '"Var(Regular)", monospace']) assert.doesNotThrow(() => block({ font }), font);
 	});
 
@@ -451,11 +451,33 @@ describe("the gate and the code's own text", () => {
 	});
 
 	it("does not skip the text of a span that merely mentions the marker", async () => {
-		const other = (/** @type {string} */ attrs) => `<tspan${attrs}>3.14159 NaN</tspan>`;
-		for (const attrs of [' aria-label="data-mk-code"', " data-mk-code-example", ' data-mk-code="x"']) {
-			const r = await gate(other(attrs));
-			assert.ok(!r.ok, attrs);
+		const other = (/** @type {string} */ attrs, text) => `<tspan${attrs}>${text}</tspan>`;
+		for (const attrs of [' aria-label="data-mk-code"', ' data-mk-code-example=""', ' data-mk-code="x"']) {
+			const rounded = await gate(other(attrs, "3.14159"));
+			assert.ok(rounded.problems.some((p) => /unrounded number 3.14159/.test(p)), `${attrs}: ${rounded.problems}`);
+			const nan = await gate(other(attrs, "NaN"));
+			assert.ok(nan.problems.some((p) => /NaN\/undefined/.test(p)), `${attrs}: ${nan.problems}`);
 		}
+	});
+
+	it("keeps the tags of a title or description in view, and skips only their text", async () => {
+		for (const tag of ["title", "desc"]) {
+			assert.ok((await gate(`<${tag} data-sample="a>b">A ${tag} 3.14159</${tag} >`)).ok, tag);
+			const r = await gate(`<${tag} data-sample="a>b 1.234567">x</${tag}>`);
+			assert.ok(r.problems.some((p) => /unrounded number 1.234567/.test(p)), `${tag}: ${r.problems}`);
+		}
+	});
+
+	it("does not read a font-family value as geometry, but still reads its other attributes", async () => {
+		assert.ok((await gate('<g font-family="Mono 3.14159, Infinity Mono"></g>')).ok);
+		assert.ok((await gate('<g font-family="Mono" x="1.234567"></g>')).problems.some((p) => /unrounded number/.test(p)));
+	});
+
+	it("stays fast on a malformed span that repeats the marker", async () => {
+		const t0 = performance.now();
+		const r = await gate(`<tspan${' data-mk-code=""'.repeat(4096)}`);
+		assert.ok(!r.ok);
+		assert.ok(performance.now() - t0 < 2000);
 	});
 });
 
