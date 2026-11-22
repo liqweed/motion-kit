@@ -89,7 +89,7 @@ any release.
   `data-mk-player-css` marker on the stylesheet. The markup inside them is not
   public: style by class, not by structure.
 - Behaviour the spec states as MUST in §10.2 (autoplay, reduced motion, the
-  keyboard, announcements). The 44 px control size is a SHIPPED DEFAULT (§10.2 says SHOULD; a page may override it).
+  keyboard, announcements). The 44 px control size is a SHIPPED DEFAULT (§10.2 says SHOULD); a page may override it, and the spec's accessibility condition (WCAG 2.5.8) still applies to the override.
 
 ### Adapters
 

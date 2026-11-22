@@ -263,6 +263,12 @@ describe("cli", () => {
 		assert.match(r.out, /✓ .*order-flow\.json · 16:9/);
 		assert.match(r.out, /✗ .*custom-pulse\.scene\.mjs · 16:9 · en\n {2}- contrast: raised dark: accent on surface is 2\.48:1, needs 3:1/);
 		assert.doesNotMatch(r.out, /⚠ style:/);
+		// A bidirectional control in the style's name never reaches the terminal raw, in a hard problem or a warning.
+		writeFileSync(join(dir, "bidi.json"), JSON.stringify({ name: "ra\u202eised", dark: { surface: "#2b3242" } }));
+		r = node(CLI, "check", `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "bidi.json"));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /ra\\u202eised dark: accent on surface/);
+		assert.ok(!r.out.includes("\u202e"), "no raw bidirectional control");
 	});
 	it("fails only the pairs a scene draws: a custom scene that declares them passes with a warning, one that declares nothing fails", () => {
 		const dir = join(tmp, "drawn");

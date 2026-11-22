@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
-import { checkScene, colourLiteral, findColourLiteral, wellFormed } from "../lib/check.mjs";
+import { checkScene, colourLiteral, elementIds, findColourLiteral, wellFormed } from "../lib/check.mjs";
 import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
@@ -381,6 +381,16 @@ describe("instance ids", () => {
 		const msg = checkScene(ctrl).problems.join("\n");
 		assert.match(msg, /duplicate id "x\\u001b\[2J"/);
 		assert.ok(!msg.includes("\u001b"));
+	});
+	it("G10 reads a drawn label by what it displays, not how its characters are spelled", () => {
+		const s = { id: "ship", width: 100, height: 40, duration: 1, title: "Ship", description: "A label spelled with a reference.", steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>&#83;hip</text>` };
+		assert.ok(!checkScene(s).advice.some((a) => a.rule === "step-labels-in-frame"));
+	});
+	it("bake prefixes slices whose only id attribute is uppercase", () => {
+		const upper = { ...clipped, frame: (t, o) => clipped.frame(t, o).replaceAll(' id="', ' ID="') };
+		const all = elementIds(bake(upper, { fps: 4 }));
+		assert.ok(all.length > 2);
+		assert.equal(new Set(all).size, all.length);
 	});
 	it("bake gives each slice that defines ids its own prefix", () => {
 		const svg = bake(clipped, { fps: 4 });
