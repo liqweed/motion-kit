@@ -332,8 +332,8 @@ functions; a colour is a token name (G4 applies).
   its code; `maxHeight` is what the picture can spare.
 - **Fit.** `fontSize` is at least 14 px (§7). A line wider than the block's
   columns is refused (`overflow: "error"`, the default), wrapped at the last
-  space that fits with the continuation indented two columns past the line's own
-  indent, but never past a quarter of the block's columns (`"wrap"`; a line indented over half the width is refused), or cut
+  space that fits (a word longer than the row is hard-broken) with the continuation indented two columns past the line's own
+  indent, but never past a quarter of the block's columns (`"wrap"`; a line indented by half the columns, rounded down, or more is refused), or cut
   with `…` in the last column (`"clip"`). Code taller than `maxHeight` is
   refused. Each error names the line and the remedies: shorten it, choose
   `wrap` or `clip`, give the block more width or height (another format), or show
@@ -356,7 +356,7 @@ functions; a colour is a token name (G4 applies).
   (default 0.5 s) on `ease`, the style's movement curve
   (`easings(style.motion).easeStandard`): the leading edge moves first and the
   trailing edge follows `CODE_BAND_LAG` (0.07 s) later on the same curve (split
-  edges, §4.5), so the band stretches in flight and gathers on arrival.
+  edges, §4.5), so when both edges travel the same way the band stretches in flight and gathers on arrival; an edge the two ranges share stays put while the other moves.
   Moves must not overlap. The band is `accent` at 18 % with a solid 3 px marker
   on its left edge. A line's brightness is `dim` (default 0.45) plus the rest,
   in proportion to how much of the line the band covers, so lines light as the

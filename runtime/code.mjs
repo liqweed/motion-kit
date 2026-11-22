@@ -114,8 +114,8 @@ function expandTabs(s, tabSize, col) {
 	return out;
 }
 
-/** Characters that take two cells (CJK, full-width forms, emoji): a column grid cannot hold them. */
-const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
+/** Characters that take two cells (CJK, Tangut, Nüshu, supplementary kana, full-width forms, emoji) and regional indicators (flag sequences): a column grid cannot hold them. */
+const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{16FE0}-\u{16FE4}\u{17000}-\u{18CFF}\u{1AFF0}-\u{1B2FF}\u{1F1E6}-\u{1F1FF}\u{1F200}-\u{1F2FF}\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
 
 /** Zero-advance characters (combining marks, joiners, bidi and other every Unicode format character such as soft hyphens, variation selectors): a cell grid cannot place them. */
 const ZERO_WIDTH = /\p{M}|\p{Cf}|[\u200B-\u200F\u2060-\u2064]/u;
@@ -260,7 +260,7 @@ export function codeBlock(opts) {
 	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
 	for (const [name, role] of Object.entries(given)) {
 		if (!role || !TOKENS.includes(role.token)) throw new Error(`codeBlock: role "${name}" names the token "${role?.token}", which is not a style token (known: ${TOKENS.join(", ")})`);
-		if (role.weight !== undefined && !(Number.isInteger(role.weight) && role.weight >= 100 && role.weight <= 900)) throw new Error(`codeBlock: role "${name}" has a weight that is not a whole number from 100 to 900`);
+		if (role.weight !== undefined && !(Number.isInteger(role.weight) && role.weight % 100 === 0 && role.weight >= 100 && role.weight <= 900)) throw new Error(`codeBlock: role "${name}" has a weight that is not a multiple of 100 from 100 to 900 (resvg ignores others)`);
 	}
 
 	/** Own, frozen copies: the caller's role objects can change after construction. */
@@ -284,7 +284,7 @@ export function codeBlock(opts) {
 		if (flat.chars.length <= columns) laid = [{ chars: flat.chars, names: flat.roles, col0: 0 }];
 		else if (overflow === "wrap") {
 			const lead = flat.chars.findIndex((c) => c !== " ");
-			if (lead >= Math.floor(columns / 2)) throw new Error(`codeBlock: line ${n} is indented ${lead} columns, over half of the ${columns} the block fits, so it cannot wrap; dedent the snippet, or give the block more width (a wider format)`);
+			if (lead >= Math.floor(columns / 2)) throw new Error(`codeBlock: line ${n} is indented ${lead} columns, at least half (rounded down) of the ${columns} the block fits, so it cannot wrap; dedent the snippet, or give the block more width (a wider format)`);
 			laid = wrapRows(flat, columns);
 		}
 		else if (overflow === "clip") laid = [{ chars: [...flat.chars.slice(0, columns - 1), "…"], names: flat.roles.slice(0, columns), col0: 0 }];

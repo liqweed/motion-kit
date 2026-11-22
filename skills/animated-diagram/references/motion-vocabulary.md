@@ -100,7 +100,7 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
 
 - **Band:** appears in 0.3 s (a fade over the first range), then moves to each
   next range in 0.4–0.6 s on `easeStandard`, the leading edge first and the
-  trailing edge 70 ms behind (split edges), so it stretches in flight and gathers
+  trailing edge 70 ms behind (split edges), so it stretches in flight when both edges travel the same way and gathers
   on arrival. Longer jumps take the longer end of the range.
 - **Lines:** a line is at full ink while the band covers it and at 45 % outside
   it. The change follows the band's own edges, so a line lights as the band

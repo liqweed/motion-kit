@@ -126,14 +126,20 @@ export function cssVars(style, theme = "light") {
 	return TOKENS.map((t) => `--mk-${t}:${s[theme][t]}`).join(";");
 }
 
-/** Replace every var(--mk-token) with its literal value. Unknown tokens throw. */
+/**
+ * Replace every var(--mk-token) with its literal value, in markup (tags and
+ * <style> elements) only: text nodes are left as written, so code that shows
+ * `var(--mk-accent)` keeps it. Unknown tokens in markup throw.
+ */
 export function resolveTokens(markup, style, theme = "light") {
 	const s = normalizeStyle(style);
-	return markup.replace(/var\(--mk-([a-zA-Z]+)\)/g, (_, name) => {
-		const v = s[theme][name];
-		if (!v) throw new Error(`unknown style token "${name}"`);
-		return v;
-	});
+	const sub = (/** @type {string} */ chunk) =>
+		chunk.replace(/var\(--mk-([a-zA-Z]+)\)/g, (_, name) => {
+			const v = s[theme][name];
+			if (!v) throw new Error(`unknown style token "${name}"`);
+			return v;
+		});
+	return markup.replace(/<style[\s\S]*?<\/style>|<[^<>]*>/g, sub);
 }
 
 /* ---------------------------------------------------------------- contrast */

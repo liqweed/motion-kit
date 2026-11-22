@@ -199,7 +199,7 @@ range per step).
 |---|---|
 | A panel of code | `codeBlock({ lines, x, y, width, maxHeight, fontSize, overflow, font })`, built once in the factory. A line is a string, or an array of strings and `{ text, role }` runs. The panel is as tall as its code; `maxHeight` is the room the picture has |
 | Syntax tints | You supply the roles (a few patterns, or a build-time tool: there is no grammar). `CODE_ROLES` maps `code`, `keyword`, `string` and `comment` to style tokens; `roles: { name: { token, weight?, italic? } }` adds or replaces one. The defaults use `ink` and `muted`, told apart by weight and slant, because those read as text on `surface` in both themes of the neutral style; map a role to `accent` or `emphasis` only when the style meets 4.5:1 there (the gate says if it does not) |
-| A fit rule | `overflow: "error"` (default) refuses a line wider than the block, `"wrap"` breaks it at a space with the continuation indented, `"clip"` ends it with `…`. A snippet too tall for the picture is refused too. Each error names the line and the remedy. Text stays at 14 px or more |
+| A fit rule | `overflow: "error"` (default) refuses a line wider than the block, `"wrap"` breaks it at a space (a word longer than the row is hard-broken) with the continuation indented, `"clip"` ends it with `…`. A snippet too tall for the picture is refused too. Each error names the line and the remedy. Text stays at 14 px or more |
 | The band | `drawCode(block, t, moves, { ease })` with `moves = [{ lines: [3, 5], start, duration? }, …]` (1-based, inclusive; a number is one line). The first move is where the band appears (it fades in); each later one moves it from the range before. Pass `ease: easings(style.motion).easeStandard` from `frame(t, { style })` so it moves on the style's curve |
 | Settled steps | `codeEnd(block, moves)` is when the last move is over; call it in the factory (it also checks the moves). Put each step's `at` at least 50 ms after the end of the move that leads to it: `codeEnd(block, moves.slice(0, i + 1)) + 0.1`; the next move starts at least 50 ms after that `at` |
 | Contrast | `contrastPairs: codePairs(block)` (add the pairs of anything else you draw). The dimmed lines sit below 4.5:1 by design; the band's tint lowers the ratio a little, so check a style whose text is near 4.5:1 on `surface`. Characters wider than a cell (CJK, emoji) are refused |
@@ -207,7 +207,7 @@ range per step).
 | The monospace face | `font` takes a CSS stack. A style has no monospace field yet, so the kit's own stack (`CODE_FONT`) is used unless you pass one. The face must have a 0.6 em advance, the column the kit lays out; one with another advance (Iosevka's is 0.5 em) leaves gaps. Families are tried in order, so a missing first family falls to the next installed one; resvg splits at commas, strips quotes and then trims, so give family names unquoted in a stack (`SF Mono`, not `"SF Mono"`). Each run is placed by column, so the lines still align |
 
 The band moves once per step and rests there; the leading edge goes first and the
-trailing edge follows 70 ms later, so it stretches in flight and gathers on
+trailing edge follows 70 ms later, so it stretches in flight when both edges travel the same way (a shared edge stays put) and gathers on
 arrival. The lines under it are at full ink and the rest at 45 %, and each line
 lights as the band reaches it. **One scene per snippet, one range per step**:
 a scene is at most 12 s (8 s is the target), so a longer walkthrough is several

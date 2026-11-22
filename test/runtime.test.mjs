@@ -251,7 +251,7 @@ describe("styles", () => {
 	it("rejects unknown tokens and non-hex colours", () => {
 		assert.throws(() => normalizeStyle({ light: { brand: "#000000" } }));
 		assert.throws(() => normalizeStyle({ light: { accent: "blue" } }));
-		assert.throws(() => resolveTokens("var(--mk-nope)", NEUTRAL));
+		assert.throws(() => resolveTokens('<rect fill="var(--mk-nope)"/>', NEUTRAL));
 	});
 	it("rejects a font that could break out of CSS or markup", () => {
 		assert.equal(normalizeStyle({ font: 'Inter, "Segoe UI", sans-serif' }).font, 'Inter, "Segoe UI", sans-serif');
