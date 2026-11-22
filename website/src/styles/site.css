@@ -223,6 +223,8 @@ button { font: inherit; cursor: pointer; color: inherit; border-radius: 0; }
 .transcript { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .tline { display: flex; gap: 16px; align-items: flex-start; width: 100%; padding: 16px; text-align: left; background: var(--bg); border: 0; border-bottom: 1px solid var(--line); }
 .tline[aria-current="true"] { background: var(--plate); box-shadow: inset 4px 0 0 var(--emph); }
+.tline[aria-current="true"] .who { color: var(--ink); font-weight: 700; }
+.tline[aria-current="true"] .who::before { content: "\25B8\00a0"; }
 .tline .who { flex: none; width: 64px; font: 500 16px/24px var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .tline .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .tline code { color: var(--muted); overflow-wrap: anywhere; }
@@ -445,3 +447,5 @@ button { font: inherit; cursor: pointer; color: inherit; border-radius: 0; }
 	.story-paras section { min-height: 0; }
 	.callouts, .legend { display: none; }
 }
+/* Filled controls set their own keyline shadow; keep the focus halo so the ring holds 3:1 on a plate. */
+.btn:focus-visible, .mk-player .mk-btn:focus-visible, .mk-player .mk-play:focus-visible, .mini-bar button:focus-visible { box-shadow: 0 0 0 2px var(--bg); }

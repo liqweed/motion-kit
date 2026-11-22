@@ -562,6 +562,16 @@ it("a pause before the diagram is shown cancels the pending autoplay", () => {
 	assert.equal(env.player.playing, false, "showing it does not start a paused player");
 });
 
+it("a step subscriber that pauses while the reset frame publishes keeps autoplay from starting", () => {
+	const env = setup({ autoplay: "visible" });
+	let armed = false;
+	env.player.onStep(() => { if (armed) { armed = false; env.player.pause(); } });
+	armed = true;
+	env.show();
+	assert.equal(env.player.playing, false, "the takeover during the reset wins");
+	assert.equal(env.player.autoplayPending, false);
+});
+
 it("playing and autoplayPending follow the controller through play, completion and a seek", () => {
 	const waiting = setup({ autoplay: "visible" });
 	assert.deepEqual([waiting.player.playing, waiting.player.autoplayPending], [false, true], "autoplay waits for the view");
@@ -575,6 +585,11 @@ it("playing and autoplayPending follow the controller through play, completion a
 	shown.advance(scene.duration * 1000 + 1000);
 	assert.equal(shown.player.time, scene.duration);
 	assert.equal(shown.player.playing, false, "completion ends playback");
+
+	const away = setup({ autoplay: "visible" });
+	away.show();
+	away.show(entry(false));
+	assert.equal(away.player.playing, true, "playback suspended offscreen still reports playing");
 
 	const manual = setup();
 	manual.player.play();

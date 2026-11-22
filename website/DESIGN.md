@@ -88,8 +88,9 @@ OS theme.
   themes. Known exceptions: the amber emphasis (`--emph`) indicators on the isometric
   side list's current step, the selected example tab's bottom border and the
   active transcript row's stripe sit at about 2.9:1 on the light plate; each
-  has another cue (`aria-current`, a heavier tab label, indentation) and none
-  is the only carrier of the state.
+  has another cue (`aria-current`, a heavier tab label, indentation, a bold
+  speaker with a `▸` marker on the transcript row) and none is the only carrier of
+  the state. Filled controls keep the focus halo, so the ring holds 3:1 there too.
 
 ## Motion
 

@@ -283,6 +283,8 @@ export function mountPlayer(container, scene, options = {}) {
 	let tStart = 0;
 	let stopAt = scene.duration;
 	let autoplayPending = false;
+	// Bumped by every takeover (play, pause, step calls); lets a start in flight see one.
+	let takeovers = 0;
 	let destroyed = false;
 	let liveRaf = 0;
 	// Last visibility the observer reported; until it reports, assume in view.
@@ -354,12 +356,14 @@ export function mountPlayer(container, scene, options = {}) {
 	/** @param {number} target */
 	function start(target) {
 		autoplayPending = false;
+		takeovers++;
 		stopAt = target;
 		playing = true;
 		run();
 	}
 	function pause() {
 		autoplayPending = false;
+		takeovers++;
 		playing = false;
 		suspended = false;
 		cancelAnimationFrame(raf);
@@ -407,12 +411,14 @@ export function mountPlayer(container, scene, options = {}) {
 	function seekStep(ref) {
 		const target = scene.steps[stepIndex(scene, ref)].at;
 		autoplayPending = false;
+		takeovers++;
 		seek(target);
 	}
 	/** Play forward to a settled step, by index or by step id; backward/reduced-motion calls jump. @param {number | string} ref */
 	function playToStep(ref) {
 		const target = scene.steps[stepIndex(scene, ref)].at;
 		autoplayPending = false;
+		takeovers++;
 		if (destroyed) return;
 		if (reduced || target <= t) seek(target);
 		else start(target);
@@ -443,7 +449,10 @@ export function mountPlayer(container, scene, options = {}) {
 		if (playing && suspended) run();
 		if (autoplayPending && shown(e)) {
 			autoplayPending = false;
+			const before = takeovers;
 			seek(0);
+			// A step subscriber may have taken control while the reset frame published.
+			if (destroyed || takeovers !== before || t !== 0) return;
 			play();
 		}
 	}
