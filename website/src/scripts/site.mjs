@@ -243,19 +243,20 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 		{ label: "Caption", els: caption ? [caption] : [] },
 	].filter((p) => p.els.length);
 	legend.replaceChildren(...parts.map((p, i) => h("li", null, h("span", { class: "mark", "aria-hidden": "true" }, String(i + 1)), p.label)));
+	// The callouts are built once, so a resize or a late font never replaces an element mid-transition; place() only moves them.
+	const marks = parts.map((p, i) => h("div", { class: "callout", style: `--n:${i}` }, h("span", { class: "leader" }), h("span", { class: "mark" }, String(i + 1))));
+	callouts.replaceChildren(...marks);
 	const place = () => {
 		const box = callouts.getBoundingClientRect();
-		callouts.replaceChildren(
-			...parts.map((p, i) => {
-				const rects = p.els.map((e) => e.getBoundingClientRect());
-				const left = Math.min(...rects.map((r) => r.left));
-				const right = Math.max(...rects.map((r) => r.right));
-				// The caption spans the row, so its marker sits three quarters along, clear of the steps'.
-				const at = p.els[0] === caption ? left + (right - left) * 0.75 : (left + right) / 2;
-				const x = Math.min(Math.max(at - box.left, 12), box.width - 12);
-				return h("div", { class: "callout", style: `left:${x}px;--n:${i}` }, h("span", { class: "leader" }), h("span", { class: "mark" }, String(i + 1)));
-			}),
-		);
+		parts.forEach((p, i) => {
+			const rects = p.els.map((e) => e.getBoundingClientRect());
+			const left = Math.min(...rects.map((r) => r.left));
+			const right = Math.max(...rects.map((r) => r.right));
+			// The caption spans the row, so its marker sits three quarters along, clear of the steps'.
+			const at = p.els[0] === caption ? left + (right - left) * 0.75 : (left + right) / 2;
+			const x = Math.min(Math.max(at - box.left, 12), box.width - 12);
+			marks[i].style.left = `${Math.round(x * 100) / 100}px`;
+		});
 	};
 	place();
 	const ro = typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
@@ -281,7 +282,8 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 	if (!drawn && !reducedMotion() && !plate.classList.contains("leaders-draw")) {
 		plate.classList.add("leaders-armed");
 		// The player rests on its final frame until autoplay starts, so only a playback that has begun can end.
-		let started = false;
+		// Seeded from the state at mount: a replacement player's own first tick may already have ended playback before the first watch().
+		let started = controller.playing || controller.time < controller.scene.duration - 0.02;
 		const watch = () => {
 			if (drawn) return;
 			const end = controller.scene.duration - 0.02;

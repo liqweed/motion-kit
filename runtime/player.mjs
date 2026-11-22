@@ -359,6 +359,7 @@ export function mountPlayer(container, scene, options = {}) {
 		run();
 	}
 	function pause() {
+		autoplayPending = false;
 		playing = false;
 		suspended = false;
 		cancelAnimationFrame(raf);

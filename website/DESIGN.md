@@ -85,9 +85,11 @@ OS theme.
   near-black it is about 6:1 and may carry text. It marks the active step and
   the focus ring.
 - Text reaches 4.5:1 (3:1 from 24 px), shapes and control edges 3:1, in both
-  themes. One known exception: the amber emphasis stripe on the isometric
-  side list's current step sits at about 2.9:1 on the light alternate plate;
-  the step's text and `aria-current` carry the meaning, the stripe is redundant.
+  themes. Known exceptions: the amber emphasis (`--emph`) indicators on the isometric
+  side list's current step, the selected example tab's bottom border and the
+  active transcript row's stripe sit at about 2.9:1 on the light plate; each
+  has another cue (`aria-current`, a heavier tab label, indentation) and none
+  is the only carrier of the state.
 
 ## Motion
 

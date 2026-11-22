@@ -554,6 +554,14 @@ it("a destroyed controller reports no pending autoplay", () => {
 	assert.equal(env.player.autoplayPending, false);
 });
 
+it("a pause before the diagram is shown cancels the pending autoplay", () => {
+	const env = setup({ autoplay: "visible" });
+	env.player.pause();
+	assert.equal(env.player.autoplayPending, false);
+	env.show();
+	assert.equal(env.player.playing, false, "showing it does not start a paused player");
+});
+
 it("playing and autoplayPending follow the controller through play, completion and a seek", () => {
 	const waiting = setup({ autoplay: "visible" });
 	assert.deepEqual([waiting.player.playing, waiting.player.autoplayPending], [false, true], "autoplay waits for the view");
