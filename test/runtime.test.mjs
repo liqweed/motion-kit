@@ -355,6 +355,18 @@ describe("instance ids", () => {
 		// A duplicate only between the sparse id probes (t = 0.1 … 0.15 s) is still found.
 		const brief = { id: "brief", width: 100, height: 40, duration: 1, title: "B", description: "B", stepLabelsInFrame: false, steps: [{ at: 1, label: "End" }], frame: (t, { idPrefix }) => `<rect id="${idPrefix}-a" width="${Math.round(t * 50)}" height="4" fill="var(--mk-accent)"/>${t > 0.1 && t < 0.15 ? `<rect id="${idPrefix}-a" width="1" height="1" fill="var(--mk-accent)"/>` : ""}` };
 		assert.ok(checkScene(brief).problems.some((p) => /duplicate id/.test(p)));
+		// The live patcher lowercases attribute names: ID and id are one declaration.
+		const upper = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g ID="${o.idPrefix}-clip"/>` };
+		assert.ok(checkScene(upper).problems.some((p) => /duplicate id/.test(p)));
+		// A C1 reference is remapped by the HTML parser (&#150; is an en dash): same id as the dash.
+		const c1 = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-a&#150;b"/><g id="${o.idPrefix}-a\u2013b"/>` };
+		assert.ok(checkScene(c1).problems.some((p) => /duplicate id/.test(p)));
+		// The fixed id of one prefix's wrapper (mk-gate-a-title) collides only in that render.
+		const wrapperId = { ...clipped, id: "other", frame: (t, o) => `${clipped.frame(t, o)}<g id="mk-gate-a-title"/><g id="mk-gate-a-title"/>` };
+		assert.ok(checkScene(wrapperId).problems.some((p) => /duplicate id/.test(p)));
+		// Fixed ids that appear at different times for each prefix still collide across seekable players.
+		const split = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="shared-${t < 0.5 ? (o.idPrefix === "mk-gate-a" ? "x" : "y") : o.idPrefix === "mk-gate-a" ? "y" : "x"}"/>` };
+		assert.ok(checkScene(split).problems.some((p) => /fixed id "shared-/.test(p)));
 		// Control characters in an id never reach a diagnostic raw.
 		const ctrl = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="x&#27;[2J"/><g id="x&#27;[2J"/>` };
 		const msg = checkScene(ctrl).problems.join("\n");

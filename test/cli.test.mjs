@@ -393,6 +393,30 @@ describe("cli", () => {
 		assert.equal(strict.status, 0, strict.out);
 		assert.match(strict.out, /tall preview left out/);
 	});
+	it("export's tall preview is left out under --strict for tall-only advice, and the fingerprint tells the outcomes apart", () => {
+		const dir = join(tmp, "exp-tall-advice");
+		mkdirSync(dir, { recursive: true });
+		const mod = join(dir, "tallonly.scene.mjs");
+		writeFileSync(mod, `export default function make({ format = "16:9" } = {}) {
+	return {
+		id: "tallonly-" + format.replace(":", "x"), width: 200, height: format === "tall" ? 300 : 100, duration: format === "tall" ? 13 : 1, title: "T", description: "Tall runs long.", stepLabelsInFrame: false,
+		steps: [{ at: format === "tall" ? 13 : 1, label: "End" }],
+		frame(t) { return '<rect width="' + Math.round(100 * Math.min(t, 1)) + '" height="20" fill="var(--mk-accent)"/>'; },
+	};
+}
+`);
+		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8" }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
+		const plain = both(CLI, "export", mod, "-o", join(dir, "out"), "-f", "16:9");
+		assert.equal(plain.status, 0, plain.out);
+		const mp = JSON.parse(readFileSync(join(dir, "out", "manifest.json"), "utf8"));
+		assert.ok(mp.files.some((f) => f.kind === "phone"), "advice alone keeps the phone row");
+		const strict = both(CLI, "export", mod, "-o", join(dir, "out2"), "-f", "16:9", "--strict");
+		assert.equal(strict.status, 0, strict.out);
+		assert.match(strict.out, /tall preview left out/);
+		const ms = JSON.parse(readFileSync(join(dir, "out2", "manifest.json"), "utf8"));
+		assert.ok(!ms.files.some((f) => f.kind === "phone"));
+		assert.notEqual(mp.inputHash, ms.inputHash);
+	});
 	it("build writes one self-contained HTML file", () => {
 		const f = join(tmp, "p.html");
 		run("build", `${EX}smart-home.json`, "-o", f);
