@@ -45,7 +45,7 @@ describe("hatchPattern", () => {
 		assert.match(h.markup, /stroke="var\(--mk-accent\)" stroke-width="2"/);
 		assert.match(h.markup, /M5 0 V10/);
 	});
-	it("makes the prefix a safe id, as renderSvg does, so the gate's raw scene id works", () => {
+	it("makes the prefix a safe id, as renderSvg does, so a direct call with a raw prefix matches the frame's", () => {
 		assert.equal(hatchPattern({ idPrefix: "bars.16:9" }).id, "bars-16-9-hatch-hatch");
 		assert.equal(hatchPattern({ idPrefix: "9x" }).id, "mk-9x-hatch-hatch");
 	});
