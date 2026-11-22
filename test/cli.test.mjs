@@ -277,7 +277,7 @@ describe("cli", () => {
 		const opts = ["--options", join(dir, "labels.json"), "--style", join(dir, "paper.json")];
 		// Warnings go to stderr, which `node` drops from a run that succeeds.
 		const both = (/** @type {string[]} */ ...args) => {
-			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
+			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
 			return { status: p.status, out: `${p.stdout}${p.stderr}` };
 		};
 		let r = both("check", declared, "-f", "16:9", ...opts);
@@ -380,7 +380,7 @@ describe("cli", () => {
 }
 `);
 		const out = join(dir, "out");
-		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8" }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
+		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
 		const r = both(CLI, "export", mod, "-o", out, "-f", "16:9");
 		assert.equal(r.status, 0, r.out);
 		assert.match(r.out, /tall preview left out: .*tall breaks\\u001b\[31m here/, "one-line, escaped diagnostic");
@@ -405,7 +405,7 @@ describe("cli", () => {
 	};
 }
 `);
-		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8" }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
+		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
 		const plain = both(CLI, "export", mod, "-o", join(dir, "out"), "-f", "16:9");
 		assert.equal(plain.status, 0, plain.out);
 		const mp = JSON.parse(readFileSync(join(dir, "out", "manifest.json"), "utf8"));
@@ -416,6 +416,29 @@ describe("cli", () => {
 		const ms = JSON.parse(readFileSync(join(dir, "out2", "manifest.json"), "utf8"));
 		assert.ok(!ms.files.some((f) => f.kind === "phone"));
 		assert.notEqual(mp.inputHash, ms.inputHash);
+	});
+	it("export's fingerprint follows the tall SVG bytes, even when only the tall layout's outside input changes", () => {
+		const dir = join(tmp, "exp-tall-digest");
+		mkdirSync(dir, { recursive: true });
+		const mod = join(dir, "tallfile.scene.mjs");
+		writeFileSync(join(dir, "tall-title.txt"), "One");
+		writeFileSync(mod, `import { readFileSync } from "node:fs";
+export default function make({ format = "16:9" } = {}) {
+	const title = format === "tall" ? readFileSync(new URL("./tall-title.txt", import.meta.url), "utf8") : "T";
+	return {
+		id: "tallfile-" + format.replace(":", "x"), width: 200, height: format === "tall" ? 300 : 100, duration: 1, title, description: "Same everywhere.", stepLabelsInFrame: false,
+		steps: [{ at: 1, label: "End" }],
+		frame(t) { return '<rect width="' + Math.round(100 * Math.min(t, 1)) + '" height="20" fill="var(--mk-accent)"/>'; },
+	};
+}
+`);
+		const run1 = (o) => spawnSync(process.execPath, [CLI, "export", mod, "-o", join(dir, o), "-f", "16:9"], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
+		assert.equal(run1("a").status, 0);
+		writeFileSync(join(dir, "tall-title.txt"), "Two");
+		assert.equal(run1("b").status, 0);
+		const ha = JSON.parse(readFileSync(join(dir, "a", "manifest.json"), "utf8")).inputHash;
+		const hb = JSON.parse(readFileSync(join(dir, "b", "manifest.json"), "utf8")).inputHash;
+		assert.notEqual(ha, hb);
 	});
 	it("build writes one self-contained HTML file", () => {
 		const f = join(tmp, "p.html");

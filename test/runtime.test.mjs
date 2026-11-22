@@ -362,8 +362,16 @@ describe("instance ids", () => {
 		const c1 = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-a&#150;b"/><g id="${o.idPrefix}-a\u2013b"/>` };
 		assert.ok(checkScene(c1).problems.some((p) => /duplicate id/.test(p)));
 		// The fixed id of one prefix's wrapper (mk-gate-a-title) collides only in that render.
-		const wrapperId = { ...clipped, id: "other", frame: (t, o) => `${clipped.frame(t, o)}<g id="mk-gate-a-title"/><g id="mk-gate-a-title"/>` };
-		assert.ok(checkScene(wrapperId).problems.some((p) => /duplicate id/.test(p)));
+		const wrapperId = { ...clipped, id: "other", frame: (t, o) => `${clipped.frame(t, o)}<g id="mk-gate-a-title"/>` };
+		assert.ok(checkScene(wrapperId).problems.some((p) => /duplicate id "mk-gate-a-title"/.test(p)));
+		// The patcher keeps an element's first id: a second, differently cased attribute declares nothing.
+		const twoAttrs = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-p" ID="${o.idPrefix}-q"/><g id="${o.idPrefix}-q"/>` };
+		assert.deepEqual(checkScene(twoAttrs).problems, []);
+		// Uppercase hex references and CRLF in an id read as the parser reads them.
+		const hexX = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-&#X61;"/><g id="${o.idPrefix}-a"/>` };
+		assert.ok(checkScene(hexX).problems.some((p) => /duplicate id/.test(p)));
+		const crlf = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-a\r\nb"/><g id="${o.idPrefix}-a\nb"/>` };
+		assert.ok(checkScene(crlf).problems.some((p) => /duplicate id/.test(p)));
 		// Fixed ids that appear at different times for each prefix still collide across seekable players.
 		const split = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="shared-${t < 0.5 ? (o.idPrefix === "mk-gate-a" ? "x" : "y") : o.idPrefix === "mk-gate-a" ? "y" : "x"}"/>` };
 		assert.ok(checkScene(split).problems.some((p) => /fixed id "shared-/.test(p)));
