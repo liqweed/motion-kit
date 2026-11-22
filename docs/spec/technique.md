@@ -68,7 +68,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 |---|---|---|---|
 | T1 | `frame(t)` MUST depend only on `t` and the scene's constants: no `Date`, `Math.random`, `performance.now`, no state carried between calls, no module-level mutable state. | [gate] G1 re-renders each `t`; G11 renders under stubbed clocks and scans the source (`lib/check.mjs`) | Random access: a player can jump, an exporter can write exactly one frame, video samples `t = f/fps` (`runtime/scene.mjs:14-17`). |
 | T2 | Same `t` (and same style/options) MUST give byte-identical output. | [gate] G1 | Tests, diffs, caching and committed media all depend on it. |
-| T3 | Callers MUST clamp `t` to `[0, duration]`; `renderSvg` does (`runtime/scene.mjs:70`). `frame` MAY assume a clamped `t`. | — | Defines "before start" and "hold". |
+| T3 | Callers MUST clamp `t` to `[0, duration]`; `renderSvg` does (`runtime/scene.mjs:70`). `frame` MAY assume a clamped `t`, except that it MUST hold: the gate also calls it with a raw `t` past `duration` and requires the final frame. | — | Defines "before start" and "hold". |
 | T4 | Every number interpolated into markup MUST be rounded: `num(n, 2)` by default, 3 digits for `opacity`, 4 for scale factors (`num`, `el`, `fade` in `runtime/svg.mjs`). `num` MUST throw on non-finite input and never emit `-0`. | [gate] G3; non-finite → G5 | 17-digit floats made "settled" frames differ by 1 ms (`skills/animated-diagram/references/technique.md:128-129`). |
 | T5 | Visibility MUST be decided on rounded values: an element whose opacity rounds to 0 is omitted; an opacity that rounds to 1 is not written (`el`, `fade` in `runtime/svg.mjs`). | by construction (`el`, `fade`) | Identical-looking frames must be identical bytes (opacity 0.9999 vs omitted). |
 | T6 | Scenes MUST NOT use CSS transitions/animations or timers; the renderer owns the clock (`runtime/player.mjs:15`). | — | Exported frames would not match what plays. |
@@ -381,26 +381,25 @@ functions; a colour is a token name (G4 applies).
   [throws].
 - **Renderers.** The filter is `feGaussianBlur` in sRGB over a region of
   `x −25 %`, `y −100 %`, `width 150 %`, `height 300 %` of the element's box,
-  which holds the blur of an element at least about 50 units wide and 3 × `blur` tall. For anything
-  narrower or shallower (a zero-height rule included), or a `blur` above the default, `box: {x, y, width, height}` (the
-  element's own box, finite and positive [throws], covering the painted stroke) makes the region that box
+  which holds the blur of an element at least about 50 units wide and 3 × `blur` tall, measured on its painted bounds. For anything
+  narrower or shallower (a zero-height rule included), a `blur` above the default, or any element whose stroke or markers extend past its geometry by more than the default padding (a thick stroke on a small shape qualifies at any size), `box: {x, y, width, height}` (the
+  element's own painted box: all four fields finite, `width` and `height` positive, `x` and `y` free [throws], covering the painted stroke) makes the region that box
   plus 3 × `blur` on every side (`filterUnits="userSpaceOnUse"`). The tests compare the SVG markup, baked slices and the patched DOM, and a resvg fixture of one mid-reveal frame; other renderers are not compared. The live player (its
   in-place patch updates `stdDeviation` and the group's attributes, and drops
-  the group when the reveal ends), `renderSvg`, `bake`, PNG export (resvg and
-  Chrome) and video draw the blur the same way (`test/reveal.test.mjs`,
+  the group when the reveal ends), `renderSvg` and `bake` emit the same markup, which PNG export and video rasterize with resvg or Chrome (`test/reveal.test.mjs`,
   `test/player.test.mjs`). A consumer that ignores SVG filters (some slide
   applications) shows the fade and the rise without the blur, and only in a
   frame taken mid-reveal: step frames carry no filter.
 - **Timing.** The reveal is one entrance, 300 to 600 ms (§4.2), on the style's
   entrance curve (`easings(style.motion).easeOut`), finished 50 ms or more
-  before the step it belongs to (G6). It happens once per element and holds.
+  before the step it belongs to. That is the scene's obligation: G6 only checks that frames around a step are stable, so a scene that holds `enter` below 1 through a step or the end still renders a filter and passes. It happens once per element and holds.
   The blur is a paint cost no other motion helper has; the plain fade
   (`fade`) stays the default for a label whose arrival does not need to be
   watched
   ([`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)).
 - `highlightSweep(p, {x, y, width, height, token = "emphasis", opacity = 0.3,
   radius = 4})` draws a rounded `<rect>` filled with a token at `opacity`,
-  from `x` to `x + width · p` (`p` eased, 0 to 1); `""` for `p ≤ 0`; at 1 the
+  from `x` to `x + width · p` (`p` eased, 0 to 1); `""` for `p ≤ 0`, for a swept width under 0.01 and for an `opacity` that rounds to zero (these early returns come before the `token` is read, so an unknown token throws only once a band would be drawn); at 1 the
   rectangle is the same on every frame. It is drawn before the text it marks,
   and `opacity` starts low (0.2 to 0.4): at the default 0.3 the neutral
   style's ink reads on the tinted canvas at 4.5:1 or more in both themes
@@ -765,7 +764,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
 | G6 | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | First frame ≠ last frame. | `:61-63` | Something must animate. |
-| G8 | `render(duration + 5) === render(duration)`. | `:65` | Holds the final frame. |
+| G8 | `frame(duration + 5) === frame(duration)`, called raw, unclamped. | `:65` | Holds the final frame. |
 | G9 | `duration ≤ 12` s. | `:68` | Hard limit; authoring target ≤ 8 s. |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
 | G11 | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |

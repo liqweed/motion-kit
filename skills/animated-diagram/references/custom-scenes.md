@@ -203,15 +203,15 @@ quoted line reveals and is marked).
 
 | Need | Use |
 |---|---|
-| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card. The default region holds the blur when the element is at least 12 × `blur` units wide (50 units at the default blur) **and** at least 3 × `blur` units tall (it adds only one element height above and below). For a narrower or shallower element, a short label, a thin rule or an icon, or a larger `blur`, pass `box: { x, y, width, height }` (required, and positive, for a zero-height or zero-width shape; cover the painted stroke) |
-| Its filter id | `id: idPrefix + "-reveal-" + i`, one per revealed element. The gate samples for ids shared across instances and refuses a fixed id, and every slice of a baked SVG has its own prefix |
+| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card. The default region holds the blur when the element's painted bounds are at least 12 × `blur` units wide (50 units at the default blur) **and** at least 3 × `blur` units tall (it adds only one element height above and below). For a narrower or shallower element, a short label, a thin rule or an icon, a larger `blur`, or any shape whose stroke or markers reach past its geometry by more than that padding (a thick stroke on a small shape, at any size), pass `box: { x, y, width, height }` covering the painted bounds (all four finite; `width` and `height` positive; `x` and `y` may be anything) |
+| Its filter id | `id: idPrefix + "-reveal-" + i`, one per revealed element. The gate reports ids shared across instances at its sampled times (it can miss a short reveal between samples), so keep the prefix, and every slice of a baked SVG has its own prefix |
 | A highlighter | `highlightSweep(p, { x, y, width, height, token, opacity, radius })`: a band in a token (default `emphasis`) at 30 % that grows from `x` to `x + width` as `p` (eased) goes 0 → 1; its `token` is checked once the band is drawn. Draw it **before** the text; size it from `estimateWidth(line, fontSize)` plus padding each side (the estimate is generous; do not shrink it where wide glyphs such as a capital W may appear, since they can run past a shortened band. `examples/text-reveal.scene.mjs` takes 0.9 of it for its fixed lines only, checked by eye in the rendered frames; the gate does not compare glyph widths with the band) |
 
 Rules that keep it inside the canon:
 
 - **Settled means bare.** When `enter` reaches 1, `blurReveal` returns your
   markup with no group, no filter and no `<defs>`, so every step frame and the
-  final frame are byte-identical to the same text drawn without the reveal.
+  final frame are byte-identical to the same text drawn without the reveal, provided the scene finishes the reveal (the gate checks only that those frames are stable).
   Finish each reveal 50 ms or more before the step it belongs to, as with any
   beat; the gate's settled-step rule then holds. Do not wrap the call in your
   own filter or opacity.
