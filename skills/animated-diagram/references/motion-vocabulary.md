@@ -107,7 +107,7 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   after the bar.
 - **Timing rule:** the bar has settled (`barEnd`), and the value with it, ≥ 50 ms
   before the step. Rows reveal one at a time, one step each, the next row's
-  entrance starting after the step.
+  entrance starting no earlier than 50 ms after the step.
 - **Never** a bar or a number that keeps moving while a step rests: a value that
   updates live is footage, not part of the diagram.
 

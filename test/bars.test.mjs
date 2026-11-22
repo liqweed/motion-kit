@@ -53,6 +53,8 @@ describe("hatchPattern", () => {
 		// @ts-expect-error a missing prefix
 		assert.throws(() => hatchPattern({}), /idPrefix/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", name: "a b" }), /name/);
+		assert.throws(() => hatchPattern({ idPrefix: "x", name: "alt-hatch" }), /name/);
+		assert.notEqual(hatchPattern({ idPrefix: "plot", name: "alt_hatch" }).id, hatchPattern({ idPrefix: "plot-alt", name: "hatch" }).id);
 		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 0 }), /spacing/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 4, width: 4 }), /width/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", stroke: "nope" }), /nope/);

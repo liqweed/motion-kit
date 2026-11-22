@@ -322,7 +322,8 @@ functions; a colour is a token name (G4 applies).
   `spacing` px apart (default 7) and `width` px wide (default 1.5), in the token
   `stroke` (default `line`). Its id is `${idPrefix}-${name}` (`name` defaults to
   `hatch`), so it satisfies G14; a scene that draws several hatchings gives each
-  its own `name`. `markup` is a `<defs>` the frame emits once, before the tracks,
+  its own `name`, of letters, digits and `_` only, so the last `-` ends the prefix
+  and two instances never share an id. `markup` is a `<defs>` the frame emits once, before the tracks,
   on every frame; `fill` is `url(#id)`. The pattern is in picture units, so
   tracks that share it show one continuous hatch, and in the player, in `bake`
   and in a PNG or video export it draws the same. It makes the `idPrefix` a safe id token as `renderSvg` does; it throws for an

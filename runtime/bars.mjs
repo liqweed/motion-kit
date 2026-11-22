@@ -30,7 +30,7 @@ import { el, fade, num, text } from "./svg.mjs";
 /** @param {number} n */
 const finite = (n) => typeof n === "number" && Number.isFinite(n);
 /** What may stand in an id: the characters `safeId` leaves. */
-const ID_PART = /^[A-Za-z0-9_-]+$/;
+const ID_PART = /^[A-Za-z0-9_]+$/;
 /** Names `renderSvg` already uses for ids (`${id}-title`, `${id}-desc`). */
 const RESERVED_NAMES = new Set(["title", "desc"]);
 /** Every hatch `hatchPattern` has made: a hand-built look-alike is not one. */
@@ -47,7 +47,7 @@ const ISSUED = new WeakSet();
  * Diagonal hatching: lines at 45°, rising to the right, `spacing` pixels apart
  * (measured across the lines) and `width` pixels wide, in the token `stroke`.
  * The pattern is anchored to the picture, not to a track, so tracks that use it
- * show one continuous hatch. Its id is `${idPrefix}-${name}` (the prefix made a
+ * show one continuous hatch. Its id is `-`; a `name` has no "-", so the last "-" ends the prefix and two prefixes never share an id (the prefix made a
  * safe id token, as `renderSvg` does): `idPrefix` is the frame's, so two instances on a page never share one, and a scene that draws
  * several hatchings gives each its own `name`.
  * @param {{ idPrefix: string, name?: string, stroke?: string, spacing?: number, width?: number }} o
@@ -55,7 +55,7 @@ const ISSUED = new WeakSet();
  */
 export function hatchPattern({ idPrefix, name = "hatch", stroke = "line", spacing = 7, width = 1.5 }) {
 	if (typeof idPrefix !== "string" || idPrefix === "") throw new Error(`hatchPattern: idPrefix must be the frame's idPrefix, a non-empty string, got ${JSON.stringify(idPrefix)}`);
-	if (typeof name !== "string" || !ID_PART.test(name)) throw new Error(`hatchPattern: name must use letters, digits, "_" and "-", got ${JSON.stringify(name)}`);
+	if (typeof name !== "string" || !ID_PART.test(name)) throw new Error(`hatchPattern: name must use letters, digits and "_" (no "-", which ends the prefix in the id), got ${JSON.stringify(name)}`);
 	if (RESERVED_NAMES.has(name)) throw new Error(`hatchPattern: name "${name}" is reserved for the picture's own ids`);
 	if (!finite(spacing) || spacing <= 0) throw new Error(`hatchPattern: spacing must be a positive number, got ${spacing}`);
 	if (!finite(width) || width <= 0 || width >= spacing) throw new Error(`hatchPattern: width must be more than 0 and less than the spacing (${spacing}), got ${width}`);
