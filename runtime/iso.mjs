@@ -204,8 +204,16 @@ export function path3(points) {
  * `z1`. `fill` is the token of the top face; `sides` (default: `fill`) the
  * token of the side faces, which a layer of `shade` at 10–26 % darkens or
  * lightens by the face's turn from the light (screen left is lit). `shade:
- * null` leaves them flat. `stroke` outlines every face.
- * @typedef {Readonly<{ points: { x: number, y: number }[], z0: number, z1: number, fill: string, sides: string, shade: string | null, stroke: string, strokeWidth: number, opacity: number, id?: string }>} Solid
+ * null` leaves them flat. `stroke` outlines every face. `groups` (one number
+ * per footprint edge, edge i running from point i to point i + 1) names the
+ * shading faces: consecutive visible edges with the same number are one face,
+ * outlined once. With `smooth` the footprint's edges are samples of a curve
+ * and its sides are one continuous wall: the visible sides are outlined once as
+ * a whole, with no line where two faces meet, and only the shade changes from
+ * group to group (`roundedBox` sets both; a `prism` without them draws one
+ * outlined face per edge, as a polygon should). `top` is 2D content drawn on
+ * the top face (`TopContent`).
+ * @typedef {Readonly<{ points: { x: number, y: number }[], z0: number, z1: number, fill: string, sides: string, shade: string | null, stroke: string, strokeWidth: number, opacity: number, id?: string, groups?: readonly number[], smooth?: boolean, top?: Readonly<TopContent> }>} Solid
  */
 
 /**
@@ -219,9 +227,9 @@ function token(name) {
 
 /**
  * Footprint points counter-clockwise, or a throw for a footprint that is not a
- * convex polygon.
+ * convex polygon. `flipped` says the input wound clockwise and was reversed.
  * @param {{ x: number, y: number }[]} points
- * @returns {{ x: number, y: number }[]}
+ * @returns {{ points: { x: number, y: number }[], flipped: boolean }}
  */
 function convexCcw(points) {
 	if (!Array.isArray(points) || points.length < 3) throw new Error("a solid's footprint needs at least three points");
@@ -240,7 +248,8 @@ function convexCcw(points) {
 			if (Math.hypot(points[j].x - points[i].x, points[j].y - points[i].y) < 1e-9) throw new Error("a solid's footprint has a repeated point");
 		}
 	}
-	const ccw = area > 0 ? points.map((p) => ({ x: p.x, y: p.y })) : points.map((p) => ({ x: p.x, y: p.y })).reverse();
+	const flipped = area < 0;
+	const ccw = flipped ? points.map((p) => ({ x: p.x, y: p.y })).reverse() : points.map((p) => ({ x: p.x, y: p.y }));
 	for (let i = 0; i < ccw.length; i++) {
 		const a = ccw[i];
 		const b = ccw[(i + 1) % ccw.length];
@@ -254,19 +263,29 @@ function convexCcw(points) {
 		const b = ccw[(i + 1) % ccw.length];
 		for (const p of ccw) if ((b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x) < -1e-9) throw new Error("a solid's footprint must be convex");
 	}
-	return ccw;
+	return { points: ccw, flipped };
 }
 
 /**
- * A prism: `points` extruded by `h` from the base height `z`.
- * @param {{ points: { x: number, y: number }[], h: number, z?: number, fill?: string, sides?: string, shade?: string | null, stroke?: string, strokeWidth?: number, opacity?: number, id?: string }} o
+ * A prism: `points` extruded by `h` from the base height `z`. `groups`,
+ * `smooth` and `top` are described at `Solid`; `groups` follows the winding of
+ * `points`.
+ * @param {{ points: { x: number, y: number }[], h: number, z?: number, fill?: string, sides?: string, shade?: string | null, stroke?: string, strokeWidth?: number, opacity?: number, id?: string, groups?: number[], smooth?: boolean, top?: TopContent }} o
  * @returns {Solid}
  */
-export function prism({ points, h, z = 0, fill = "surface", sides, shade = "ink", stroke = "line", strokeWidth = 1.5, opacity = 1, id }) {
+export function prism({ points, h, z = 0, fill = "surface", sides, shade = "ink", stroke = "line", strokeWidth = 1.5, opacity = 1, id, groups, smooth = false, top }) {
 	if (!finite(h) || h < 0) throw new Error(`a solid's height must be a number from 0 up, got ${h}`);
 	if (!finite(z)) throw new Error(`a solid's base height must be finite, got ${z}`);
+	const foot = convexCcw(points);
+	const n = foot.points.length;
+	if (groups !== undefined && (!Array.isArray(groups) || groups.length !== n || !groups.every(finite))) throw new Error("a solid's groups need one number per footprint edge");
+	// Reversing the points turns edge i into edge n − 2 − i.
+	const edgeGroups = groups && Object.freeze(foot.flipped ? groups.map((_, i) => groups[(2 * n - 2 - i) % n]) : [...groups]);
 	return Object.freeze({
-		points: convexCcw(points),
+		points: foot.points,
+		...(edgeGroups ? { groups: edgeGroups } : {}),
+		...(smooth ? { smooth: true } : {}),
+		...(top ? { top: Object.freeze(checkTop(top)) } : {}),
 		z0: z,
 		z1: z + h,
 		fill: token(fill),
@@ -279,7 +298,7 @@ export function prism({ points, h, z = 0, fill = "surface", sides, shade = "ink"
 	});
 }
 
-/** @typedef {Omit<Parameters<typeof prism>[0], "points" | "h">} SolidStyle */
+/** @typedef {Omit<Parameters<typeof prism>[0], "points" | "h" | "groups" | "smooth">} SolidStyle */
 
 /**
  * A box: `w` along x, `d` along y, `h` up, its footprint centred on (x, y).
@@ -303,6 +322,68 @@ export function slab({ h = 0.25, ...rest }) {
 }
 
 /**
+ * A box with rounded vertical corners: `w` along x, `d` along y, `h` up, its
+ * footprint centred on (x, y), each corner an arc of `radius` sampled in
+ * `segments` straight pieces (default 8). The sampled footprint is an ordinary
+ * convex prism, so `orderSolids` orders it like any solid, but it is `smooth`:
+ * its visible sides draw as one wall, outlined once, with no line per sample or
+ * where an arc meets a straight side, however many segments there are. The wall
+ * is shaded per arc and per straight side (its `groups`). A `radius` of 0 is a `box`; at most half of the shorter side.
+ * @param {{ x: number, y: number, w: number, d: number, h: number, radius: number, segments?: number } & SolidStyle} o
+ * @returns {Solid}
+ */
+export function roundedBox({ x, y, w, d, h, radius, segments = 8, ...style }) {
+	if (!(finite(w) && w > 0 && finite(d) && d > 0)) throw new Error("a rounded box needs a positive width and depth");
+	if (!finite(radius) || radius < 0 || radius > Math.min(w, d) / 2 + EPS) throw new Error(`a rounded box's radius must be from 0 to half its shorter side, got ${radius}`);
+	if (!Number.isInteger(segments) || segments < 1) throw new Error(`a rounded box needs at least 1 segment per corner, got ${segments}`);
+	if (radius <= EPS) return box({ x, y, w, d, h, ...style });
+	const hw = w / 2;
+	const hd = d / 2;
+	// Counter-clockwise from the south-east corner. A vertex remembers the arcs it
+	// ends or starts; one that two arcs share (the radius took the whole side
+	// between them) is one vertex, so no zero-length edge is made.
+	const corners = [
+		{ cx: x + hw - radius, cy: y - hd + radius, from: -90 },
+		{ cx: x + hw - radius, cy: y + hd - radius, from: 0 },
+		{ cx: x - hw + radius, cy: y + hd - radius, from: 90 },
+		{ cx: x - hw + radius, cy: y - hd + radius, from: 180 },
+	];
+	const same = (/** @type {{ x: number, y: number }} */ a, /** @type {{ x: number, y: number }} */ b) => Math.hypot(a.x - b.x, a.y - b.y) < EPS;
+	const verts = /** @type {{ x: number, y: number, arcs: number[] }[]} */ ([]);
+	for (const [k, c] of corners.entries()) {
+		for (let j = 0; j <= segments; j++) {
+			const [s, co] = sincos(c.from + (90 * j) / segments);
+			const p = { x: c.cx + radius * co, y: c.cy + radius * s };
+			const last = verts[verts.length - 1];
+			if (last && same(p, last)) last.arcs.push(k);
+			else verts.push({ ...p, arcs: [k] });
+		}
+	}
+	if (same(verts[0], verts[verts.length - 1])) {
+		const tail = /** @type {{ arcs: number[] }} */ (verts.pop());
+		verts[0].arcs.push(...tail.arcs);
+	}
+	const points = verts.map(({ x, y }) => ({ x, y }));
+	// An edge between two vertices of one arc belongs to that arc (arcs sharing an endpoint keep their own shading); any other is a straight side, its own group.
+	const groups = verts.map((v, i) => {
+		const w = verts[(i + 1) % verts.length];
+		const shared = v.arcs.find((k) => w.arcs.includes(k));
+		return shared === undefined ? 4 + i : shared;
+	});
+	return prism({ points, h, groups, smooth: true, ...style });
+}
+
+/**
+ * A rounded slab: a `roundedBox` that is thin (`h` default 0.25), for a floor
+ * or a platform with rounded corners.
+ * @param {{ x: number, y: number, w: number, d: number, h?: number, radius: number, segments?: number } & SolidStyle} o
+ * @returns {Solid}
+ */
+export function roundedSlab({ h = 0.25, ...rest }) {
+	return roundedBox({ h, ...rest });
+}
+
+/**
  * The corners of a regular polygon of `n` sides and circumradius `r` centred on
  * (x, y), the first at `rotation` degrees from east: a footprint for `prism`.
  * @param {number} x
@@ -323,34 +404,82 @@ export function regularPolygon(x, y, r, n, rotation = 0) {
 const EPS = 1e-9;
 
 /**
+ * @typedef {{ kind: "side" | "top", points: { x: number, y: number }[], shade: number, layers?: { points: { x: number, y: number }[], shade: number }[] }} Face
+ */
+
+/**
  * The faces of `solid` that face the camera, as screen polygons. Sides first,
- * then the top: they never overlap, since the solid is convex.
+ * then the top: they never overlap, since the solid is convex. Consecutive
+ * visible edges of one group (`Solid.groups`) are one side face; without
+ * groups each edge is its own. A `smooth` solid's visible sides are one face
+ * whose `layers` are the groups, to shade apart.
  * @param {Solid} solid
  * @param {Camera} cam
- * @returns {{ kind: "side" | "top", points: { x: number, y: number }[], shade: number }[]}
+ * @returns {Face[]}
  */
 function visibleFaces(solid, cam) {
 	const to = projector(cam);
 	const [sa, ca] = sincos(cam.azimuth);
 	const [se, ce] = sincos(cam.elevation);
-	const faces = /** @type {{ kind: "side" | "top", points: { x: number, y: number }[], shade: number }[]} */ ([]);
+	const faces = /** @type {Face[]} */ ([]);
 	const pts = solid.points;
+	const n = pts.length;
 	if (solid.z1 - solid.z0 > EPS) {
-		for (let i = 0; i < pts.length; i++) {
-			const a = pts[i];
-			const b = pts[(i + 1) % pts.length];
+		// turn: −1 faces screen left (lit), 1 faces screen right; null for an edge turned away.
+		const turns = pts.map((a, i) => {
+			const b = pts[(i + 1) % n];
 			const len = Math.hypot(b.x - a.x, b.y - a.y);
 			const nx = (b.y - a.y) / len;
 			const ny = -(b.x - a.x) / len;
 			// Toward the camera, horizontally, is (sin az, −cos az).
-			if ((nx * sa - ny * ca) * ce <= EPS) continue;
-			const turn = nx * ca + ny * sa; // −1 faces screen left (lit), 1 faces screen right
-			faces.push({
-				kind: "side",
-				points: [to({ ...a, z: solid.z0 }), to({ ...b, z: solid.z0 }), to({ ...b, z: solid.z1 }), to({ ...a, z: solid.z1 })],
-				shade: Math.round((0.1 + 0.16 * ((turn + 1) / 2)) * 100) / 100,
-			});
+			return (nx * sa - ny * ca) * ce <= EPS ? null : nx * ca + ny * sa;
+		});
+		const groups = solid.groups ?? pts.map((_, i) => i);
+		const wall = (/** @type {number} */ i) => (solid.smooth ? 0 : groups[i]);
+		// Start the walk where a run can begin (a change of wall, or after a turned-away edge), so a run never straddles the start.
+		let start = 0;
+		for (let i = 0; i < n; i++) {
+			const prev = (i + n - 1) % n;
+			if (wall(i) !== wall(prev) || turns[prev] === null) {
+				start = i;
+				break;
+			}
 		}
+		/** The side polygon over a run of consecutive edges, and its shade. */
+		const side = (/** @type {number[]} */ edges) => {
+			const chain = [...edges.map((i) => pts[i]), pts[(edges[edges.length - 1] + 1) % n]];
+			const turn = edges.reduce((sum, i) => sum + /** @type {number} */ (turns[i]), 0) / edges.length;
+			return {
+				points: [...chain.map((p) => to({ ...p, z: solid.z0 })), ...chain.map((p) => to({ ...p, z: solid.z1 })).reverse()],
+				shade: Math.round((0.1 + 0.16 * ((turn + 1) / 2)) * 100) / 100,
+			};
+		};
+		/** @type {number[]} */
+		let run = [];
+		const flush = () => {
+			if (!run.length) return;
+			if (solid.smooth) {
+				/** @type {number[][]} */
+				const parts = [];
+				for (const i of run) {
+					const last = parts[parts.length - 1];
+					if (last && groups[last[0]] === groups[i]) last.push(i);
+					else parts.push([i]);
+				}
+				const layers = parts.map(side);
+				faces.push({ kind: "side", ...side(run), layers });
+			} else faces.push({ kind: "side", ...side(run) });
+			run = [];
+		};
+		for (let k = 0; k < n; k++) {
+			const i = (start + k) % n;
+			if (turns[i] === null) flush();
+			else if (run.length && wall(run[0]) !== wall(i)) {
+				flush();
+				run = [i];
+			} else run.push(i);
+		}
+		flush();
 	}
 	if (se > EPS) faces.push({ kind: "top", points: pts.map((p) => to({ ...p, z: solid.z1 })), shade: 0 });
 	return faces;
@@ -362,7 +491,8 @@ const pathD = (points) => `${points.map((p, i) => `${i === 0 ? "M" : "L"}${num(p
 /**
  * Markup of one solid under a camera: only the faces that face the camera,
  * each a path in its token, the sides with a shade layer. Nothing is drawn for
- * a solid with zero opacity.
+ * a solid with zero opacity. A solid's `top` content is drawn over its top face,
+ * so it is ordered with the solid like any of its faces.
  * @param {Solid} solid
  * @param {Camera} cam
  * @returns {string}
@@ -371,9 +501,14 @@ export function drawSolid(solid, cam) {
 	const paths = visibleFaces(solid, cam).map((face) => {
 		const d = pathD(face.points);
 		const base = el("path", { d, fill: tok(face.kind === "top" ? solid.fill : solid.sides), stroke: tok(solid.stroke), "stroke-width": solid.strokeWidth, "stroke-linejoin": "round" });
-		return face.kind === "side" && solid.shade ? base + el("path", { d, fill: tok(solid.shade), opacity: face.shade }) : base;
+		if (face.kind === "top" || !solid.shade) return base;
+		// A smooth wall is shaded by its layers, unstroked, so no line shows where they meet.
+		const layers = face.layers ?? [face];
+		return base + layers.map((l) => el("path", { d: pathD(l.points), fill: tok(/** @type {string} */ (solid.shade)), opacity: l.shade })).join("");
 	});
-	return fade(solid.opacity, solid.id ? { "data-solid": solid.id } : {}, ...paths);
+	const [se] = sincos(cam.elevation);
+	const top = solid.top && se > EPS ? drawOnPlane(cam, topPlane(solid), solid.top.markup, solid.top.opacity ?? 1) : "";
+	return fade(solid.opacity, solid.id ? { "data-solid": solid.id } : {}, ...paths, top);
 }
 
 /**
@@ -493,6 +628,162 @@ export function drawSolids(solids, cam) {
 		.join("");
 }
 
+/* ------------------------------------------------- content on a horizontal plane */
+
+/**
+ * 2D content for the top face of a solid. `markup` is ordinary SVG drawn in
+ * its own `view` (`{ width, height }`: the content's own units, origin at its
+ * top left, y down, so an icon on a 24 × 24 grid has the view 24 × 24); the view
+ * is fitted into the footprint's bounding box, centred, its aspect kept, less
+ * `inset` world units on every side. Stroke widths and font sizes are in the
+ * content's own units too. Colours are tokens, as anywhere.
+ * @typedef {{ markup: string, view: { width: number, height: number }, inset?: number, opacity?: number }} TopContent
+ */
+
+/**
+ * A horizontal plane to draw 2D content on: a rectangle of `w` (east) by `d`
+ * (north) world units centred on (`x`, `y`) at height `z`, and the `view` the
+ * content is drawn in. The view is fitted into the rectangle, centred, its
+ * aspect kept.
+ * @typedef {{ x: number, y: number, z?: number, w: number, d: number, view: { width: number, height: number } }} Plane
+ */
+
+/**
+ * @param {TopContent} top
+ * @returns {TopContent}
+ */
+function checkTop(top) {
+	if (typeof top.markup !== "string") throw new Error("a solid's top content needs markup, a string of SVG");
+	if (!top.view || !(finite(top.view.width) && top.view.width > 0 && finite(top.view.height) && top.view.height > 0)) throw new Error("a solid's top content needs a view { width, height } above 0");
+	if (top.inset !== undefined && (!finite(top.inset) || top.inset < 0)) throw new Error(`a solid's top content inset must be 0 or more, got ${top.inset}`);
+	return { markup: top.markup, view: { width: top.view.width, height: top.view.height }, inset: top.inset ?? 0, opacity: top.opacity ?? 1 };
+}
+
+/**
+ * The plane of a solid's top face: its footprint's bounding box, less the inset.
+ * @param {Solid} solid
+ * @returns {Plane}
+ */
+function topPlane(solid) {
+	const top = /** @type {Required<TopContent>} */ (solid.top);
+	const xs = solid.points.map((p) => p.x);
+	const ys = solid.points.map((p) => p.y);
+	const w = Math.max(...xs) - Math.min(...xs) - 2 * top.inset;
+	const d = Math.max(...ys) - Math.min(...ys) - 2 * top.inset;
+	if (!(w > 0 && d > 0)) throw new Error("a solid's top content inset leaves no room");
+	return { x: (Math.max(...xs) + Math.min(...xs)) / 2, y: (Math.max(...ys) + Math.min(...ys)) / 2, z: solid.z1, w, d, view: top.view };
+}
+
+/**
+ * The affine transform `[a, b, c, d, e, f]` (SVG `matrix`) that takes a plane's
+ * own coordinates to the screen under `cam`: (0, 0) is the view's top left
+ * (the plane's north-west corner), x runs east, y runs south. It is linear in
+ * the camera, so it follows a `lerpCamera` swivel. Content on a plane at 90°
+ * elevation is the same picture, scaled and panned; seen edge on (0°
+ * elevation) the plane has no area and the matrix is singular.
+ * @param {Camera} cam
+ * @param {Plane} plane
+ * @returns {[number, number, number, number, number, number]}
+ */
+export function planeMatrix(cam, { x, y, z = 0, w, d, view }) {
+	if (!(finite(x) && finite(y) && finite(z))) throw new Error("a plane needs a finite position");
+	if (!(finite(w) && w > 0 && finite(d) && d > 0)) throw new Error("a plane needs a positive width and depth");
+	if (!view || !(finite(view.width) && view.width > 0 && finite(view.height) && view.height > 0)) throw new Error("a plane needs a view { width, height } above 0");
+	const k = Math.min(w / view.width, d / view.height); // world units per view unit
+	const x0 = x - (view.width * k) / 2;
+	const y0 = y + (view.height * k) / 2;
+	const to = projector(cam);
+	const o = to({ x: x0, y: y0, z });
+	const ex = to({ x: x0 + k, y: y0, z });
+	const ey = to({ x: x0, y: y0 - k, z });
+	return [ex.x - o.x, ex.y - o.y, ey.x - o.x, ey.y - o.y, o.x, o.y];
+}
+
+/**
+ * 2D `markup` drawn on a horizontal plane: the markup wrapped in the plane's
+ * transform (`planeMatrix`), so it follows the camera. Draw it right after the
+ * solid it sits on (or give the solid a `top`, which does so inside the solid's
+ * depth order); nothing is drawn when the plane is edge on or `opacity` is 0.
+ * @param {Camera} cam
+ * @param {Plane} plane
+ * @param {string} markup
+ * @param {number} [opacity]
+ * @returns {string}
+ */
+export function drawOnPlane(cam, plane, markup, opacity = 1) {
+	const m = planeMatrix(cam, plane);
+	// Edge on: the two axes are parallel on the screen, whatever the scale of the view.
+	if (Math.abs(m[0] * m[3] - m[1] * m[2]) <= 1e-9 * Math.hypot(m[0], m[1]) * Math.hypot(m[2], m[3])) return "";
+	// What is serialised must not be singular either: a view so large that the scale rounds to 0 draws a point, so nothing.
+	const r = m.map((v) => Number(num(v, 4)));
+	if (r[0] * r[3] - r[1] * r[2] === 0) return "";
+	return fade(opacity, { transform: `matrix(${r.map((v) => num(v, 4)).join(" ")})` }, markup);
+}
+
+/* ------------------------------------------------------------ grid backdrop */
+
+/**
+ * A backdrop of diamonds: grid lines every `step` world units along x and y in
+ * the floor plane at height `z`, out to `radius` from (`x`, `y`) (a segment of
+ * one `step` is kept when its middle is inside, so the edge is ragged: an end
+ * can lie up to half a step beyond `radius`), fading out
+ * radially, so it follows the camera (diamonds in isometric, squares in plan).
+ * The fade is `bands` steps of opacity, one `<path>` each, so the markup stays
+ * small and needs no gradient or id; the lines are `stroke` (a token) at up to
+ * `opacity`. Static: nothing moves while a step rests. Draw it first, under the
+ * solids; it has no depth and is never above one.
+ * @param {Camera} cam
+ * @param {{ radius: number, step?: number, x?: number, y?: number, z?: number, stroke?: string, strokeWidth?: number, opacity?: number, bands?: number }} o
+ * @returns {string}
+ */
+export function drawGrid(cam, { radius, step = 1, x = 0, y = 0, z = 0, stroke = "line", strokeWidth = 1, opacity = 0.5, bands = 6 }) {
+	if (!(finite(radius) && radius > 0)) throw new Error(`a grid's radius must be above 0, got ${radius}`);
+	if (!(finite(step) && step > 0)) throw new Error(`a grid's step must be above 0, got ${step}`);
+	if (!(Number.isInteger(bands) && bands >= 1 && bands <= 64)) throw new Error(`a grid needs from 1 to 64 bands, got ${bands}`);
+	if (!(finite(x) && finite(y) && finite(z))) throw new Error("a grid needs a finite centre");
+	const colour = tok(token(stroke));
+	const to = projector(cam);
+	const cells = Math.ceil(radius / step);
+	if (cells > 200) throw new Error(`a grid of ${2 * cells} lines each way is too many: raise the step or lower the radius`);
+	// The band of the segment centred (cx, cy): from the edge in to the centre, or -1 outside.
+	const band = (/** @type {number} */ cx, /** @type {number} */ cy) => {
+		const f = 1 - Math.hypot(cx, cy) / radius;
+		return f <= 0 ? -1 : Math.min(bands - 1, Math.floor(f * bands));
+	};
+	const d = /** @type {string[]} */ (Array.from({ length: bands }, () => ""));
+	/** Add the segments of one line, joining neighbours of one band into one stroke. */
+	const line = (/** @type {number} */ fixed, /** @type {boolean} */ alongX) => {
+		/** @type {{ b: number, from: number, to: number } | null} */
+		let run = null;
+		const emit = () => {
+			if (!run) return;
+			const a = alongX ? to({ x: x + run.from, y: y + fixed, z }) : to({ x: x + fixed, y: y + run.from, z });
+			const b = alongX ? to({ x: x + run.to, y: y + fixed, z }) : to({ x: x + fixed, y: y + run.to, z });
+			d[run.b] += `M${num(a.x)} ${num(a.y)}L${num(b.x)} ${num(b.y)}`;
+			run = null;
+		};
+		for (let j = -cells; j < cells; j++) {
+			const from = j * step;
+			const b = alongX ? band(from + step / 2, fixed) : band(fixed, from + step / 2);
+			if (b < 0) emit();
+			else if (run && run.b === b) run.to = from + step;
+			else {
+				emit();
+				run = { b, from, to: from + step };
+			}
+		}
+		emit();
+	};
+	for (let i = -cells; i <= cells; i++) {
+		line(i * step, true);
+		line(i * step, false);
+	}
+	// The faintest ring first, so the brighter ones are over it where they meet.
+	return d
+		.map((path, b) => (path ? el("path", { d: path, fill: "none", stroke: colour, "stroke-width": strokeWidth, opacity: opacity * ((b + 1) / bands) }) : ""))
+		.join("");
+}
+
 /* ----------------------------------------------------------- label anchors */
 
 /**
@@ -500,6 +791,23 @@ export function drawSolids(solids, cam) {
  * stem, and whether it is drawn (`opacity` above 0).
  * @typedef {{ id: string, x: number, y: number, width: number, height: number, stem?: { x1: number, y1: number, x2: number, y2: number }, opacity?: number }} LabelBox
  */
+
+/** The line height of a label, as a multiple of its font size. */
+const LINE_HEIGHT = 1.25;
+
+/**
+ * The size of a label box: the longest line plus `padX` on each side, wide, and
+ * the lines at `LINE_HEIGHT` plus 5 px above and below.
+ * @param {string} id
+ * @param {string[]} lines
+ * @param {number} fontSize
+ * @param {number} padX
+ * @returns {{ width: number, height: number }}
+ */
+function labelSize(id, lines, fontSize, padX) {
+	if (!lines.length) throw new Error(`label "${id}" has no text`);
+	return { width: Math.max(...lines.map((l) => estimateWidth(l, fontSize * 1.08))) + 2 * padX, height: lines.length * LINE_HEIGHT * fontSize + 2 * 5 };
+}
 
 /**
  * A label on a point of the world, with a stem: a dot on the point, a vertical
@@ -513,13 +821,8 @@ export function drawSolids(solids, cam) {
  * @returns {{ markup: string, box: LabelBox }}
  */
 export function labelAnchor(cam, { id, at, lines, fontSize = 14, lift = 40, side = "up", opacity = 1 }) {
-	if (!lines.length) throw new Error(`label "${id}" has no text`);
 	const p = project(cam, at);
-	const padX = 8;
-	const padY = 5;
-	const lineHeight = 1.25;
-	const width = Math.max(...lines.map((l) => estimateWidth(l, fontSize * 1.08))) + 2 * padX;
-	const height = lines.length * lineHeight * fontSize + 2 * padY;
+	const { width, height } = labelSize(id, lines, fontSize, 8);
 	const tipX = p.x;
 	const tipY = p.y - lift;
 	const x = side === "up" ? tipX - width / 2 : side === "right" ? tipX : tipX - width;
@@ -534,9 +837,35 @@ export function labelAnchor(cam, { id, at, lines, fontSize = 14, lift = 40, side
 		el("line", { x1: stem.x1, y1: stem.y1, x2: stem.x2, y2: stem.y2, stroke: tok("line"), "stroke-width": 1.5 }),
 		el("circle", { cx: p.x, cy: p.y, r: 3.5, fill: tok("ink"), stroke: tok("bg"), "stroke-width": 1.5 }),
 		el("rect", { x, y, width, height, rx: 6, fill: tok("surface"), stroke: tok("line"), "stroke-width": 1.5 }),
-		text({ x: x + width / 2, y: y + height / 2, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fontSize, "font-weight": 600, fill: tok("ink") }, lines, lineHeight),
+		text({ x: x + width / 2, y: y + height / 2, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fontSize, "font-weight": 600, fill: tok("ink") }, lines, LINE_HEIGHT),
 	);
 	return { markup, box: labelBox };
+}
+
+/**
+ * A pill: a stemless tag, a rounded box of text centred on the screen point
+ * (`x`, `y`), for the tags and badges that stand on their own. Its `box` goes
+ * to the scene's `labelBoxes` with the other labels, so the gate checks that
+ * it overlaps none and stays in the picture. To pin it to a point of the world,
+ * pass the projected point (`project(cam, at)`) with an offset. `fill`,
+ * `stroke` and `ink` are tokens (`ink` the text's: pick one that reads on
+ * `fill`, e.g. `onAccent` on `accent`). `lines` are already wrapped and
+ * localized, ≥ 14 px.
+ * @param {{ id: string, x: number, y: number, lines: string[], fontSize?: number, fill?: string, stroke?: string, ink?: string, opacity?: number }} o
+ * @returns {{ markup: string, box: LabelBox }}
+ */
+export function labelPill({ id, x, y, lines, fontSize = 14, fill = "surface", stroke = "line", ink = "ink", opacity = 1 }) {
+	if (!(finite(x) && finite(y))) throw new Error(`pill "${id}" needs a finite position`);
+	const { width, height } = labelSize(id, lines, fontSize, 12);
+	const left = x - width / 2;
+	const top = y - height / 2;
+	const markup = fade(
+		opacity,
+		{ "data-label": id },
+		el("rect", { x: left, y: top, width, height, rx: height / 2, fill: tok(token(fill)), stroke: tok(token(stroke)), "stroke-width": 1.5 }),
+		text({ x, y, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fontSize, "font-weight": 600, fill: tok(token(ink)) }, lines, LINE_HEIGHT),
+	);
+	return { markup, box: { id, x: left, y: top, width, height, opacity } };
 }
 
 /**

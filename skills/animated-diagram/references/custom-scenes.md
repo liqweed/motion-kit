@@ -117,8 +117,9 @@ relative imports to a vendored runtime.
 ## Isometric and 3D-looking scenes
 
 `kit` carries a small isometric kit (`runtime/iso.mjs`), for a floor, machines
-or buildings seen from an angle. Template: `examples/isometric-swivel.scene.mjs`
-(plan view that swivels to isometric, then three work items travel a line).
+or buildings seen from an angle. Templates: `examples/isometric-swivel.scene.mjs`
+(plan view that swivels to isometric, then three work items travel a line) and
+`examples/isometric-platform.scene.mjs` (rounded slabs, grid backdrop, a mark on a top face, pill tags).
 Everything is a pure function: the same camera and solids give the same bytes.
 
 World: x east, y north, `z` up, in any unit you like. Colours are token names
@@ -133,11 +134,15 @@ World: x east, y north, `z` up, in any unit you like. Colours are token names
 | Solids | `box({ x, y, w, d, h, z })` (centred on x, y), `slab({ x, y, w, d })` (a thin box, for a floor), `prism({ points, h, z })` with `regularPolygon(x, y, r, n)` for a footprint. Options: `fill` (top token), `sides` (side token, default `fill`), `shade` (token layered over the sides at 10–26 %, `null` for flat; `ink` darkens in the light theme and lightens in the dark one, pick `bg` where the dark theme should be darker), `stroke`, `opacity`, `id` |
 | Draw them | `drawSolid(solid, cam)`, or `drawSolids(list, cam)`, which orders them far to near first (`orderSolids` alone returns the order). Only faces that face the camera are drawn: at 90° elevation just the tops |
 | Animate a solid | Build it again each frame with the animated `h`, `z` or `opacity`. Two-state fills cross-fade two solids (`fade(p, {}, drawSolid(reached, cam))` over the pending one), as with any other element |
+| Rounded solids | `roundedBox({ x, y, w, d, h, z, radius, segments })` and `roundedSlab({ x, y, w, d, radius })` (thin, for a floor or platform): a box with rounded vertical corners, `radius` up to half the shorter side, `segments` (default 8) per corner. Same options as `box`, same depth order. The visible sides draw as **one wall, outlined once**, so a rounded side has no seam per sample; only its shade changes. Use these, never a rounded rect sampled into a `prism`, which draws a face and a stroke per sample |
+| A grid backdrop | `drawGrid(cam, { radius, step, stroke, opacity })`: grid lines in the floor plane (`z` for another height) that fade out radially from (`x`, `y`) in a few rings, diamonds in isometric. Token colour (`line` by default) at low opacity. **Draw it first**, under the solids: it has no depth. It is static; do not animate it (a shimmer or pan is ambient motion), fade it in with `opacity` like anything else |
+| 2D content on a face | Give a solid a `top`: `{ markup, view: { width, height }, inset, opacity }`. `markup` is ordinary SVG (an icon's paths, `text`, rects) in its own `view` units (24 × 24 for an icon grid; stroke widths and font sizes in those units); it is fitted into the top face's bounding box less `inset`, centred, aspect kept, and turns with the camera, through a swivel. It is drawn inside the solid, so it is ordered and faded with it. For any horizontal plane at a height (a layer of a mock UI split along z), `drawOnPlane(cam, { x, y, z, w, d, view }, markup, opacity)`, drawn right after the solid below it; `planeMatrix(cam, plane)` gives the SVG matrix alone. Not drawn when the plane is edge on (elevation 0) |
 | Labels | `labelAnchor(cam, { id, at: { x, y, z }, lines, lift, side, opacity })` → `{ markup, box }`: a dot on the point, a stem `lift` px up, the label above it (`side: "up"`, or beside the stem's top with `"right"` / `"left"`). Wrap and localize `lines` first (`wrapLabel`) |
+| Pill tags | `labelPill({ id, x, y, lines, fontSize, fill, stroke, ink, opacity })` → `{ markup, box }`: a stemless rounded box of text centred on the screen point `x, y` (`project(cam, point)` plus an offset to pin it to the world). Colours are tokens; pick an `ink` that reads on `fill` (`onAccent` on `accent`). Return its `box` from `labelBoxes` with the anchors' |
 | Several tokens | `tokensAlong(path, t, runs, draw)`: see below |
 
 **The gate checks labels.** Return `labelBoxes: (t) => [box, …]` from the scene
-(the `box` of each `labelAnchor` you draw at `t`), and `motion-kit check` fails
+(the `box` of each `labelAnchor` and `labelPill` you draw at `t`), and `motion-kit check` fails
 the scene when, at any sampled time or step, two label boxes overlap (closer
 than 4 px), a stem runs through another label, or a box leaves the picture. Fix
 it in the layout: alternate `lift` between neighbours (more in a narrow format,

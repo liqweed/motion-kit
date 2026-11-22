@@ -39,7 +39,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
 | `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known and `min` in [1, 21]. |
-| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` returns `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers, `width` and `height` not negative [gate]; used by `examples/isometric-swivel.scene.mjs`). |
+| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` and `labelPill(...)` return `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers, `width` and `height` not negative [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
@@ -254,6 +254,48 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   far the face turns from screen left. Faces are `<path>`s outlined with
   `stroke`; only faces that face the camera are drawn (the top when elevation
   > 0, a side when its outward normal faces the camera and elevation < 90°).
+- **Rounded solids.** `roundedBox({x, y, w, d, h, radius, segments = 8, …})`
+  and `roundedSlab` (default `h` 0.25) are a box whose four vertical corners
+  are arcs of `radius` sampled in `segments` straight pieces. `radius` MUST be
+  from 0 to half the shorter side and `segments` an integer ≥ 1 [throws];
+  radius 0 is a `box`, half the shorter side a stadium or a circle. The
+  footprint is an ordinary convex prism, so depth order treats it like any
+  solid. The solid is `smooth` and carries `groups` (one number per footprint
+  edge: each arc, and each straight side, is a group): its visible sides draw
+  as one wall, a single `<path>` outlined once, shaded by one unstroked layer
+  per group (so the number of side paths is bounded by the arcs and sides, at
+  most 8 layers, and does not grow with `segments`; an arc within one sample of
+  tangent to the view may add or lose its layer as `segments` changes). `prism` takes the same `groups` (in the
+  winding of its `points`) and `smooth`; without `smooth` a group is a face
+  outlined by itself, without `groups` (and without `smooth`) every edge is;
+  a `smooth` solid draws its visible sides as one wall with or without `groups`.
+- **Content on a plane.** `planeMatrix(cam, {x, y, z = 0, w, d, view})` is the
+  SVG `matrix` that takes 2D content to the horizontal plane at height `z`,
+  the rectangle `w` (east) by `d` (north) centred on (`x`, `y`). The content is
+  drawn in its own `view` (`{width, height}`, origin at its top left, y down):
+  the view is fitted into the rectangle, centred, its aspect kept; its x runs
+  east, its y south. The matrix is the projection of the plane, so it follows
+  every camera, including each one of a `lerpCamera` swivel. Entries are
+  raw numbers; `drawOnPlane` serialises them through `num(v, 4)` (G3), and a
+  caller who writes its own transform MUST do the same. `drawOnPlane(cam, plane, markup, opacity = 1)`
+  wraps the markup in it, and returns `""` for a plane seen edge on (elevation
+  0°) or too small to draw (its rounded matrix singular) or with `opacity` 0. A solid's `top` (`{markup, view, inset = 0, opacity
+  = 1}`, any prism) draws such content on its top face, on the footprint's
+  bounding box less `inset` (which MUST leave room [throws]), inside the solid's
+  own group, so it is ordered, and fades, with the solid; it is not drawn when
+  the top is edge on. Stroke widths and font sizes in the markup are in the
+  view's units; colours are tokens.
+- **Grid backdrop.** `drawGrid(cam, {radius, step = 1, x = 0, y = 0, z = 0,
+  stroke = "line", strokeWidth = 1, opacity = 0.5, bands = 6})` draws grid
+  lines every `step` along x and y in the floor plane at height `z`, out to
+  about `radius` of (`x`, `y`) (a segment of one `step` is kept when its middle
+  is inside, so a line's end may lie up to half a `step` beyond): diamonds in isometric, squares in plan. The lines fade
+  radially in `bands` rings, one `<path>` each, faintest first, at up to
+  `opacity` (no gradient, no id). `radius` and `step` MUST be above 0, `bands`
+  an integer from 1 to 64, and the grid at most 200 cells each way from the centre
+  [throws]. It is static (a function of the camera alone) and has no depth: a
+  scene draws it before the solids. Any motion added to it (a shimmer, a pan)
+  is ambient motion, which the canon excludes: a scene plays once and holds (§2, §8).
 - **Depth order.** `orderSolids(solids, cam)` returns the solids far to near.
   Two solids whose projections overlap are ordered by the axes that separate
   them (a footprint edge, or height when seen from above); where the axes
@@ -266,6 +308,10 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   the `LabelBox`, rounded to two decimals as the SVG attributes are, so the gate
   and the picture agree. `labelProblems(boxes, {width, height, gap = 4, limit})`
   lists the collisions G15 reports, and stops at `limit` (default all). Labels follow §7 (wrapped, localized, ≥ 14 px).
+  `labelPill({id, x, y, lines, fontSize, fill, stroke, ink, opacity})` is a
+  stemless tag: a rounded box of text centred on the screen point (`x`, `y`),
+  its colours tokens (`surface`, `line`, `ink` by default). It returns the
+  markup and a `LabelBox` without a stem, which G15 checks like any other.
 - **Paths.** `path3(points)` is a polyline through world points with its
   length in world units, so a token keeps a constant speed whatever the camera
   does when its progress is linear (`tokenPoints` defaults to `easeStandard`;
