@@ -224,8 +224,17 @@ export function styleBodies(markup, all = false) {
 	return out;
 }
 
-/** Decode the five XML entities a quoted attribute value can carry. */
-export const unescapeAttr = (/** @type {string} */ v) => v.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+/**
+ * Decode the XML references a quoted attribute value can carry, in one pass
+ * (`&amp;quot;` is `&quot;`, never `"`): the five named entities and numeric
+ * references, decimal or hex. Anything else stays as written.
+ */
+export const unescapeAttr = (/** @type {string} */ v) =>
+	v.replace(/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|(quot|apos|lt|gt|amp));/g, (m, dec, hex, name) => {
+		if (name) return { quot: '"', apos: "'", lt: "<", gt: ">", amp: "&" }[/** @type {"quot"} */ (name)];
+		const cp = dec ? parseInt(dec, 10) : parseInt(hex, 16);
+		return cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : m;
+	});
 
 const CSS_STRING = /(["'])(?:\\[\s\S]|(?!\1)[^\\])*\1/;
 
@@ -242,7 +251,8 @@ function stripCssComments(/** @type {string} */ css) {
 /**
  * The part of a frame that can paint: the attributes of its tags that are not
  * metadata (`data-*`, `aria-*`, `id`, `class`) and `<style>` bodies, without
- * comments, CSS strings, text content, `<title>`, `<desc>` or metadata. A
+ * comments, CSS strings, text content, `<title>`, `<desc>` or metadata
+ * elements (their `<style>` bodies are kept: a stylesheet applies document-wide). A
  * label, a data attribute or a `content:` string that spells
  * `var(--mk-caution)` out is not a use of the token.
  * @param {string} markup
@@ -257,7 +267,8 @@ export function paintSource(markup) {
 			out.push(name === "style" ? maskCssStrings(stripCssComments(unescapeAttr(raw))) : raw);
 		}
 	}
-	for (const css of styleBodies(markup)) out.push(maskCssStrings(stripCssComments(css)));
+	// A stylesheet inside <metadata> still styles elements outside it (SVG 1.1, styling scope).
+	for (const css of styleBodies(markup, true)) out.push(maskCssStrings(stripCssComments(css)));
 	return out.join("\n");
 }
 

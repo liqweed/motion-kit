@@ -258,6 +258,20 @@ describe("optional token use and warnings", () => {
 			assert.ok(!paintSource(`<metadata><info value="var(--mk-caution)"/></metadata>`).includes("caution"));
 			assert.ok(paintSource(`<metadata></metadata><rect fill="var(--mk-caution)"/>`).includes("caution"));
 		});
+		it("decodes numeric character references in one pass", () => {
+			assert.match(findFontLiteral(`<text style="&#70;ont-family:Courier">x</text>`, style) ?? "", /Courier/);
+			assert.match(findFontLiteral(`<text style="&#x46;ont:12px Courier">x</text>`, style) ?? "", /shorthand/);
+			assert.ok(paintSource(`<rect style="fill:var(&#x2d;&#45;mk-caution)"/>`).includes("var(--mk-caution)"));
+			assert.equal(findFontLiteral(`<text style="&amp;#70;ont-family:Courier">x</text>`, style), null);
+		});
+		it("keeps stylesheets inside metadata, which style the whole document", () => {
+			assert.ok(paintSource(`<metadata><style>rect{fill:var(--mk-caution)}</style></metadata><rect/>`).includes("var(--mk-caution)"));
+		});
+		it("ignores font properties in conditional-rule preludes", () => {
+			assert.equal(findFontLiteral(`<style>@supports ( font-family:Courier){text{font-weight:600}}</style>`, style), null);
+			assert.equal(findFontLiteral(`<style>@media (min-width:1px) and (font:x){text{font-size:9px}}</style>`, style), null);
+			assert.match(findFontLiteral(`<style>@supports (display:grid){text{font-family:Courier}}</style>`, style) ?? "", /Courier/);
+		});
 		it("trims configured families before comparing", () => {
 			const s = normalizeStyle({ ...NEUTRAL, name: "t", mono: " monospace " });
 			assert.equal(findFontLiteral(`<text font-family="monospace">1</text>`, s), null);
