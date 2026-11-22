@@ -194,13 +194,13 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 ### 4.7 Geometry: arc length and draw-on (`runtime/svg.mjs`)
 
 - `polyline(points)` → `{length, d, at(f)}`; `at` returns the point at fraction
-  `f` of total arc length (`runtime/svg.mjs:92-113`).
+  `f` of total arc length (`polyline` in `runtime/svg.mjs`).
 - `cubic(p0…p3, samples = 64)` → `{length, d, at(f)}` with a 64-sample
   arc-length lookup table and binary search, so a marker moves at constant
-  speed without a DOM in Node and browsers (`runtime/svg.mjs:119-152`).
+  speed without a DOM in Node and browsers (`cubic` in `runtime/svg.mjs`).
 - `drawOn(length, p)`: `null` for `p ≤ 0`, `{}` for `p ≥ 1`, else
   `stroke-dasharray: L L; stroke-dashoffset: L·(1 − p)`
-  (`runtime/svg.mjs:159-163`). Callers MUST skip the element when it returns
+  (`drawOn` in `runtime/svg.mjs`). Callers MUST skip the element when it returns
   `null`: a zero-length dash with round caps paints a dot.
 - Two-state elements (pending → active) MUST cross-fade two layers with
   opacities `1 − p` and `p` instead of interpolating colours, which would need
