@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-11-22
+
+### Added
+
+- A player controller exposes `playing` and `autoplayPending`, so a page that replaces one player with another (a layout change) can keep playback running and a pending autoplay pending. A destroyed controller reports no pending autoplay.
+
+### Changed
+
+- `pause()` now cancels a pending visible autoplay, so a player paused before it appeared stays paused when it scrolls into view. A page that relied on playback starting on entry after an offscreen `pause()` must now call `play()` itself. Every valid `seek()` also ends a pending autoplay, including one made by a step subscriber while the reset frame publishes.
+
 ## [0.17.0] - 2026-11-22
 
 ### Added
@@ -216,7 +226,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/liqweed/motion-kit/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/liqweed/motion-kit/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/liqweed/motion-kit/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/liqweed/motion-kit/compare/v0.14.0...v0.15.0
