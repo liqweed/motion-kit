@@ -87,7 +87,7 @@ const entry = (visible, { ratio = visible ? 1 : 0, height = visible ? 100 : 0, v
 	isIntersecting: visible, intersectionRatio: ratio, intersectionRect: { height }, rootBounds: { height: viewport },
 });
 
-function setup({ reduced = false, animateSteps = false, autoplay = "none", options = {}, sceneOverride = scene } = {}) {
+function setup({ reduced = false, animateSteps = false, autoplay = "none", options = {}, sceneOverride = scene, observer = true } = {}) {
 	const frames = new Map();
 	let now = 0;
 	let nextId = 0;
@@ -105,11 +105,11 @@ function setup({ reduced = false, animateSteps = false, autoplay = "none", optio
 			addEventListener: (_name, callback) => themeListeners.add(callback),
 			removeEventListener: (_name, callback) => themeListeners.delete(callback),
 		}),
-		IntersectionObserver: class {
+		...(observer ? { IntersectionObserver: class {
 			constructor(callback, init) { this.callback = callback; this.init = init; this.disconnected = false; observers.push(this); }
 			observe() {}
 			disconnect() { this.disconnected = true; }
-		},
+		} } : {}),
 	});
 	vm.runInContext(source, context);
 	const container = doc.createElement("div");
@@ -560,6 +560,45 @@ it("a step subscriber that calls play() during a tick leaves exactly one pending
 	assert.equal(env.frames.size, 1, "one callback, so pause and destroy can cancel it");
 	env.player.pause();
 	assert.equal(env.frames.size, 0);
+});
+
+it("a step subscriber's own frame, queued after play(), runs behind the player's and sees the advanced time", () => {
+	const env = setup();
+	env.player.play();
+	let armed = false;
+	let seenAtReader = null;
+	env.player.onStep(() => {
+		if (!armed) return;
+		armed = false;
+		env.player.play();
+		env.context.requestAnimationFrame(() => { seenAtReader = env.player.time; });
+	});
+	armed = true;
+	env.advance(scene.steps[1].at * 1000 + 50);
+	const queued = env.player.time;
+	env.advance(100);
+	assert.ok(seenAtReader !== null, "the subscriber's frame ran");
+	assert.ok(seenAtReader > queued, "the player's frame ran first, so the reader sees the time already advanced");
+	assert.equal(seenAtReader, env.player.time);
+});
+
+it("invalid seek, seekStep and playToStep calls leave the pending autoplay in place", () => {
+	const env = setup({ autoplay: "visible" });
+	assert.throws(() => env.player.seek(Number.NaN));
+	assert.throws(() => env.player.seekStep(99));
+	assert.throws(() => env.player.seekStep("no-such-step"));
+	assert.throws(() => env.player.playToStep(-1));
+	assert.throws(() => env.player.playToStep("no-such-step"));
+	assert.equal(env.player.autoplayPending, true, "no rejected command is a takeover");
+	env.show();
+	assert.equal(env.player.playing, true, "a qualifying report still starts playback");
+});
+
+it("without IntersectionObserver the default autoplay starts at mount", () => {
+	const env = setup({ autoplay: "visible", observer: false });
+	assert.equal(env.player.autoplayPending, false);
+	assert.equal(env.player.playing, true);
+	assert.equal(env.frames.size, 1, "a frame is queued immediately");
 });
 
 it("a destroyed controller reports no pending autoplay", () => {

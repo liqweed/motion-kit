@@ -54,7 +54,7 @@ function assertPlayer(html, id, scene) {
 	const svg = fig.match(/<svg\b[^>]*>/)?.[0] ?? "";
 	assert.ok(svg.includes(`viewBox="0 0 ${scene.width} ${scene.height}"`), `${id} is drawn on the ${scene.width}x${scene.height} canvas`);
 	assert.equal((fig.match(/<button type="button" class="mk-btn"[ >]/g) ?? []).length, scene.steps.length, `${id} has one button per step`);
-	assert.match(fig, /<div class="mk-controls"[^>]*\sinert(?:=""|\s|>)/, `${id} controls are inert until the player mounts`);
+	assert.match(fig, /<div class="mk-controls"(?:\s+[\w:-]+(?:="[^"]*")?)*?\s+inert(?:=""|(?=[\s>]))(?:\s+[\w:-]+(?:="[^"]*")?)*\s*>/, `${id} controls are inert until the player mounts`);
 	const stage = fig.match(/<div\b[^>]*\bclass="mk-stage"[^>]*>/)?.[0];
 	assert.ok(stage, `${id} has a stage wrapper`);
 	assert.doesNotMatch(stage, /\stabindex\b/, `${id} stage has no tab stop before mount`);
