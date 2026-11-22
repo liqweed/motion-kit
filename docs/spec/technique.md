@@ -899,9 +899,7 @@ more than 20,000 frames (`MAX_FRAMES`, `runtime/bake.mjs`), and a non-positive
 or non-finite fps, lead or hold, whatever a scene acknowledges. They are not
 canon and cannot be acknowledged.
 
-Every rule the gate, the runtime's throws, the player's accessibility and
-state guarantees (the player's remaining mechanics, such as its frame path, are
-implementation detail covered by §10.2's own table) and the canon texts
+Every rule the gate, the runtime's throws, the player and the canon texts
 state, except the walks' edge limits, which stay unclassed until #95, with its class (§11.1 *Advice, not law*). **Status** says where the rule
 is enforced today: *gate* is a G-row of §11; *advice* means `checkScene`
 returns it as advice, which a scene acknowledges (`runtime/advice.mjs`);
@@ -928,7 +926,6 @@ can break it; *guidance* means only the skill text states it.
 | Declared label boxes do not overlap, cross stems or leave the picture (G15) | hard | gate |
 | Style data is valid: known tokens, `#rrggbb`, a CSS font list (`normalizeStyle`) | hard | throws |
 | Pause control, keyboard stepping announced (§10.2; WCAG 2.2.2, 2.1.1, 4.1.3) | hard | by construction |
-| Initial state is the final frame; a playing diagram that leaves the viewport stops its clock and draws nothing, and resumes from the same time (§10.2) | hard | by construction (`runtime/player.mjs`) |
 | Reduced motion shows the final frame, no autoplay (§10; the toolkit's policy, informed by WCAG 2.3.3, which is Level AAA) | hard | by construction |
 | A1 `duration`: ≤ 12 s (G9) | advice | advice |
 | A2 aim for ≤ 8 s | advice | guidance |

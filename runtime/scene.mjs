@@ -187,29 +187,7 @@ export function renderSvg(scene, t, options = {}) {
 		bg +
 		scene.frame(time, { idPrefix: id, style }) +
 		`</svg>`;
-	return options.standalone ? resolveTokens(lowerIdAttributes(markup), style, options.theme ?? "light") : markup;
-}
-
-/**
- * A standalone SVG is XML, which reads only a lowercase `id` attribute; the live
- * patcher reads any letter case and keeps an element's first. Rewrite each start tag
- * by whole attributes (quoted values are never touched): the first `id` in any case
- * becomes lowercase `id`, later case variants are dropped, so a clip path or gradient
- * a frame references resolves outside the page too and no element ends up with two.
- * @param {string} svg
- */
-function lowerIdAttributes(svg) {
-	return svg.replace(/<[a-zA-Z][\w:-]*((?:\s+[\w:-]+="[^"]*")*)\s*\/?>/g, (tag, attrs) => {
-		if (!/\sid=/i.test(attrs)) return tag;
-		let seen = false;
-		const fixed = attrs.replace(/(\s+)([\w:-]+)(="[^"]*")/g, (m, sp, name, val) => {
-			if (name.toLowerCase() !== "id") return m;
-			if (seen) return "";
-			seen = true;
-			return `${sp}id${val}`;
-		});
-		return tag.replace(attrs, () => fixed);
-	});
+	return options.standalone ? resolveTokens(markup, style, options.theme ?? "light") : markup;
 }
 
 /** Time of each step (convenience). */

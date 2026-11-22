@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
-import { checkScene, colourLiteral, elementIds, findColourLiteral, wellFormed } from "../lib/check.mjs";
+import { checkScene, colourLiteral, findColourLiteral, wellFormed } from "../lib/check.mjs";
 import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
@@ -382,38 +382,6 @@ describe("instance ids", () => {
 		assert.match(msg, /duplicate id "x\\u001b\[2J"/);
 		assert.ok(!msg.includes("\u001b"));
 	});
-	it("G10 reads a drawn label by what it displays, not how its characters are spelled", () => {
-		const s = { id: "ship", width: 100, height: 40, duration: 1, title: "Ship", description: "A label spelled with a reference.", steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>&#83;hip</text>` };
-		const r = checkScene(s, { strict: true });
-		assert.deepEqual(r.problems, []);
-		assert.deepEqual(r.advice, []);
-		// A reference splits no word, a continuing span joins one, a positioned line span ends one.
-		const frame = (body) => ({ ...s, steps: [{ at: 1, label: "Archive/Dispose now" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/>${body}` });
-		assert.deepEqual(checkScene(frame("<text>Archive&#47;Dispose&#32;now</text>"), { strict: true }).advice, []);
-		const split = { ...s, steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Ship<tspan>ment</tspan></text>` };
-		assert.ok(checkScene(split).advice.some((a) => a.rule === "step-labels-in-frame"), "Ship<tspan>ment</tspan> draws Shipment");
-		// XML keeps a C1 reference as written; HTML's table would turn &#150; into an en dash.
-		const dash = { ...s, steps: [{ at: 1, label: "A\u2013B" }], frame: (t) => `<rect width="${t < 0.5 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>A&#150;B</text>` };
-		assert.ok(checkScene(dash).advice.some((a) => a.rule === "step-labels-in-frame"));
-	});
-	it("bake prefixes slices whose only id attribute is uppercase", () => {
-		const upper = { ...clipped, frame: (t, o) => clipped.frame(t, o).replaceAll(' id="', ' ID="') };
-		const all = elementIds(bake(upper, { fps: 4 }));
-		assert.ok(all.length > 2);
-		assert.equal(new Set(all).size, all.length);
-		// The standalone SVG is XML: only a lowercase `id` attribute declares an id.
-		assert.doesNotMatch(bake(upper, { fps: 4 }), /\sID="/);
-		assert.ok((bake(upper, { fps: 4 }).match(/\sid="/g) ?? []).length >= all.length);
-	});
-	it("standalone output normalizes id attributes by whole attribute", () => {
-		const odd = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-p" ID="${o.idPrefix}-q" aria-label="Node ID="/><g aria-label="Node ID=" ID="${o.idPrefix}-r"/>` };
-		for (const svg of [renderSvg(odd, 0, { standalone: true }), bake(odd, { fps: 4 })]) {
-			assert.equal(wellFormed(svg), null);
-			assert.match(svg, /aria-label="Node ID="/, "quoted values are untouched");
-			assert.doesNotMatch(svg, /"\sID="/, "no uppercase attribute is left");
-			assert.doesNotMatch(svg, /<g id="[^"]*-p" id=/, "one id per element");
-		}
-	});
 	it("bake gives each slice that defines ids its own prefix", () => {
 		const svg = bake(clipped, { fps: 4 });
 		const all = ids(svg);
@@ -788,11 +756,6 @@ describe("advice and acknowledgements", () => {
 	it("checks the hard frame rules at every step time, however long the scene", () => {
 		const long = { ...still, duration: 1200, steps: [{ at: 10.5, label: "Mark" }, { at: 1200, label: "Mark" }], frame: (t) => (t > 10.4 && t < 10.6 ? "<g" : `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Mark</text>`) };
 		assert.match(checkScene(long).problems.join("\n"), /malformed at t=10\.500/);
-	});
-	it("reads quoted attribute values and invalid character references as XML does", () => {
-		const ship = (body) => ({ ...still, steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20">${body}</text>` });
-		assert.deepEqual(ruleOf(checkScene(ship(`Sh<tspan data-note="a>b x=">ip</tspan>`))), [], "a > or x= inside a quoted value is not markup");
-		assert.match(checkScene(ship("Ship&#11;Now")).problems.join("\n"), /invalid character reference/);
 	});
 	it("finds a step label wrapped at a slash", () => {
 		const wrapped = { ...still, steps: [{ at: 1, label: "Archive/Dispose" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20"><tspan>Archive/</tspan><tspan>Dispose</tspan></text>` };

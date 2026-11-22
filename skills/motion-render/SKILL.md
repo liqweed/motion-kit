@@ -43,7 +43,7 @@ animated-diagram skill, `references/targets.md`.
 mk export spec.json -o out/review --png --qc
 ```
 `index.html` holds the steps, frames 0.2 s before and after each step, a phone-size row (the
-scene's `tall` layout at 360 px, as a phone shows it; if the tall layout fails the gate or cannot be built, the row shows the reason and the last primary frame instead, so check that it shows the tall layout, or that `manifest.json` has a `phone` entry) and the review checklist. Do not approve a row that shows the reason or the primary frame: it is not the tall layout, and the approval line covers only what the sheet shows. Fill in the review report (animated-diagram
+scene's `tall` layout at 360 px, as a phone shows it; if the tall layout fails the gate or cannot be built, the row shows the reason and the last primary frame instead, so check that it shows the tall layout, or that `manifest.json` has a `phone` entry) and the review checklist. Fill in the review report (animated-diagram
 `references/qc.md`) and get a human approval line before delivery.
 
 ## Video

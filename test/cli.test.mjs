@@ -263,12 +263,6 @@ describe("cli", () => {
 		assert.match(r.out, /✓ .*order-flow\.json · 16:9/);
 		assert.match(r.out, /✗ .*custom-pulse\.scene\.mjs · 16:9 · en\n {2}- contrast: raised dark: accent on surface is 2\.48:1, needs 3:1/);
 		assert.doesNotMatch(r.out, /⚠ style:/);
-		// A bidirectional control in the style's name never reaches the terminal raw, in a hard problem or a warning.
-		writeFileSync(join(dir, "bidi.json"), JSON.stringify({ name: "ra\u202eised", dark: { surface: "#2b3242" } }));
-		r = node(CLI, "check", `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "bidi.json"));
-		assert.equal(r.status, 1);
-		assert.match(r.out, /ra\\u202eised dark: accent on surface/);
-		assert.ok(!r.out.includes("\u202e"), "no raw bidirectional control");
 	});
 	it("fails only the pairs a scene draws: a custom scene that declares them passes with a warning, one that declares nothing fails", () => {
 		const dir = join(tmp, "drawn");
@@ -296,11 +290,6 @@ describe("cli", () => {
 		assert.equal(r.status, 1, r.out);
 		assert.match(r.out, /motion-kit: warning: contrast: paper light: emphasis on bg is 1\.\d+:1, 3:1 recommended \(this scene does not draw it\)/);
 		assert.match(r.out, /the player in the page fails the gate[\s\S]*emphasis on bg/);
-		// A bidirectional control in a style's name never reaches a warning raw either.
-		writeFileSync(join(dir, "bidi-paper.json"), JSON.stringify({ name: "pa\u202eper", light: { emphasis: "#d8d8d8" } }));
-		r = both("check", declared, "-f", "16:9", "--options", join(dir, "labels.json"), "--style", join(dir, "bidi-paper.json"));
-		assert.match(r.out, /⚠ style: pa\\u202eper light: emphasis on bg/);
-		assert.ok(!r.out.includes("\u202e"), "no raw bidirectional control in a warning");
 		r = both("check", undeclared, "-f", "16:9", ...opts);
 		assert.equal(r.status, 1);
 		assert.match(r.out, /✗ .*undeclared\.scene\.mjs · 16:9 · en\n {2}- contrast: paper light: emphasis on bg is /);

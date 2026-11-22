@@ -48,7 +48,7 @@ export function bake(scene, options = {}) {
 	// so a scene that defines ids gets a prefix per slice.
 	for (let i = 0; i < frames.length; i++) {
 		if (i < frames.length - 1) frames[i].end = frames[i + 1].start;
-		if (/\sid="/i.test(frames[i].body)) frames[i].body = innerOf(render(frames[i].start, `${base}-${i + 1}`));
+		if (/\sid="/.test(frames[i].body)) frames[i].body = innerOf(render(frames[i].start, `${base}-${i + 1}`));
 	}
 
 	const full = render(scene.duration, base);
