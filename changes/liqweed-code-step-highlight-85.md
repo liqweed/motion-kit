@@ -4,7 +4,7 @@ release: minor
 
 ### Changed
 
-- `renderSvg` with `standalone: true` now resolves `var(--mk-…)` only in the background and the scene's frame, no longer in the outer `<title>` and `<desc>`: a scene whose title or description contains the literal text `var(--mk-accent)` keeps it as written, where it used to be replaced by the token's colour (text naming an unknown token, which the resolver would have refused, is now kept as written too). `resolveTokens` itself is unchanged (its documentation now says it replaces the pattern anywhere in its input). A title or description that relied on the substitution must now spell the colour out. **Consumer action:** none.
+- `renderSvg` with `standalone: true` now resolves `var(--mk-…)` only in the background and the scene's frame, no longer in the outer `<title>` and `<desc>`: a scene whose title or description contains the literal text `var(--mk-accent)` keeps it as written, where it used to be replaced by the token's colour (text naming an unknown token, which the resolver would have refused, is now kept as written too). `resolveTokens` itself is unchanged (its documentation now says it replaces the pattern anywhere in its input). **Consumer action:** if a title or description relied on the substitution, spell the colour out; otherwise none.
 
 ### Added
 

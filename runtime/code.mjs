@@ -135,7 +135,7 @@ const UNASSIGNED = /\p{Cn}/u;
  * What `font` may be: a comma-separated list of family names, each a quoted
  * string (any text but `<>{};` and a backslash) or an unquoted run of CSS
  * identifiers (letters, digits, `_` and `-`, not starting with a digit) joined
- * by single spaces (a run of spaces, a no-break space or a name that starts with a generic keyword and goes on must be quoted; a quoted name holds no line break). A name that is not an identifier sequence (`Hawaii 5-0`,
+ * by single spaces (a run of spaces, a no-break space or a name that starts with a generic keyword and goes on must be quoted; a quoted name holds no tab or line break). A name that is not an identifier sequence (`Hawaii 5-0`,
  * `Mono.Name`) must be quoted, and a CSS-wide keyword is no family name.
  * Nothing else is read as a family list, so a function call (`var()`), a
  * comment or any other CSS outside quotes is refused, and the browser and
@@ -143,9 +143,9 @@ const UNASSIGNED = /\p{Cn}/u;
  * space inside it is always followed by an identifier and the trailing spaces
  * belong to the separator alone: the matcher cannot split a run of spaces two ways.
  */
-const FONT_ITEM = /[ \t\n\r\f]*(?:"[^"<>{};\\\r\n\f]*"|'[^'<>{};\\\r\n\f]*'|-?[A-Za-z_][A-Za-z0-9_-]*(?: -?[A-Za-z_][A-Za-z0-9_-]*)*)[ \t\n\r\f]*(,|$)/y;
+const FONT_ITEM = /[ \t\n\r\f]*(?:"[^"<>{};\\\t\r\n\f]*"|'[^'<>{};\\\t\r\n\f]*'|-?[A-Za-z_][A-Za-z0-9_-]*(?: -?[A-Za-z_][A-Za-z0-9_-]*)*)[ \t\n\r\f]*(,|$)/y;
 /** A generic family keyword: it starts a multiword unquoted name that Chromium reads as the keyword followed by stray text. */
-const GENERIC_FIRST = /^(?:serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[a-z-]+|math|emoji|fangsong) /i;
+const GENERIC_FIRST = /^(?:serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-(?:serif|sans-serif|monospace|rounded)|math|emoji|fangsong) /i;
 const CSS_WIDE = /^(?:inherit|initial|unset|revert|revert-layer|default)$/i;
 
 /**

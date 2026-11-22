@@ -160,6 +160,11 @@ describe("moves", () => {
 		assert.throws(() => b.rowSpan(0, 1), RangeError);
 	});
 
+	it("takes a move of exactly the shortest duration and refuses a shorter one", () => {
+		assert.doesNotThrow(() => codeEnd(b, [{ lines: 1, start: 0, duration: 0.001 }]));
+		assert.throws(() => codeEnd(b, [{ lines: 1, start: 0, duration: 0.0009 }]), /at least 0.001 s/);
+	});
+
 	it("has no band before the first move, then fades it in over the first range", () => {
 		assert.equal(codeFocus(b, 0.4, moves), null);
 		const mid = codeFocus(b, 0.65, moves);
@@ -400,12 +405,21 @@ describe("codeBlock input hardening", () => {
 		assert.equal(text(renderSvg(s2, 1, { standalone: true })), "var(--mk-nope)");
 	});
 
+	it("refuses a quoted font name that holds a tab", () => {
+		assert.throws(() => block({ font: '"Mono\tDisplay", monospace' }), /font-family/);
+	});
+
+	it("accepts a ui- family name that is not a generic keyword, and refuses a generic one that starts a name", () => {
+		assert.doesNotThrow(() => block({ font: "ui-custom Display, monospace" }));
+		assert.throws(() => block({ font: "ui-monospace Display, serif" }), /font-family/);
+	});
+
 	it("refuses a font that names a token", () => {
 		assert.throws(() => block({ font: "'var(--mk-nope)', monospace" }), /font/);
 		assert.throws(() => block({ font: "var(--mk-accent)" }), /font/);
 		assert.throws(() => block({ font: "var(--code-font, DejaVu Sans Mono)" }), /font/);
 	});
-	it("rejects a font list in linear time", () => {
+	it("rejects long malformed font lists", () => {
 		assert.throws(() => block({ font: `a${" ".repeat(200000)}1` }), /font-family/);
 		assert.throws(() => block({ font: `${"a ".repeat(50000)}, 1` }), /font-family/);
 	});
@@ -416,6 +430,32 @@ describe("codeBlock input hardening", () => {
 
 	it("keeps the band's marker off the code", () => {
 		assert.throws(() => block({ padding: 0 }), /padding.*at least 10/);
+	});
+});
+
+describe("the gate and the code's own text", () => {
+	const tspan = (/** @type {string} */ attrs, text = "z") => `<tspan data-mk-code=""${attrs}>${text}</tspan>`;
+	const gate = async (/** @type {string} */ extra) => {
+		const { scene } = await loadScene(EXAMPLE, { format: "16:9", locale: "en" });
+		return checkScene({ ...scene, frame: (t, o) => scene.frame(t, o) + extra });
+	};
+
+	it("passes visible code that shows 3.14159 or NaN", async () => {
+		const r = await gate(tspan("", "3.14159 NaN undefined Infinity"));
+		assert.ok(r.ok, r.problems.join("; "));
+	});
+
+	it("still fails unrounded or non-finite geometry on a code span, even after a quoted >", async () => {
+		assert.ok((await gate(tspan(' aria-label="a>b" x="1.234567"'))).problems.some((p) => /unrounded number 1.234567/.test(p)));
+		assert.ok((await gate(tspan(' aria-label="a>b" x="NaN"'))).problems.some((p) => /NaN\/undefined/.test(p)));
+	});
+
+	it("does not skip the text of a span that merely mentions the marker", async () => {
+		const other = (/** @type {string} */ attrs) => `<tspan${attrs}>3.14159 NaN</tspan>`;
+		for (const attrs of [' aria-label="data-mk-code"', " data-mk-code-example", ' data-mk-code="x"']) {
+			const r = await gate(other(attrs));
+			assert.ok(!r.ok, attrs);
+		}
 	});
 });
 

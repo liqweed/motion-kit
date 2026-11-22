@@ -488,7 +488,7 @@ functions; a colour is a token name (G4 applies).
   A column is 0.6 em (the advance of the common monospace faces) and each run
   is set at its own column, so a fallback face does not shift the lines against
   one another. `font` defaults to `CODE_FONT`, a monospace stack, and is read as a plain
-  comma-separated family list (unquoted names are CSS identifiers, letters, digits, `_` and `-`, not starting with a digit, joined by spaces; a name that is not one, such as `Hawaii 5-0`, is quoted; CSS-wide keywords are refused; quoted names are any text but `<>{};` and a backslash); any other CSS outside quotes is refused. For PNG and video resvg splits the list at every comma (so a quoted name with a comma never matches), removes quotes and then trims, so write the opening quote right after the comma and the closing quote right before the next comma or the end (`skills/animated-diagram/references/custom-scenes.md`) A style's own
+  comma-separated family list (unquoted names are CSS identifiers, letters, digits, `_` and `-`, not starting with a digit, joined by single spaces, and a generic keyword such as `monospace` or `ui-serif` may not start a multiword name; a name that is not one, such as `Hawaii 5-0`, is quoted; CSS-wide keywords are refused; quoted names are any text but `<>{};`, a backslash, a tab and a line break); any other CSS outside quotes is refused. For PNG and video resvg splits the list at every comma (so a quoted name with a comma never matches), removes quotes and then trims, so write the opening quote right after the comma and the closing quote right before the next comma or the end (`skills/animated-diagram/references/custom-scenes.md`) A style's own
   monospace face, when it names one, is passed here. It must be a monospace face
   whose advance is 0.6 em: the columns are fixed, so a proportional face, or a
   fixed-pitch one with another advance (Iosevka's is 0.5 em), can overflow the
@@ -896,9 +896,9 @@ media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`
 |---|---|---|---|
 | G1 | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs:41-42` | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
 | G2 | Each sampled frame MUST be well-formed (balanced tags, no stray `<`, entities only `amp lt gt quot #39 #n`). | `:12-31,43-44` | Escaping failures and broken markup break every target. |
-| G3 | No number with ≥ 5 decimals in the full SVG. | `:45-46` | Rounding (T4). |
+| G3 | No number with ≥ 5 decimals in the full SVG (the code block's own text and `<title>`/`<desc>` text excepted, §4.13). | `:45-46` | Rounding (T4). |
 | G4 | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content is not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
-| G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
+| G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output (the code block's own text excepted, §4.13). | `:50` | Silent geometry bugs. |
 | G6 | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | First frame ≠ last frame. | `:61-63` | Something must animate. |
 | G8 | `frame(duration + 5) === frame(duration)`, called raw, unclamped. | `checkScene` in `lib/check.mjs` | Holds the final frame. |
