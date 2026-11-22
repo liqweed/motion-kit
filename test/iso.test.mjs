@@ -385,12 +385,15 @@ describe("depth order of oriented solids", () => {
 		expectFront(lie(0, "y", "low"), lie(4, "x", "high"), Z, "crossing bars");
 		assert.deepEqual(orderSolids([lie(4, "x", "high"), lie(0, "y", "low")], CAMERA_PLAN).map((s) => s.id), ["low", "high"]);
 	});
-	it("orders an oriented solid against the slab it stands over, and keeps unrelated solids in a fixed order", () => {
+	it("orders an oriented solid against the slab it stands over, and puts unrelated solids by how near their centres are", () => {
 		const floor = slab({ x: 0, y: 0, w: 10, d: 10, id: "floor" });
 		const arm = rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 3, z: 0.25, id: "arm" }), { axis: "x", deg: 45, about: { x: 0, y: 0, z: 0.25 } });
 		expectFront(floor, arm, Z, "arm over floor");
 		const far = box({ x: 20, y: 20, w: 1, d: 1, h: 1, id: "far" });
-		assert.deepEqual(orderSolids([arm, far], CAMERA_ISOMETRIC), orderSolids([arm, far], CAMERA_ISOMETRIC));
+		const ids = (/** @type {{ id?: string }[]} */ list) => list.map((x) => x.id);
+		// Not separated on the screen: the nearer centre comes last (north-east is away from an isometric camera), whatever the input order.
+		assert.deepEqual(ids(orderSolids([far, arm], CAMERA_ISOMETRIC)), ["far", "arm"]);
+		assert.deepEqual(ids(orderSolids([arm, far], CAMERA_ISOMETRIC)), ["far", "arm"]);
 	});
 });
 

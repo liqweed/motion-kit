@@ -673,9 +673,12 @@ function hull(s) {
 }
 
 /**
- * `behind` for solids of which one is oriented: the separating plane of two
- * convex solids lies along a face of one or along an edge of each (the
-XX
+ * `behind` for solids of which one is oriented. If two convex solids can be
+ * separated by a plane, one lies along a face of one of them or along an edge
+ * of each (the separating-axis test), so those are the axes tried. The solid on
+ * the camera's side of a separating plane is in front. Solids that touch along
+ * a face or an edge are separated by that contact; `0` when no plane separates
+ * them (they pass through each other) or two disagree.
  * @param {ReturnType<typeof hull>} a
  * @param {ReturnType<typeof hull>} b
  * @param {{ x: number, y: number, z: number }} toCam the direction to the camera
