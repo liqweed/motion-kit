@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { checkScene, findFontLiteral } from "../lib/check.mjs";
+import { checkScene, findColourLiteral, findFontLiteral } from "../lib/check.mjs";
 import { styleWarnings } from "../lib/gate.mjs";
 import { loadScene } from "../lib/load.mjs";
 import { KIT } from "../runtime/kit.mjs";
@@ -166,6 +166,14 @@ describe("the gate and the new tokens", () => {
 		assert.equal(findFontLiteral(`<text font-family="${style.font.replace(/"/g, "&quot;")}">1</text>`, style), null);
 		assert.equal(findFontLiteral(`<text font-family="inherit">1</text>`, style), null);
 		assert.equal(findFontLiteral(`<text font-family="monospace">1</text>`, style), 'font-family="monospace"');
+		// CRLF after a backslash continues the string: no font declaration inside it.
+		assert.equal(findFontLiteral('<style>text{content:"a\\\r\n;font-family:Courier"}</style>', style), null);
+		// Attribute names are read in any case, as the live renderer does.
+		assert.equal(findColourLiteral('<rect FILL="red"/>'), 'fill="red"');
+		// A non-breaking space is no CSS whitespace, and an unknown token is no token.
+		assert.notEqual(findColourLiteral('<rect fill="var(\u00a0--mk-caution)"/>'), null);
+		assert.notEqual(findColourLiteral('<rect fill="var( --mk-unknown )"/>'), null);
+		assert.equal(findColourLiteral('<rect fill="var( --mk-caution )"/>'), null);
 		assert.match(findFontLiteral(`<text style="font-family: Courier">1</text>`, style) ?? "", /Courier/);
 		assert.match(findFontLiteral(`<text style='font-family:Courier'>1</text>`, style) ?? "", /Courier/);
 		assert.match(findFontLiteral(`<style>text{fill:red;font-family:Courier}</style>`, style) ?? "", /<style> font-family: Courier/);

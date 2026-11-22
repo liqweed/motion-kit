@@ -181,7 +181,7 @@ export function cssVars(style, theme = "light", markup) {
  * @param {string} token
  */
 export function usesToken(paint, token) {
-	return new RegExp(`var\\(\\s*--mk-${token}\\s*\\)`).test(paint);
+	return new RegExp(`var\\([ \\t\\n\\r\\f]*--mk-${token}[ \\t\\n\\r\\f]*\\)`).test(paint);
 }
 
 /**
@@ -309,7 +309,7 @@ export function paintSource(markup) {
 export function resolveTokens(markup, style, theme = "light") {
 	const s = normalizeStyle(style);
 	const resolve = (/** @type {string} */ text) =>
-		text.replace(/var\(\s*--mk-([a-zA-Z]+)\s*\)/g, (_, name) => {
+		text.replace(/var\([ \t\n\r\f]*--mk-([a-zA-Z]+)[ \t\n\r\f]*\)/g, (_, name) => {
 			// An own token only: `constructor` is no token.
 			const v = Object.hasOwn(s[theme], name) ? s[theme][name] : undefined;
 			if (!v) throw new Error(`unknown style token "${name}"`);
@@ -320,13 +320,13 @@ export function resolveTokens(markup, style, theme = "light") {
 	const escaped = (/** @type {string} */ v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 	const viaDecodedBody = (/** @type {string} */ body) => {
 		const decoded = decodeCharacterData(body);
-		if (!/var\(\s*--mk-/.test(decoded)) return resolve(body);
+		if (!/var\([ \t\n\r\f]*--mk-/.test(decoded)) return resolve(body);
 		return resolve(decoded).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 	};
 	const viaDecoded = (/** @type {string} */ raw) => {
 		if (!raw.includes("&#")) return resolve(raw);
 		const decoded = unescapeAttr(raw);
-		if (!/var\(\s*--mk-/.test(decoded)) return resolve(raw);
+		if (!/var\([ \t\n\r\f]*--mk-/.test(decoded)) return resolve(raw);
 		return escaped(resolve(decoded));
 	};
 	// Only tag spans and style bodies are rewritten: a quote in text content is text.
