@@ -9,7 +9,7 @@ import { checkScene, colourLiteral, findColourLiteral, wellFormed } from "../lib
 import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
-import { ADVICE_RULES, REASON_MAX, advice, adviceLines, applyAcknowledgements } from "../runtime/advice.mjs";
+import { ADVICE_RULES, REASON_MAX, advice, adviceLines, applyAcknowledgements, validateAcknowledgements } from "../runtime/advice.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { DEFAULT_MOTION, cubicBezier, easeIn, easeOut, easeStandard, easings, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
@@ -677,7 +677,8 @@ describe("advice and acknowledgements", () => {
 		assert.deepEqual(adviceLines(a)[0], "advice [nothing-animates]: the first and the last frame are identical");
 		assert.equal(adviceLines(a).length, 5);
 		// A step label the frame does not draw, and a scene over 12 s.
-		const loose = checkScene({ ...still, duration: 14, steps: [{ at: 14, label: "Elsewhere" }], frame: (t) => `<rect width="${t < 14 ? 50 : 100}" height="40" fill="var(--mk-accent)"/>` });
+		const loose = checkScene({ ...still, duration: 14, steps: [{ at: 14, label: "Elsewhere" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/>` });
+		assert.equal(loose.ok, true, "advice alone leaves an otherwise valid scene passing");
 		assert.deepEqual(ruleOf(loose).sort(), ["duration", "step-labels-in-frame"]);
 		assert.match(loose.advice.find((x) => x.rule === "step-labels-in-frame")?.found ?? "", /"Elsewhere" not found in the final frame/);
 	});
@@ -696,6 +697,39 @@ describe("advice and acknowledgements", () => {
 		const narrative = checkScene({ ...clipped, steps: [{ at: 1, label: "Half" }, { at: 2, label: "Not drawn" }] }, { strict: true });
 		assert.equal(narrative.ok, true);
 		assert.deepEqual(narrative.advice.map((a) => [a.rule, a.reason]), [["step-labels-in-frame", "narrative steps (stepLabelsInFrame: false)"]]);
+	});
+	it("strict mode names every open rule once and leaves the acknowledged one out", () => {
+		const scene = { ...still, duration: 14, steps: [{ at: 14, label: "Elsewhere" }], acknowledge: [{ rule: "step-labels-in-frame", reason: "Narrative steps." }] };
+		const r = checkScene(scene, { strict: true });
+		assert.deepEqual(ruleOf(r).sort(), ["duration", "nothing-animates", "step-labels-in-frame"]);
+		assert.deepEqual(r.advice.filter((a) => a.acknowledged).map((a) => a.rule), ["step-labels-in-frame"]);
+		assert.deepEqual(r.problems, ["strict mode: unacknowledged advice [nothing-animates, duration] (fix it, or acknowledge it with a reason)"]);
+	});
+	it("matches a step label by whole words of the drawing, not by the title, description or a longer word", () => {
+		const ship = { ...still, title: "Ship", description: "Ship it", steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20">Shipping</text>` };
+		assert.deepEqual(ruleOf(checkScene(ship)), ["step-labels-in-frame"]);
+		assert.deepEqual(ruleOf(checkScene({ ...ship, frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20"><tspan>Ship</tspan><tspan>now</tspan></text>` })), []);
+	});
+	it("keeps the timeline sampling dense on a long scene, within a bound", () => {
+		let calls = 0;
+		const long = { ...still, duration: 100, steps: [{ at: 100, label: "Mark" }], frame: (t) => (calls++, `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Mark</text>`) };
+		// A 0.2 s beat of bad markup is caught: 10 samples per second.
+		const beat = checkScene({ ...long, frame: (t) => (t >= 0.2 && t < 0.4 ? "<g" : long.frame(t)) });
+		assert.match(beat.problems.join("\n"), /malformed/);
+		calls = 0;
+		checkScene({ ...long, duration: 100000, steps: [{ at: 100000, label: "Mark" }] });
+		assert.ok(calls < 30000, `bounded work (${calls} frame calls)`);
+	});
+	it("bake refuses a frame count past the limit, whatever the scene acknowledges", () => {
+		const huge = { ...still, duration: 1e9, steps: [{ at: 1e9, label: "Mark" }], acknowledge: [{ rule: "duration", reason: "Narration." }] };
+		assert.throws(() => bake(huge, { fps: 15 }), /frames; the limit is/);
+		assert.throws(() => bake({ ...still, duration: Number.MAX_VALUE, steps: [{ at: 1, label: "Mark" }] }, { fps: 15 }), /the limit is/);
+	});
+	it("prints a scene's own text safely and counts a reason in characters", () => {
+		const a = advice("step-labels-in-frame", "\"a\nb\u202e\"");
+		assert.equal(a.found, "\"a\\u000ab\\u202e\"");
+		assert.throws(() => validateAcknowledgements("x", [{ rule: "duration", reason: "a\u202eb" }]), /bidirectional/);
+		assert.doesNotThrow(() => validateAcknowledgements("x", [{ rule: "duration", reason: "😀".repeat(200) }]));
 	});
 	it("refuses an acknowledgement that gives no reason, names no advice rule or names one twice", () => {
 		const ack = (acknowledge) => () => validateScene({ ...still, acknowledge });

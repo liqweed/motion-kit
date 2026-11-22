@@ -16,6 +16,9 @@
 import { renderSvg } from "./scene.mjs";
 import { num } from "./svg.mjs";
 
+/** The most frames one baked SVG or one video may hold. The duration advice (12 s) is taste; this is a resource limit, and no acknowledgement waives it. */
+export const MAX_FRAMES = 20000;
+
 /**
  * @param {import("./scene.mjs").Scene} scene
  * @param {{ fps?: number, delay?: number, idPrefix?: string, style?: any, theme?: string, background?: boolean }} [options]
@@ -28,6 +31,7 @@ export function bake(scene, options = {}) {
 	const delay = options.delay ?? 0.3;
 	const base = options.idPrefix ?? "mk-bake";
 	const total = Math.ceil(scene.duration * fps);
+	if (!Number.isFinite(total) || total > MAX_FRAMES) throw new Error(`bake: ${scene.duration} s at ${fps} fps is ${total} frames; the limit is ${MAX_FRAMES} (lower the fps or shorten the scene)`);
 	/** @param {number} t @param {string} idPrefix */
 	const render = (t, idPrefix) => renderSvg(scene, t, { ...options, standalone: true, idPrefix });
 	const frames = [];

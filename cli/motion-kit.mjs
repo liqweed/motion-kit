@@ -163,6 +163,11 @@ async function main() {
 			else {
 				try {
 					phone.scene = (await loadScene(file, await sceneOpts(file, { ...where, format: "tall" }))).scene;
+					// The tall layout ships too: strict mode holds its advice to the same standard.
+					if (strict) {
+						const open = checkScene(phone.scene, { style, strict }).advice.filter((x) => !x.acknowledged).map((x) => x.rule);
+						if (open.length) fail(`strict mode: the tall layout has unacknowledged advice [${open.join(", ")}] (fix it, or acknowledge it with a reason)`);
+					}
 				} catch (e) {
 					phone.error = e instanceof Error ? e.message : String(e);
 				}

@@ -58,6 +58,17 @@ export const ADVICE_RULES = Object.freeze({
 	}),
 });
 
+/** Control, line-separator and bidirectional-formatting characters: never printed raw. */
+const UNSAFE_TEXT = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
+
+/**
+ * A scene's own text made safe for a terminal and a manifest: each control or
+ * bidirectional character shows as its \uXXXX escape.
+ * @param {string} text
+ * @returns {string}
+ */
+export const printable = (text) => text.replace(new RegExp(UNSAFE_TEXT.source, "g"), (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`);
+
 /** @param {string} rule */
 export const isAdviceRule = (rule) => Object.hasOwn(ADVICE_RULES, rule);
 
@@ -70,7 +81,7 @@ export const isAdviceRule = (rule) => Object.hasOwn(ADVICE_RULES, rule);
 export function advice(rule, found) {
 	if (!isAdviceRule(rule)) throw new Error(`unknown advice rule "${rule}"`);
 	const { why, whenFine, alternative } = ADVICE_RULES[/** @type {keyof typeof ADVICE_RULES} */ (rule)];
-	return { rule, found, why, whenFine, alternative };
+	return { rule, found: printable(found), why, whenFine, alternative };
 }
 
 /** Longest reason a scene may give: a line for a reviewer, not an essay. */
@@ -95,8 +106,9 @@ export function validateAcknowledgements(sceneId, acknowledge) {
 			throw new Error(`${where}: ${JSON.stringify(rule)} is not an advice rule (known: ${Object.keys(ADVICE_RULES).join(", ")}); a hard rule (determinism, WCAG contrast of a drawn pair, settled steps, well-formed markup) cannot be acknowledged`);
 		}
 		if (typeof reason !== "string" || !reason.trim()) throw new Error(`${where}: "${rule}" needs a reason, one line saying why this scene breaks the rule`);
-		if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(reason)) throw new Error(`${where}: the reason for "${rule}" must be one line of plain text, without control characters`);
-		if (reason.length > REASON_MAX) throw new Error(`${where}: the reason for "${rule}" is ${reason.length} characters; keep it to ${REASON_MAX}`);
+		if (UNSAFE_TEXT.test(reason)) throw new Error(`${where}: the reason for "${rule}" must be one line of plain text, without control or bidirectional characters`);
+		const chars = [...reason].length;
+		if (chars > REASON_MAX) throw new Error(`${where}: the reason for "${rule}" is ${chars} characters; keep it to ${REASON_MAX}`);
 		if (seen.has(rule)) throw new Error(`${where}: "${rule}" is acknowledged twice`);
 		seen.add(rule);
 	}
