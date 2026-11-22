@@ -171,17 +171,53 @@ export function cssVars(style, theme = "light", markup) {
 }
 
 /**
- * The part of a frame that can paint: its tags (attributes) and `<style>`
- * bodies, without comments, text content, `<title>`, `<desc>` or metadata. A
- * label that spells `var(--mk-caution)` out is not a use of the token.
+ * The tags of a frame, read with their quoted attributes whole (a `>` inside
+ * a value does not end the tag). Comments are skipped.
+ * @param {string} markup
+ * @returns {{ name: string, attrs: { name: string, raw: string }[] }[]}
+ */
+export function svgTags(markup) {
+	const bare = markup.replace(/<!--[\s\S]*?-->/g, "");
+	const tags = [];
+	for (const m of bare.matchAll(/<([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g)) {
+		const attrs = [];
+		for (const a of m[2].matchAll(/([\w:.-]+)\s*=\s*(["'])([\s\S]*?)\2/g)) attrs.push({ name: a[1], raw: a[3] });
+		tags.push({ name: m[1], attrs });
+	}
+	return tags;
+}
+
+const CSS_STRING = /(["'])(?:\\[\s\S]|(?!\1)[^\\])*\1/;
+
+/** Replace the content of CSS strings (escapes aware) with `_`, same length. */
+function maskCssStrings(/** @type {string} */ css) {
+	return css.replace(new RegExp(CSS_STRING, "g"), (m) => m[0] + "_".repeat(m.length - 2) + m[0]);
+}
+
+/** Remove CSS comments that are not inside a string. */
+function stripCssComments(/** @type {string} */ css) {
+	return css.replace(new RegExp(`${CSS_STRING.source}|/\\*[\\s\\S]*?\\*/`, "g"), (m) => (m[0] === "/" ? " " : m));
+}
+
+/**
+ * The part of a frame that can paint: the attributes of its tags that are not
+ * metadata (`data-*`, `aria-*`, `id`, `class`) and `<style>` bodies, without
+ * comments, CSS strings, text content, `<title>`, `<desc>` or metadata. A
+ * label, a data attribute or a `content:` string that spells
+ * `var(--mk-caution)` out is not a use of the token.
  * @param {string} markup
  * @returns {string}
  */
 export function paintSource(markup) {
 	const bare = markup.replace(/<!--[\s\S]*?-->/g, "");
 	const out = [];
-	for (const [, tag] of bare.matchAll(/<([a-zA-Z][^>]*)>/g)) out.push(tag);
-	for (const [, css] of bare.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) out.push(css.replace(/\/\*[\s\S]*?\*\//g, ""));
+	for (const tag of svgTags(bare)) {
+		for (const { name, raw } of tag.attrs) {
+			if (/^(data-|aria-)|^(id|class)$/.test(name)) continue;
+			out.push(name === "style" ? maskCssStrings(stripCssComments(raw)) : raw);
+		}
+	}
+	for (const [, css] of bare.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) out.push(maskCssStrings(stripCssComments(css)));
 	return out.join("\n");
 }
 

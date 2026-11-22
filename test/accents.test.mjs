@@ -7,7 +7,7 @@ import { loadScene } from "../lib/load.mjs";
 import { KIT } from "../runtime/kit.mjs";
 import { FORMATS, renderSvg } from "../runtime/scene.mjs";
 import { num } from "../runtime/svg.mjs";
-import { CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, resolveTokens, sharedPairs, tok } from "../runtime/style.mjs";
+import { CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, paintSource, resolveTokens, sharedPairs, tok } from "../runtime/style.mjs";
 
 const EXAMPLE = fileURLToPath(new URL("../examples/release-check.scene.mjs", import.meta.url));
 const ORIGINAL = ["bg", "surface", "ink", "muted", "line", "accent", "onAccent", "emphasis"];
@@ -236,5 +236,24 @@ describe("optional token use and warnings", () => {
 		const r = contrastReport(style, undefined);
 		assert.ok(r.warnings.some((w) => w.includes("caution on bg")), r.warnings.join("; "));
 		assert.deepEqual(contrastReport("neutral", undefined).warnings, []);
+	});
+
+	describe("tag and string tokenizing", () => {
+		const style = normalizeStyle("neutral");
+		it("keeps a > inside a quoted attribute", () => {
+			assert.ok(paintSource(`<rect data-note=">" fill="var(--mk-caution)"/>`).includes("var(--mk-caution)"));
+		});
+		it("ignores data attributes and CSS strings", () => {
+			assert.ok(!paintSource(`<text data-example="var(--mk-caution)" fill="var(--mk-ink)">x</text>`).includes("caution"));
+			assert.ok(!paintSource(`<style>t::after{content:"var(--mk-alert)"}</style>`).includes("alert"));
+			assert.ok(paintSource(`<style>t{fill:var(--mk-alert)}</style>`).includes("alert"));
+		});
+		it("does not lose an escaped quote's string boundary", () => {
+			assert.match(findFontLiteral(`<style>text{content:"\\"";font-family:Courier} text::after{content:"x"}</style>`, style) ?? "", /Courier/);
+		});
+		it("keeps a comment marker inside a quoted family", () => {
+			const s = normalizeStyle({ ...NEUTRAL, name: "t", mono: '"ACME/*Mono*/", monospace' });
+			assert.equal(findFontLiteral(`<style>text{font-family:${s.mono}}</style>`, s), null);
+		});
 	});
 });
