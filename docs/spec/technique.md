@@ -369,12 +369,13 @@ functions; a colour is a token name (G4 applies).
   `stroke` (default `line`). Its id is `${idPrefix}-${name}` (`name` defaults to
   `hatch`), so it satisfies G14; a scene that draws several hatchings gives each
   its own `name`, of letters, digits and `_` only, so the last `-` ends the prefix
-  and two instances never share an id. `markup` is a `<defs>` the frame emits once, before the tracks,
+  and prefixes must be unique after `safeId` normalizes them. `name` also cannot be `title` or `desc`,
+  which `renderSvg` reserves. `markup` is a `<defs>` the frame emits once, before the tracks,
   on every frame; `fill` is `url(#id)`. The pattern is in picture units, so
   tracks that share it show one continuous hatch, and in the player, in `bake`
   and in a PNG or video export it draws the same. It makes the `idPrefix` a safe id token as `renderSvg` does; it throws for an
-  empty `idPrefix`, a `name` that is not a safe id token, a `spacing` of 0 or less, and a `width` of
-  0 or less or not below the spacing.
+  empty `idPrefix`, a `name` that is not a safe id token or is reserved, a `spacing` of 0 or less, and a `width` of
+  0 or less or not below the spacing after SVG number rounding.
 - **Track.** `drawTrack({x, y, width, height, hatch, fill, radius, opacity, id})`
   is an empty bar: a rounded rect filled with the token `fill` (default
   `surface`, `null` for none) and the `hatch` over it. It needs one of the two.
@@ -385,12 +386,14 @@ functions; a colour is a token name (G4 applies).
   of the track's, `p` the eased
   progress 0..1 of its growth), rounded at both ends all the way, so it grows as
   a pill. Nothing for `p ≤ 0`; `p ≥ 1` is the bar it rests as. `fill` is a token
-  (default `accent`).
+  (default `accent`). Give `trackWidth` and a frame-unique `id` to clip a short bar
+  to its rounded track.
 - **Growth.** `barProgress(t, {start, duration}, style)` is the bar's `p`: 0
   before `start` and exactly 1 from `barEnd(run)` = `start + duration` on, on the
   style's movement curve (`style.motion.move`, through `easings`, so it settles
   whatever curve the style names), the default curve for no style. `style` is the
-  one `frame(t, {idPrefix, style})` receives.
+  one `frame(t, {idPrefix, style})` receives. A run has a finite `start` and a
+  finite, positive `duration`; invalid runs throw rather than producing an invalid end time.
 - **Value.** `rollingValue(from, to, p)` is `from` at `p ≤ 0`, `to` itself, not a
   sum that rounds to it, at `p ≥ 1`, and between them a straight line in `p`, so
   the number and the bar, which `p` has already eased, arrive together.
@@ -407,7 +410,8 @@ functions; a colour is a token name (G4 applies).
   then its value is exactly `format(to)`, so the step frame is the settled
   frame (G6). Nothing repeats. A value that updates live beside footage is not
   this part. A scene that draws the bar's accent on the track's colour declares
-  the pair in `contrastPairs` (G12), for example `accent` on `surface` at 3.
+  the pairs in `contrastPairs` (G12), for example `accent` on `surface` at 3 and
+  `line` on `surface` at 2.5 for the hatch.
 
 ## 5. Markup
 

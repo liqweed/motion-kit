@@ -103,8 +103,8 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
 ## Bars and rolling values (derived)
 
 - **Bar:** grows from the start of its track over 0.5–0.8 s on `easeStandard`
-  (the style's movement curve), as a pill, the track already in place. The track
-  enters first (0.3–0.4 s), the bar follows after about 0.25 s.
+  (the style's movement curve), as a pill. The track starts first (0.3–0.4 s);
+  the bar follows after about 0.25 s and may begin while the track finishes fading.
 - **Value:** rolls from its start value to its end value with the bar's own
   eased progress, so the two arrive together, and shows exactly the end value
   once the bar has settled. Never a separate timer; never a count that finishes

@@ -28,6 +28,11 @@ README and follow your GitHub theme. Regenerate with `npm run media`.
   <img src="docs/media/smart-home-light.svg" alt="smart-home: a hub-and-spoke scene" width="720">
 </picture>
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/media/bars-dark.svg">
+  <img src="docs/media/bars-light.svg" alt="bars: a three-row benchmark chart" width="720">
+</picture>
+
 The interactive player (scrubber, steps, captions) needs scripts, which
 GitHub does not run: `node cli/motion-kit.mjs build examples/order-flow.json -o out/order.html`
 and open the file.

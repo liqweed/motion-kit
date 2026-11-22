@@ -196,16 +196,17 @@ ambient motion, which the canon rules out.
 
 | Need | Use |
 |---|---|
-| A hatched fill | `hatchPattern({ idPrefix, name?, stroke?, spacing?, width? })` returns `{ id, fill, markup }`: lines at 45° in a token colour (default `line`). Its id is `${idPrefix}-${name}`, so pass the `idPrefix` from `frame(t, { idPrefix, style })`; give each hatching in the scene its own `name` (letters, digits and `_`; no `-`, so ids of different prefixes never collide). Put `markup` (a `<defs>`) in the frame once, first, on every frame |
+| A hatched fill | `hatchPattern({ idPrefix, name?, stroke?, spacing?, width? })` returns `{ id, fill, markup }`: lines at 45° in a token colour (default `line`). Its id is `${safeId(idPrefix)}-${name}`, so pass the `idPrefix` from `frame(t, { idPrefix, style })` and ensure prefixes stay unique after normalization; give each hatching its own `name` (letters, digits and `_`; no `-`, `title` or `desc`). Put `markup` (a `<defs>`) in the frame once, first, on every frame |
 | An empty track | `drawTrack({ x, y, width, height, hatch, fill?, radius?, opacity?, id? })`: a rounded rect in the token `fill` (default `surface`) with the hatch over it |
-| A bar | `drawBar({ x, y, width, height, p, fill?, radius?, opacity?, id? })`: `width` is the bar's length when done (its value's share of the track's), the bar is `width * p` long and rounded at both ends as it grows. `p` is `barProgress(t, { start, duration }, style)`, which runs on the style's movement curve and is exactly 1 from `barEnd(run)` on |
-| A value | `drawValue({ x, y, to, from?, p, format?, fontSize?, anchor?, family?, opacity?, id? })` draws `format(rollingValue(from, to, p))`: the same `p` as the bar, so the number and the bar arrive together, and exactly `to` once the bar has settled. `format` is yours (units, decimals, locale: `(v) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(v) + " s"`) and returns a string |
+| A bar | `drawBar({ x, y, width, height, p, fill?, radius?, opacity?, id?, trackWidth? })`: `width` is the bar's length when done (its value's share of the track's), the bar is `width * p` long and rounded at both ends as it grows. Pass the track's width and a frame-unique `id` to clip a short bar inside its pill. `p` is `barProgress(t, { start, duration }, style)`, which runs on the style's movement curve and is exactly 1 from `barEnd(run)` on |
+| A value | `drawValue({ x, y, to, from?, p, format?, fontSize?, anchor?, family?, opacity?, id? })` draws `format(rollingValue(from, to, p))`: the same `p` as the bar, so the number and the bar arrive together, and exactly `to` once the bar has settled. Without `format`, it rounds to a whole number (`to: 0.8` settles as `1`). `format` is yours (units, decimals, locale: `(v) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(v) + " s"`) and returns a string |
 
 Anchor the value at a fixed x with `anchor: "end"` so the digits do not push the
 text sideways, and set `family` to a monospace face so they do not jitter as
 they change (the style's own monospace face is a separate piece of work). The
 bar's accent sits on the track's colour: declare `{ fg: "accent", bg: "surface",
-min: 3, use: "the bar's fill on its track" }` in `contrastPairs`.
+min: 3, use: "the bar's fill on its track" }` and `{ fg: "line", bg: "surface",
+min: 2.5, use: "the hatching on the track" }` in `contrastPairs`.
 
 **One bar per step, inside the beat.** A bar grows once and rests, and its value
 rolls with it, within one beat. Put the step's `at` at least 50 ms after

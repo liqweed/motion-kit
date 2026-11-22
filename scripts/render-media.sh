@@ -15,14 +15,17 @@ trap 'rm -rf "$tmp"' EXIT
 mk() { node cli/motion-kit.mjs "$@" >/dev/null; }
 mkdir -p "$tmp/docs/media"
 
-for s in order-flow smart-home; do
+for s in order-flow smart-home bars; do
+	scene="examples/$s.json"
+	[[ $s == bars ]] && scene="examples/bars.scene.mjs"
 	for th in light dark; do
-		mk bake "examples/$s.json" -f 16:9 --theme "$th" --background -o "$tmp/docs/media/$s-$th.svg"
+		mk bake "$scene" -f 16:9 --theme "$th" --background -o "$tmp/docs/media/$s-$th.svg"
 	done
 done
 mk icon brand/logo.scene.mjs -o "$tmp"
 files=(docs/media/order-flow-light.svg docs/media/order-flow-dark.svg
 	docs/media/smart-home-light.svg docs/media/smart-home-dark.svg
+	docs/media/bars-light.svg docs/media/bars-dark.svg
 	assets/icon.svg assets/icon.png assets/icon-animated.svg .idea/icon.svg .idea/icon_dark.svg)
 
 if $check; then

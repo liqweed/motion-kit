@@ -19,6 +19,7 @@ describe("hatchPattern", () => {
 	it("returns a frozen hatch, so its paint cannot be changed after issue", () => {
 		const h = hatchPattern({ idPrefix: "p" });
 		assert.ok(Object.isFrozen(h));
+		// @ts-expect-error Hatch fields are immutable to callers too.
 		assert.throws(() => { "use strict"; h.fill = "red"; }, TypeError);
 		assert.equal(h.fill, "url(#p-hatch)");
 	});
@@ -57,6 +58,7 @@ describe("hatchPattern", () => {
 		assert.notEqual(hatchPattern({ idPrefix: "plot", name: "alt_hatch" }).id, hatchPattern({ idPrefix: "plot-alt", name: "hatch" }).id);
 		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 0 }), /spacing/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 4, width: 4 }), /width/);
+		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 0.004, width: 0.002 }), /SVG rounding/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", stroke: "nope" }), /nope/);
 	});
 });
@@ -105,6 +107,12 @@ describe("drawBar", () => {
 		assert.match(bar(1, { fill: "emphasis" }), /var\(--mk-emphasis\)/);
 		assert.throws(() => bar(1, { fill: "nope" }), /nope/);
 	});
+	it("can clip a short bar to its track silhouette", () => {
+		const out = drawBar({ x: 0, y: 0, width: 19.2, trackWidth: 100, height: 26, p: 1, id: "row" });
+		assert.match(out, /clip-path="url\(#row-bar-clip\)"/);
+		assert.match(out, /<clipPath id="row-bar-clip"><rect x="0" y="0" width="100" height="26" rx="13"/);
+		assert.throws(() => drawBar({ x: 0, y: 0, width: 10, trackWidth: 20, height: 10, p: 1 }), /needs an id/);
+	});
 	it("refuses a p that is not a number", () => {
 		assert.throws(() => bar(NaN), /finite/);
 	});
@@ -129,6 +137,12 @@ describe("barProgress", () => {
 	it("is settled whatever curve the style names", () => {
 		const linear = normalizeStyle({ ...NEUTRAL, motion: { enter: NEUTRAL.motion.enter, move: [0, 0, 1, 1] } });
 		assert.equal(barProgress(barEnd(run) - 0.001, run, linear), 1);
+	});
+	it("settles exactly at a decimal end time and refuses invalid runs", () => {
+		const decimal = { start: 0.03, duration: 0.34 };
+		assert.equal(barProgress(barEnd(decimal), decimal), 1);
+		assert.throws(() => barEnd({ start: 1, duration: -0.5 }), /duration/);
+		assert.throws(() => barProgress(1, { start: 0, duration: NaN }), /duration/);
 	});
 });
 
@@ -234,7 +248,7 @@ describe("examples/bars.scene.mjs", () => {
 	});
 	it("grows each bar in its own step's beat and lets it rest before the step", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9" });
-		const widths = (/** @type {number} */ t) => [...scene.frame(t, { idPrefix: "x" }).matchAll(/data-bar="row-\d"[^>]*><rect[^>]* width="([\d.]+)"/g)].map((m) => Number(m[1]));
+		const widths = (/** @type {number} */ t) => [...scene.frame(t, { idPrefix: "x" }).matchAll(/data-bar="x-row-\d"[\s\S]*?<\/clipPath><\/defs><g[^>]*><rect[^>]* width="([\d.]+)"/g)].map((m) => Number(m[1]));
 		scene.steps.forEach((s, i) => {
 			const at = widths(s.at);
 			assert.equal(at.length, i + 1);

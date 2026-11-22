@@ -85,7 +85,7 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 			out.push(
 				fade(enter, {}, text({ x: pad, y: y + (fs * 1.25) / 2, "dominant-baseline": "central", "font-size": fs, "font-weight": 600, fill: tok("ink") }, labels[i])),
 				drawTrack({ x: trackX, y: ty, width: trackW, height: barH, hatch, opacity: enter, id: `row-${i}` }),
-				drawBar({ x: trackX, y: ty, width: trackW * (row.value / SCALE), height: barH, p, id: `row-${i}` }),
+				drawBar({ x: trackX, y: ty, width: trackW * (row.value / SCALE), trackWidth: trackW, height: barH, p, id: `${idPrefix}-row-${i}` }),
 				drawValue({ x: valueX, y: ty + barH / 2, to: row.value, p, format: format1, fontSize: 20, anchor: "end", family: MONO, opacity: enter, id: `row-${i}` }),
 			);
 		});
