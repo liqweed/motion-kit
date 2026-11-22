@@ -649,7 +649,7 @@ that removes every listener, observer and mark they added.
 ## 11. The gate
 
 `checkScene(scene)` (`lib/check.mjs`) samples evenly spaced times (10 per second of scene, at least 120 and at most 1200 intervals, so 121 to 1201 times)
-and stops collecting after 13 problems. It returns `problems`
+and stops its timeline sampling early after 13 problems (the later passes may add more, so 13 is not a cap on the list). It returns `problems`
 (every message that fails the scene: the hard failures and, in strict mode, one line naming the open advice), `warnings` and `advice`: what the library's
 canon says about the scene, each piece with the rule, what was found, why the
 rule exists, when breaking it is fine and what to do instead (§11.2). Advice
@@ -680,7 +680,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G13 | hard | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
 | G14 | hard | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
 | G15 | hard | If the scene defines `labelBoxes`, at each sampled time and each step time: no two boxes with `opacity` > 0 are closer than 4 px, no stem crosses another box and every box lies inside the picture (`0, 0, width, height`). `labelBoxes` MUST return an array and not throw. Each problem is reported once, at its first time. | `lib/check.mjs` (rule 9), `runtime/iso.mjs` (`labelProblems`) | Labels placed in a projected view move with the camera; nothing else checks them against one another. Opacity 0 is not drawn, so a scene hides labels while the camera moves. |
-| G16 | hard | `acknowledge`, if present, MUST be a list of `{ rule, reason }` that names advice rules only, each once, each with a one-line reason of at most 240 characters (UTF-16 code units, as `String.length` counts them). Advice a scene acknowledges is reported as acknowledged, with its reason; an acknowledgement of a rule the scene does not break is reported as unnecessary. | `runtime/advice.mjs` (`validateAcknowledgements`), `runtime/scene.mjs` (`validateScene`), `lib/check.mjs`, `lib/gate.mjs` | A deliberate break is recorded where a reviewer sees it. A hard rule, such as G1 or a drawn text pair under 4.5:1, is no advice rule and cannot be acknowledged. |
+| G16 | hard | `acknowledge`, if present, MUST be a list of `{ rule, reason }` that names advice rules only, each once, each with a one-line reason of at most 240 characters (Unicode code points, as `[...reason].length` counts them). Advice a scene acknowledges is reported as acknowledged, with its reason; an acknowledgement of a rule the scene does not break is reported as unnecessary. | `runtime/advice.mjs` (`validateAcknowledgements`), `runtime/scene.mjs` (`validateScene`), `lib/check.mjs`, `lib/gate.mjs` | A deliberate break is recorded where a reviewer sees it. A hard rule, such as G1 or a drawn text pair under 4.5:1, is no advice rule and cannot be acknowledged. |
 
 The gate checks structure, not looks. Visual review (before/after frames,
 phone size, real-time playback, dark mode) is required by
@@ -728,6 +728,11 @@ locale and rendering settings. Custom modules' arbitrary imported dependencies
 are not recursively hashed; inspect regenerated output when those change.
 
 ### 11.2 Rule classes
+
+Renderer resource limits are outside this inventory: `bake` and `video` refuse
+more than 20,000 frames (`MAX_FRAMES`, `runtime/bake.mjs`), and a non-positive
+or non-finite fps, lead or hold, whatever a scene acknowledges. They are not
+canon and cannot be acknowledged.
 
 Every rule the gate, the runtime's throws, the player and the canon texts
 state, except the walks' edge limits, which stay unclassed until #95, with its class (§11.1 *Advice, not law*). **Status** says where the rule

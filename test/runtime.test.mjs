@@ -9,7 +9,7 @@ import { checkScene, colourLiteral, findColourLiteral, wellFormed } from "../lib
 import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
-import { ADVICE_RULES, REASON_MAX, advice, adviceLines, applyAcknowledgements, validateAcknowledgements } from "../runtime/advice.mjs";
+import { ADVICE_RULES, REASON_MAX, advice, adviceLines, applyAcknowledgements, printable, validateAcknowledgements } from "../runtime/advice.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { DEFAULT_MOTION, cubicBezier, easeIn, easeOut, easeStandard, easings, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
@@ -705,6 +705,16 @@ describe("advice and acknowledgements", () => {
 		assert.deepEqual(r.advice.filter((a) => a.acknowledged).map((a) => a.rule), ["step-labels-in-frame"]);
 		assert.deepEqual(r.problems, ["strict mode: unacknowledged advice [nothing-animates, duration] (fix it, or acknowledge it with a reason)"]);
 	});
+	it("strict mode with two open rules and one acknowledged names exactly the open two", () => {
+		const scene = { ...still, duration: 14, steps: [{ at: 14, label: "Elsewhere" }], acknowledge: [{ rule: "duration", reason: "Voice-over sets the pace." }] };
+		const r = checkScene(scene, { strict: true });
+		assert.deepEqual(r.problems, ["strict mode: unacknowledged advice [nothing-animates, step-labels-in-frame] (fix it, or acknowledge it with a reason)"]);
+		assert.deepEqual(r.advice.filter((a) => a.acknowledged).map((a) => a.rule), ["duration"]);
+	});
+	it("finds a step label wrapped at a slash", () => {
+		const wrapped = { ...still, steps: [{ at: 1, label: "Archive/Dispose" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20"><tspan>Archive/</tspan><tspan>Dispose</tspan></text>` };
+		assert.deepEqual(ruleOf(checkScene(wrapped)), []);
+	});
 	it("matches a step label by whole words of the drawing, not by the title, description or a longer word", () => {
 		const ship = { ...still, title: "Ship", description: "Ship it", steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20">Shipping</text>` };
 		assert.deepEqual(ruleOf(checkScene(ship)), ["step-labels-in-frame"]);
@@ -718,17 +728,34 @@ describe("advice and acknowledgements", () => {
 		assert.match(beat.problems.join("\n"), /malformed/);
 		calls = 0;
 		checkScene({ ...long, duration: 100000, steps: [{ at: 100000, label: "Mark" }] });
-		assert.ok(calls < 30000, `bounded work (${calls} frame calls)`);
+		// 1,201 timeline samples, each rendered a few times, plus the ID probes: far below what 5,000 would cost.
+		assert.ok(calls < 12000, `bounded work (${calls} frame calls)`);
 	});
 	it("bake refuses a frame count past the limit, whatever the scene acknowledges", () => {
 		const huge = { ...still, duration: 1e9, steps: [{ at: 1e9, label: "Mark" }], acknowledge: [{ rule: "duration", reason: "Narration." }] };
 		assert.throws(() => bake(huge, { fps: 15 }), /frames; the limit is/);
 		assert.throws(() => bake({ ...still, duration: Number.MAX_VALUE, steps: [{ at: 1, label: "Mark" }] }, { fps: 15 }), /the limit is/);
 	});
+	it("bake and video pin the frame limit and reject bad fps, lead and hold", async () => {
+		const mk = (duration) => ({ ...still, duration, steps: [{ at: 1, label: "Mark" }] });
+		// bake samples frame 0 through ceil(duration × fps): 19,999 intervals fit, 20,000 do not.
+		assert.doesNotThrow(() => bake(mk(19999 / 15), { fps: 15 }));
+		assert.throws(() => bake(mk(20000 / 15), { fps: 15 }), /20001 frames; the limit is 20000/);
+		for (const fps of [0, -1, NaN]) assert.throws(() => bake(mk(2), { fps }), /fps must be a finite number above 0/);
+		// video rejects before it starts the encoder (the error names lead/hold or the limit, not ffmpeg).
+		const { renderVideo, hasFfmpeg } = await import("../lib/video.mjs");
+		if (hasFfmpeg()) {
+			await assert.rejects(renderVideo(mk(2), { out: "x.mp4", hold: -1 }), /lead and hold must be finite and not negative/);
+			await assert.rejects(renderVideo(mk(2), { out: "x.mp4", fps: 0 }), /fps must be a finite number above 0/);
+			await assert.rejects(renderVideo(mk(2000), { out: "x.mp4", fps: 30 }), /the limit is 20000/);
+		}
+	});
 	it("prints a scene's own text safely and counts a reason in characters", () => {
 		const a = advice("step-labels-in-frame", "\"a\nb\u202e\"");
 		assert.equal(a.found, "\"a\\u000ab\\u202e\"");
 		assert.throws(() => validateAcknowledgements("x", [{ rule: "duration", reason: "a\u202eb" }]), /bidirectional/);
+		assert.throws(() => validateAcknowledgements("x", [{ rule: "duration", reason: "a\u061cb" }]), /bidirectional/);
+		assert.equal(printable("a\u061cb"), "a\\u061cb");
 		assert.doesNotThrow(() => validateAcknowledgements("x", [{ rule: "duration", reason: "😀".repeat(200) }]));
 	});
 	it("refuses an acknowledgement that gives no reason, names no advice rule or names one twice", () => {
@@ -745,7 +772,7 @@ describe("advice and acknowledgements", () => {
 		// Hard rules are no advice rules: nothing acknowledges them away.
 		for (const rule of ["contrast", "determinism", "settled-steps", "markup", "wcag"]) assert.throws(ack([{ rule, reason: "no" }]), /is not an advice rule .*hard rule .* cannot be acknowledged/, rule);
 	});
-	it("lets a spec of any type acknowledge advice, and refuses a bad acknowledgement before building", () => {
+	it("lets a spec of any type acknowledge advice, and refuses a bad acknowledgement", () => {
 		const spec = { ...EXAMPLES[0], acknowledge: [{ rule: "step-labels-in-frame", reason: "The labels are captions." }] };
 		assert.deepEqual(createScene(spec, { format: "16:9", locale: "en" }).acknowledge, spec.acknowledge);
 		assert.equal(createScene(EXAMPLES[0], { format: "16:9", locale: "en" }).acknowledge, undefined);

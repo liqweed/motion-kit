@@ -161,15 +161,18 @@ async function main() {
 			const phone = {};
 			if (where.format === "tall") phone.scene = scene;
 			else {
+				let tall;
 				try {
-					phone.scene = (await loadScene(file, await sceneOpts(file, { ...where, format: "tall" }))).scene;
-					// The tall layout ships too: strict mode holds its advice to the same standard.
-					if (strict) {
-						const open = checkScene(phone.scene, { style, strict }).advice.filter((x) => !x.acknowledged).map((x) => x.rule);
-						if (open.length) fail(`strict mode: the tall layout has unacknowledged advice [${open.join(", ")}] (fix it, or acknowledge it with a reason)`);
-					}
+					tall = (await loadScene(file, await sceneOpts(file, { ...where, format: "tall" }))).scene;
 				} catch (e) {
 					phone.error = e instanceof Error ? e.message : String(e);
+				}
+				if (tall) {
+					// The tall layout ships too, so it passes the same gate; its report is told apart from the primary's.
+					const tr = checkScene(tall, { style, strict });
+					reportGate({ ...tr, warnings: [], advice: tr.advice.map((x) => ({ ...x, found: `tall layout: ${x.found}` })) });
+					if (!tr.ok) fail(`the tall layout fails the gate:\n  - ${tr.problems.join("\n  - ")}`);
+					phone.scene = tall;
 				}
 			}
 			const m = await exportSteps(scene, { out: need(a.out, "--out"), advice: r.advice, style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION, phone, ...sopts });

@@ -111,7 +111,7 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 `npm run gate`) — details and rationale in
 [`spec/technique.md` §11](spec/technique.md#11-the-gate):
 
-- Deterministic bytes at 121 sampled times; well-formed markup.
+- Deterministic bytes at 121 sampled times at least (10 per second of scene, up to 1,201); well-formed markup.
 - No numbers with ≥ 5 decimals; no colour literals (named colours included); no `NaN`/`undefined`/`Infinity`.
 - Settled step frames: at rest 1 ms before `at`, unchanged for 45 ms after it.
 - The final frame holds after `duration`.

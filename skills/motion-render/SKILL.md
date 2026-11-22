@@ -63,6 +63,8 @@ mk build spec.json -o out/page.html -f wide         # Craft Page / standalone in
 mk bake  spec.json -o out/diagram.svg -f wide --fps 12   # zero-JS animated SVG
 ```
 
+`bake` and `video` refuse more than 20,000 frames (a hard resource limit, not advice; no acknowledgement waives it): `bake` counts `ceil(duration × fps) + 1`, `video` counts `round((lead + duration + hold) × fps)`. For a very long scene lower `--fps`; `icon` bakes at 15 fps, so shorten the scene instead.
+
 A custom module whose text comes from the caller (a site's dictionary) takes
 scene options: `--options labels.json`, inline JSON, or an `.mjs` whose default
 export is `({ format, locale }) => options`. `check`, `export`, `build`, `bake`,

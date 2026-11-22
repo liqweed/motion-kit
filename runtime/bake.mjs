@@ -30,8 +30,10 @@ export function bake(scene, options = {}) {
 	const fps = options.fps ?? 15;
 	const delay = options.delay ?? 0.3;
 	const base = options.idPrefix ?? "mk-bake";
+	if (!(Number.isFinite(fps) && fps > 0)) throw new Error(`bake: fps must be a finite number above 0, got ${fps}`);
 	const total = Math.ceil(scene.duration * fps);
-	if (!Number.isFinite(total) || total > MAX_FRAMES) throw new Error(`bake: ${scene.duration} s at ${fps} fps is ${total} frames; the limit is ${MAX_FRAMES} (lower the fps or shorten the scene)`);
+	// The loop samples frame 0 through `total`: total + 1 frames.
+	if (!Number.isFinite(total) || total + 1 > MAX_FRAMES) throw new Error(`bake: ${scene.duration} s at ${fps} fps is ${total + 1} frames; the limit is ${MAX_FRAMES} (lower the fps or shorten the scene)`);
 	/** @param {number} t @param {string} idPrefix */
 	const render = (t, idPrefix) => renderSvg(scene, t, { ...options, standalone: true, idPrefix });
 	const frames = [];
