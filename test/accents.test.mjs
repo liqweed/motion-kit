@@ -179,8 +179,8 @@ describe("the gate and the new tokens", () => {
 		const nbsp = '<rect fill="var(\u00a0--mk-caution)"/>';
 		assert.ok(!cssVars(NEUTRAL, "light", nbsp).includes("--mk-caution"));
 		assert.equal(resolveTokens(nbsp, NEUTRAL), nbsp);
-		// Every CSS whitespace (space, tab, newline, CR, form feed) is read alike by the gate, the live collector and the standalone resolver.
-		const ws = '<rect fill="var(\t\f\n\r --mk-caution \t\f\n\r)"/>';
+		// Every XML-legal CSS whitespace (space, tab, newline, CR) is read alike by the gate, the live collector and the standalone resolver.
+		const ws = '<rect fill="var(\t\n\r --mk-caution \t\n\r)"/>';
 		assert.equal(findColourLiteral(ws), null);
 		assert.ok(cssVars(NEUTRAL, "light", ws).includes("--mk-caution"));
 		assert.ok(!resolveTokens(ws, NEUTRAL).includes("var("));
