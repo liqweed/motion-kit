@@ -297,7 +297,7 @@ export function paintSource(markup) {
 		for (const { name, raw } of tag.attrs) {
 			if (NON_PAINT_ATTR.test(name)) continue;
 			const value = unescapeAttr(raw);
-			out.push(name === "style" ? maskCssStrings(stripCssComments(value)) : value);
+			out.push(name.toLowerCase() === "style" ? maskCssStrings(stripCssComments(value)) : value);
 		}
 	}
 	// A stylesheet inside <metadata> still styles elements outside it (SVG 1.1, styling scope).
@@ -331,6 +331,8 @@ export function resolveTokens(markup, style, theme = "light") {
 	};
 	// Only tag spans and style bodies are rewritten: a quote in text content is text.
 	const attrs = (/** @type {string} */ span) => span.replace(/(\s)([\w:.-]+)(\s*=\s*)(["'])([\s\S]*?)\4/g, (m, sp, an, eq, q, raw) => (raw.includes("&#") && !NON_PAINT_ATTR.test(an) ? `${sp}${an}${eq}${q}${viaDecoded(raw)}${q}` : m));
+	// Without a reference or CDATA section there is nothing to decode: the plain pass above is all of it.
+	if (!/&#|<!\[CDATA\[/.test(markup)) return resolve(markup);
 	const A = `((?:"[^"]*"|'[^']*'|[^>"'])*)`;
 	return resolve(markup).replace(new RegExp(`<!--[\\s\\S]*?-->|<(style)(?=[\\s>/])${A}(?<!/)>([\\s\\S]*?)(</style\\s*>)|<([a-zA-Z][\\w:-]*)${A}>`, "gi"), (m, sName, sAttrs, body, close, name, tAttrs) => {
 		if (m.startsWith("<!--")) return m;

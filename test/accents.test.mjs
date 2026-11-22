@@ -321,6 +321,7 @@ describe("optional token use and warnings", () => {
 			assert.ok(paintSource(`<style type="">rect{fill:var(--mk-caution)}</style>`).includes("caution"));
 			assert.match(findFontLiteral(`<text FONT-FAMILY="Courier">x</text>`, style) ?? "", /Courier/);
 			assert.match(findFontLiteral(`<text STYLE="font-family:Courier">x</text>`, style) ?? "", /Courier/);
+			assert.ok(paintSource(`<rect STYLE="fill:var(--mk-caution)"/>`).includes("caution"));
 		});
 		it("accepts !important with spaces or comments, and a bare font: selector", () => {
 			assert.equal(findFontLiteral(`<style>text{font-family:inherit !/**/important}</style>`, style), null);
