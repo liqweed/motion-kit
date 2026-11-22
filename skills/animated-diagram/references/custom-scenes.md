@@ -221,7 +221,7 @@ Rules that keep it inside the canon:
 - **Reduced motion** shows the final frame, which is the settled text and the
   full band: no filter, no motion.
 - **Renderers.** The live player (in-place patch), `bake`, PNG export (resvg,
-  Chrome) and video draw the same blur. A consumer that ignores SVG filters
+  Chrome) and video use the same helper and filter parameters; the raster blur can vary with renderer, fonts and scale, and only one resvg frame is checked. A consumer that ignores SVG filters
   shows the fade and the rise only, and only mid-reveal; step frames carry no
   filter.
 - **Cost.** A blur is the most expensive thing a frame can ask the browser for.
