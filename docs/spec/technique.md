@@ -381,9 +381,9 @@ functions; a colour is a token name (G4 applies).
   [throws].
 - **Renderers.** The filter is `feGaussianBlur` in sRGB over a region of
   `x −25 %`, `y −100 %`, `width 150 %`, `height 300 %` of the element's box,
-  which holds the blur of text at least about 50 units wide. For anything
-  narrower, or a `blur` above the default, `box: {x, y, width, height}` (the
-  element's own box, finite and positive [throws]) makes the region that box
+  which holds the blur of an element at least about 50 units wide and 3 × `blur` tall. For anything
+  narrower or shallower (a zero-height rule included), or a `blur` above the default, `box: {x, y, width, height}` (the
+  element's own box, finite and positive [throws], covering the painted stroke) makes the region that box
   plus 3 × `blur` on every side (`filterUnits="userSpaceOnUse"`). The tests compare the SVG markup, baked slices and the patched DOM, and a resvg fixture of one mid-reveal frame; other renderers are not compared. The live player (its
   in-place patch updates `stdDeviation` and the group's attributes, and drops
   the group when the reveal ends), `renderSvg`, `bake`, PNG export (resvg and
