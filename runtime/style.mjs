@@ -45,6 +45,9 @@ export const TOKENS = [
  */
 export const OPTIONAL_TOKENS = Object.freeze(["caution", "onCaution", "alert", "onAlert"]);
 
+/** Where a normalized style remembers which optional tokens its author set. */
+const SET_TOKENS = Symbol("mk.setTokens");
+
 export const NEUTRAL = Object.freeze({
 	name: "neutral",
 	font: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
@@ -134,6 +137,12 @@ export function normalizeStyle(style) {
 	for (const key of /** @type {const} */ (["font", "mono"])) {
 		if (typeof out[key] !== "string" || /[<>{};\\]/.test(out[key])) throw new Error(`style "${out.name}": ${key} must be a CSS font-family list, got ${JSON.stringify(out[key])}`);
 	}
+	// Which optional tokens the author set, kept (not enumerable, so the style
+	// still compares and serializes as data) for `setsOptionalToken`: the
+	// filled-in colours no longer say.
+	// A style already normalized carries them filled in, so what it remembers wins.
+	const set = style[SET_TOKENS] ?? OPTIONAL_TOKENS.filter((t) => style.light?.[t] !== undefined || style.dark?.[t] !== undefined);
+	Object.defineProperty(out, SET_TOKENS, { value: Object.freeze([...set]), enumerable: false });
 	for (const theme of ["light", "dark"]) {
 		for (const key of Object.keys(out[theme])) {
 			if (!TOKENS.includes(key)) throw new Error(`style "${out.name}": unknown token "${key}" in ${theme}`);
@@ -238,13 +247,18 @@ const isOptionalPair = (p) => OPTIONAL_TOKENS.includes(p.fg) || OPTIONAL_TOKENS.
 /**
  * Whether the style's author set an optional token of this pair themselves.
  * Only then is a miss on a pair no scene declares worth a warning: a style
- * that leaves them at neutral's has not asked for them.
- * @param {any} style style data as given, before normalizeStyle fills it
+ * that leaves them at neutral's has not asked for them. Works on style data as
+ * given and on a normalized style (`normalizeStyle` remembers what was set);
+ * `NEUTRAL` sets none.
+ * @param {any} style
  * @param {ContrastPair} p
  */
 export function setsOptionalToken(style, p) {
-	if (!style || typeof style !== "object") return false;
-	return [p.fg, p.bg].some((t) => OPTIONAL_TOKENS.includes(t) && (style.light?.[t] !== undefined || style.dark?.[t] !== undefined));
+	if (!style || typeof style !== "object" || style === NEUTRAL) return false;
+	const tokens = [p.fg, p.bg].filter((t) => OPTIONAL_TOKENS.includes(t));
+	const remembered = style[SET_TOKENS];
+	if (remembered) return tokens.some((t) => remembered.includes(t));
+	return tokens.some((t) => style.light?.[t] !== undefined || style.dark?.[t] !== undefined);
 }
 
 /**

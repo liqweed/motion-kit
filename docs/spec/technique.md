@@ -352,7 +352,8 @@ functions; a colour is a token name (G4 applies).
   `mono` is a CSS font-family list for metrics and code (default: neutral's);
   a scene reaches it as `style.mono` and MUST NOT write a family of its own:
   [gate] `findFontLiteral` fails a `font-family` that is neither `style.font`,
-  `style.mono` nor `inherit`.
+  `style.mono` nor `inherit`, in an attribute, a `style` attribute or a `<style>`
+  element, and any `font` shorthand.
   `normalizeStyle` fills missing fields from `NEUTRAL`
   (`runtime/style.mjs:25-50,58-77`) and MUST throw on an unknown token or a
   non-`#rrggbb` value (`runtime/style.mjs:70-73`). If `dark` is absent, dark

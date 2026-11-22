@@ -63,8 +63,9 @@ provide both theme objects when they need different values. Colours must be
 neutral's (`ui-monospace`, `SF Mono`, Cascadia, Menlo, Consolas, DejaVu Sans
 Mono). A scene reaches it through the style it is given, `frame(t, { style })`:
 `text({ "font-family": style.mono, … }, "212 ms")`. A custom scene never writes a
-font family of its own: the gate fails a `font-family` that is neither
-`style.font` nor `style.mono`, as it fails a colour literal.
+font family of its own: the gate fails a `font-family` (attribute, `style`
+attribute or `<style>` element) that is neither `style.font` nor `style.mono`,
+and the `font` shorthand, which names a family too, as it fails a colour literal.
 
 `radius` (0–24, default 10) sets built-in rectangular node corners; circles,
 region borders and timeline pills retain their geometry. `stroke` (1–4,

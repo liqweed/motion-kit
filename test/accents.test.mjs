@@ -131,8 +131,21 @@ describe("the gate and the new tokens", () => {
 		const warned = styleWarnings(lowCaution);
 		assert.ok(warned.some((w) => /caution on bg/.test(w) && /scenes that declare this pair/.test(w)), warned.join("; "));
 		// And a declaring scene that leaves the pair out gets the same, as a warning only.
+		assert.deepEqual(styleWarnings(normalizeStyle(lowCaution)), warned, "the same on the normalized style the CLI passes");
 		assert.ok(contrastReport(lowCaution, sharedPairs("ink/bg")).warnings.some((w) => /caution on bg/.test(w)));
 		assert.deepEqual(contrastReport(lowCaution, sharedPairs("ink/bg")).problems, []);
+	});
+
+	it("tells a style that sets a token from one that only overrides the canvas, raw or normalized", () => {
+		const canvas = { name: "brand", light: { bg: "#a16207", surface: "#a16207" } };
+		for (const style of [canvas, normalizeStyle(canvas), normalizeStyle(normalizeStyle(canvas))]) {
+			assert.deepEqual(styleWarnings(style).filter((w) => /caution|alert/.test(w)), []);
+			assert.ok(!contrastReport(style, sharedPairs("ink/bg")).warnings.some((w) => /caution|alert/.test(w)));
+		}
+		const set = normalizeStyle({ name: "set", light: { alert: "#fecaca" } });
+		assert.ok(styleWarnings(set).some((w) => /alert on bg/.test(w)));
+		assert.ok(!styleWarnings(set).some((w) => /caution/.test(w)), "only the token that was set");
+		assert.ok(!JSON.stringify(set).includes("mk.setTokens"), "not part of the style's data");
 	});
 
 	it("fails a scene that draws caution or alert without declaring a pair for it", () => {
@@ -154,6 +167,11 @@ describe("the gate and the new tokens", () => {
 		assert.equal(findFontLiteral(`<text font-family="inherit">1</text>`, style), null);
 		assert.equal(findFontLiteral(`<text font-family="monospace">1</text>`, style), 'font-family="monospace"');
 		assert.match(findFontLiteral(`<text style="font-family: Courier">1</text>`, style) ?? "", /Courier/);
+		assert.match(findFontLiteral(`<text style='font-family:Courier'>1</text>`, style) ?? "", /Courier/);
+		assert.match(findFontLiteral(`<style>text{fill:red;font-family:Courier}</style>`, style) ?? "", /<style> font-family: Courier/);
+		assert.match(findFontLiteral(`<text style="font: 12px Courier">1</text>`, style) ?? "", /shorthand/);
+		assert.match(findFontLiteral(`<text font="12px Courier">1</text>`, style) ?? "", /shorthand/);
+		assert.equal(findFontLiteral(`<text style="font-size:12px;font-weight:600">1</text><style>text{font-size:9px}</style>`, style), null);
 		const scene = { ...draws(["accent"], sharedPairs("accent/bg")), frame: () => `<text font-family="Courier" fill="${tok("accent")}">1</text>` };
 		assert.ok(checkScene(scene).problems.some((p) => p.startsWith('font literal font-family="Courier"')));
 	});
