@@ -15,6 +15,26 @@ use neutral and say so.
 | `accent` | active/reached fill and paths |
 | `onAccent` | text/glyphs on accent |
 | `emphasis` | the one emphasis element (ring, dot) |
+| `caution` | a shared concern or a regression: a mark, stripe or fill that says "look at this" without saying "broken" |
+| `onCaution` | text/glyphs on caution |
+| `alert` | a warning, a failure or a struck-out idea |
+| `onAlert` | text/glyphs on alert |
+
+The caution and alert tokens are optional: a style that does not set them gets neutral's, in
+light and dark, and nothing in a scene that does not draw them changes. A scene
+type draws none of them; a custom scene does (`examples/release-check.scene.mjs`).
+
+**Which accent to reach for.** `accent` is the subject, what is reached or
+active. `emphasis` is the one marker that says "here" (a ring, a dot) and there
+is only one at a time. `caution` and `alert` carry a state of what the diagram
+shows, and any number of elements may carry them: caution for something to watch
+(a latency regression, a shared dependency, a degraded path), alert for
+something wrong (a failing check, a rejected idea). Do not borrow `emphasis` for
+either, and do not use caution or alert as decoration: they should read as
+"watch this" and "this is wrong" in every scene of a deck. Never tell them
+apart by hue alone; give each its word or glyph, as the example's badges do.
+Neutral keeps `caution` a yellow-gold and `alert` a red, both apart from the
+amber of `emphasis`.
 
 Scenes write `tok("accent")` → `var(--mk-accent)`. Live players set the custom
 properties (light + dark); standalone exports resolve them to literals.
@@ -25,11 +45,12 @@ properties (light + dark); standalone exports resolve them to literals.
 {
   "name": "acme",
   "font": "Inter, ui-sans-serif, system-ui, sans-serif",
+  "mono": "\"JetBrains Mono\", ui-monospace, Menlo, Consolas, monospace",
   "radius": 10,
   "stroke": 2,
   "motion": { "enter": [0.16, 1, 0.3, 1], "move": [0.4, 0, 0.2, 1] },
-  "light": { "accent": "#0a2a8a", "emphasis": "#05966a" },
-  "dark":  { "accent": "#2563eb", "emphasis": "#a7f3d0" }
+  "light": { "accent": "#0a2a8a", "emphasis": "#05966a", "caution": "#8a5a00", "alert": "#b3261e" },
+  "dark":  { "accent": "#2563eb", "emphasis": "#a7f3d0", "caution": "#ffd166", "alert": "#ff8a80", "onAlert": "#14090a" }
 }
 ```
 
@@ -37,6 +58,14 @@ Missing tokens fall back to neutral within each theme. If the entire `dark`
 object is absent, the light overrides are also applied over neutral dark;
 provide both theme objects when they need different values. Colours must be
 `#rrggbb`; unknown tokens throw.
+
+`mono` is the monospace stack, for metrics, code and coordinates; it defaults to
+neutral's (`ui-monospace`, `SF Mono`, Cascadia, Menlo, Consolas, DejaVu Sans
+Mono). A scene reaches it through the style it is given, `frame(t, { style })`:
+`text({ "font-family": style.mono, … }, "212 ms")`. A custom scene never writes a
+font family of its own: the gate fails a `font-family` (attribute, `style`
+attribute or `<style>` element) that is neither `style.font` nor `style.mono` (`inherit`, in any case, is allowed: it takes the diagram's font),
+and the `font` shorthand, which names a family too, as it fails a colour literal.
 
 `radius` (0–24, default 10) sets built-in rectangular node corners; circles,
 region borders and timeline pills retain their geometry. `stroke` (1–4,
@@ -84,6 +113,26 @@ draw where the pair carries meaning in a step frame:
 | emphasis on bg | 3 | the emphasis ring and dot on the canvas |
 | emphasis on accent | 3 | the ring around the reached node it marks: "here" told from "reached" without relying on hue |
 
+The optional tokens add pairs of their own. No scene type draws them, so they
+are not in the set a scene that declares nothing is held to; a scene that draws
+one declares it and is held to it:
+
+| Pair | Needs | Where it is drawn |
+|---|---|---|
+| caution on bg | 3 | a caution stripe, mark or outline on the canvas |
+| onCaution on caution | 4.5 | text and glyphs on a caution fill |
+| alert on bg | 3 | an alert stripe, mark or outline on the canvas |
+| onAlert on alert | 4.5 | text and glyphs on an alert fill |
+
+A scene that uses `caution`, `onCaution`, `alert` or `onAlert` without declaring a
+pair that names the token fails the gate (`draws caution but declares no contrast
+pair for it`). That check is for the token's presence: the gate does not know
+which pairs the scene really draws, so declare each pair you draw, with the
+minimum it needs (a `min: 1` on `caution/ink` passes the check and judges
+nothing). A
+style that sets one of these tokens is warned, once per run, when it misses its
+pair; a style that leaves them at neutral's is not.
+
 Exempt (`CONTRAST_EXEMPT`), each for a reason:
 
 | Pair | Why it is not checked |
@@ -110,7 +159,7 @@ uses `#1d36a8`) with a mid-tone emphasis; on a dark canvas, a light emphasis
 A custom scene says what it draws with `contrastPairs`: the gate holds the style
 to those pairs and only warns about the shared ones it leaves out. Shared pairs
 come by name from `kit.sharedPairs`; others are written out. A scene that
-declares nothing is held to every shared pair, as before, so say what you draw:
+declares nothing is held to every shared pair except the optional tokens' (caution, alert), so say what you draw:
 
 ```js
 return { …, contrastPairs: [
@@ -137,6 +186,8 @@ yes before applying it everywhere.
 
 ## Fonts
 
-Live: the page's font stack. Exports: the rasterizer uses system fonts (resvg
-falls back to Helvetica on macOS). For brand fonts in PNG/video, install the
-font on the rendering machine. Embedding fonts in SVG is out of scope.
+Live: the page's font stack (`font`, and `mono` where a scene asks for it). Exports: the rasterizer uses system fonts (resvg
+falls back to the `defaultFontFamily` `lib/raster.mjs` passes, Helvetica by
+default, and a generic `monospace` maps to that same family, so metrics can
+render in a proportional face where no monospace family is installed). For brand fonts in PNG/video, install the font on the rendering
+machine, the monospace one included. Embedding fonts in SVG is out of scope.
