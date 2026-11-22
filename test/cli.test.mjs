@@ -131,20 +131,111 @@ describe("cli", () => {
 		assert.notEqual(nl.inputHash, en.inputHash);
 		assert.match(node(CLI, "build", `${EX}order-flow.json`, "-o", join(dir, "x.html"), "--options", "{}").out, /--options apply to custom scene modules/);
 	});
+	it("every command gives the same advice on a scene over 12 s, and acknowledging it records the reason", () => {
+		const dir = join(tmp, "advice");
+		mkdirSync(dir);
+		writeFileSync(join(dir, "labels.json"), JSON.stringify({ labels: { title: "Three steps", steps: ["First", "Second", "Third"] } }));
+		const long = LABELLED.replace(/duration: [^,]+,/, "duration: 16,");
+		const plain = join(dir, "long.scene.mjs");
+		const said = join(dir, "said.scene.mjs");
+		writeFileSync(plain, long);
+		writeFileSync(said, long.replace("title: labels.title,", 'acknowledge: [{ rule: "duration", reason: "Voice-over sets the pace." }], title: labels.title,'));
+		const both = (/** @type {string[]} */ ...args) => {
+			const p = spawnSync(process.execPath, [CLI, ...args, "--options", join(dir, "labels.json")], { encoding: "utf8" });
+			return { status: p.status, out: `${p.stdout}${p.stderr}` };
+		};
+		// check: the rule, the value, why, when it is fine, the alternative; exit 0.
+		let r = both("check", plain, "-f", "16:9");
+		assert.equal(r.status, 0, r.out);
+		for (const part of [/advice \[duration\]: duration 16\.0 s exceeds 12 s/, /why: .*watched once/, /fine when: .*voice-over/, /instead: .*Split the scene/, /acknowledge: \[\{ rule: "duration"/]) assert.match(r.out, part);
+		// The other commands print the same text; strict mode fails each before it writes anything.
+		const out = (/** @type {string} */ f) => join(dir, f);
+		const commands = [["build", "-o", out("p.html")], ["export", "-o", out("exp")], ["bake", "-o", out("b.svg")], ["icon", "-o", out("icons"), "--no-png"]];
+		for (const [cmd, ...rest] of commands) {
+			r = both(cmd, plain, "-f", "1:1", ...rest);
+			assert.equal(r.status, 0, `${cmd}: ${r.out}`);
+			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/, cmd);
+			assert.match(r.out, /motion-kit: {3}fine when: /, cmd);
+		}
+		assert.equal(JSON.parse(readFileSync(out("exp/manifest.json"), "utf8")).advice[0].acknowledged, false);
+		for (const [cmd, ...rest] of commands) {
+			r = both(cmd, plain, "-f", "1:1", "--strict", ...rest.map((x) => (x.startsWith(dir) ? `${x}-strict` : x)));
+			assert.equal(r.status, 1, cmd);
+			assert.match(r.out, /scene fails the gate:\n {2}- advice \[duration\]: duration 16\.0 s exceeds 12 s .*strict mode/, cmd);
+			assert.equal(existsSync(`${rest[1]}-strict`), false, `${cmd} wrote nothing`);
+		}
+		assert.equal(both("check", plain, "-f", "16:9", "--strict").status, 1);
+		assert.equal(spawnSync(process.execPath, [CLI, "check", plain, "-f", "16:9", "--options", join(dir, "labels.json")], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "1" } }).status, 1);
+		// Acknowledged: reported with the reason, passes strict mode, and the manifest records it.
+		r = both("check", said, "-f", "16:9", "--strict");
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /ℹ .*said\.scene\.mjs: acknowledged \[duration\]: Voice-over sets the pace\. \[16:9 · en\]/);
+		assert.doesNotMatch(r.out, /fine when/);
+		for (const [cmd, ...rest] of commands) assert.equal(both(cmd, said, "-f", "1:1", "--strict", ...rest.map((x) => (x.startsWith(dir) ? `${x}-said` : x))).status, 0, cmd);
+		assert.deepEqual(both("export", said, "-f", "1:1", "-o", out("exp-said")).status, 0);
+		const { advice } = JSON.parse(readFileSync(out("exp-said/manifest.json"), "utf8"));
+		assert.deepEqual(advice.map((/** @type {any} */ a) => [a.rule, a.acknowledged, a.reason]), [["duration", true, "Voice-over sets the pace."]]);
+		// The vendored gate says the same.
+		const vendored = join(dir, "vendor");
+		run("vendor", vendored, "--adapter", "astro");
+		const v = spawnSync(process.execPath, [join(vendored, "check.mjs"), plain, "--format", "16:9", "--options", join(dir, "labels.json"), "--strict"], { encoding: "utf8" });
+		assert.equal(v.status, 1, `${v.stdout}${v.stderr}`);
+		assert.match(`${v.stdout}${v.stderr}`, /advice \[duration\]: duration 16\.0 s exceeds 12 s/);
+	});
+	it("refuses an acknowledgement without a reason, of an unknown rule or of a hard rule, and fails a hard rule whatever is acknowledged", () => {
+		const dir = join(tmp, "refused");
+		mkdirSync(dir);
+		writeFileSync(join(dir, "labels.json"), JSON.stringify({ labels: { title: "Three steps", steps: ["First", "Second", "Third"] } }));
+		const make = (/** @type {string} */ name, /** @type {string} */ ack, /** @type {string} */ body = "") => {
+			const file = join(dir, name);
+			writeFileSync(file, LABELLED.replace(/duration: [^,]+,/, "duration: 16,").replace("title: labels.title,", `acknowledge: ${ack}, title: labels.title,`).replace("\t\t\tconst w =", `\t\t\t${body}\n\t\t\tconst w =`));
+			return file;
+		};
+		const check = (/** @type {string} */ file) => {
+			const p = spawnSync(process.execPath, [CLI, "check", file, "-f", "16:9", "--options", join(dir, "labels.json")], { encoding: "utf8" });
+			return { status: p.status, out: `${p.stdout}${p.stderr}` };
+		};
+		let r = check(make("noreason.scene.mjs", '[{ rule: "duration" }]'));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /acknowledge: "duration" needs a reason, one line saying why/);
+		r = check(make("blank.scene.mjs", '[{ rule: "duration", reason: "  " }]'));
+		assert.match(r.out, /needs a reason/);
+		r = check(make("hard.scene.mjs", '[{ rule: "contrast", reason: "we like it" }]'));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /"contrast" is not an advice rule \(known: duration, .*\); a hard rule .* cannot be acknowledged/);
+		// A hard rule fails, acknowledged or not: this frame reads the clock.
+		r = check(make("clock.scene.mjs", '[{ rule: "duration", reason: "Voice-over sets the pace." }]', "const stamp = Date.now();"));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /frame\(\) reads the clock/);
+		// An acknowledgement of a rule the scene does not break is said, not failed.
+		const calm = join(dir, "calm.scene.mjs");
+		writeFileSync(calm, LABELLED.replace("title: labels.title,", 'acknowledge: [{ rule: "duration", reason: "Not needed." }], title: labels.title,'));
+		r = check(calm);
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /acknowledges \[duration\] but never breaks it/);
+	});
 	it("check passes every example in every format and locale", () => {
 		const out = run("check", `${EX}order-flow.json`, `${EX}smart-home.json`);
 		assert.equal((out.match(/✓/g) ?? []).length, 2 * 6 * 2);
 	});
-	it("check --style fails emphasis on accent, and the pairs a scene declares", () => {
+	it("check --style gives advice on emphasis on accent, and fails the pairs a scene declares", () => {
 		const dir = join(tmp, "contrast");
 		mkdirSync(dir);
 		writeFileSync(join(dir, "blue.json"), JSON.stringify({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" }, dark: { accent: "#2563eb", emphasis: "#fbbf24" } }));
-		let r = node(CLI, "check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
+		const both = (/** @type {string[]} */ ...args) => {
+			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
+			return { status: p.status, out: `${p.stdout}${p.stderr}` };
+		};
+		let r = both("check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
+		// Emphasis on accent is advice, not a WCAG failure: the style's result for the pair is
+		// shown once, with who it is advice for; order-flow (a sequence) draws it, so it is told
+		// there, and it fails only in strict mode.
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /⚠ style: blue light: emphasis on accent is 1\.13:1, needs 3:1 \(advice for: sequence, /);
+		assert.match(r.out, /ℹ .*order-flow\.json: advice \[emphasis-on-accent\]: blue light: emphasis on accent is 1\.13:1, 3:1 recommended/);
+		r = both("check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"), "--strict");
 		assert.equal(r.status, 1);
-		// The style's result for every shared pair is shown once, as a warning with who draws it;
-		// order-flow (a sequence) draws emphasis on accent, so it fails there.
-		assert.match(r.out, /⚠ style: blue light: emphasis on accent is 1\.13:1, needs 3:1 \(held against: sequence, /);
-		assert.match(r.out, /✗ .*order-flow\.json · 16:9 · en\n {2}- contrast: blue light: emphasis on accent is 1\.13:1, needs 3:1/);
+		assert.match(r.out, /✗ .*order-flow\.json · 16:9 · en\n {2}- advice \[emphasis-on-accent\]: blue light: emphasis on accent is 1\.13:1/);
 		// A lighter dark surface passes the shared pairs but not custom-pulse's bar on its track.
 		writeFileSync(join(dir, "raised.json"), JSON.stringify({ name: "raised", dark: { surface: "#2b3242" } }));
 		r = node(CLI, "check", `${EX}order-flow.json`, `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "raised.json"));

@@ -80,8 +80,14 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
   coordinates go in the spec — `skills/animated-diagram/references/scene-types.md`,
   "Auto-layout happens at build time"; `skills/animated-diagram/references/ecosystem.md`,
   the ELK.js / dagre row).
-- Bouncy/elastic/ambient/decorative motion, loops, parallax
-  (`skills/animated-diagram/references/motion-vocabulary.md`, "Banned in explainers").
+- Bouncy/elastic/ambient/decorative motion, loops, parallax: not goals, and
+  the canon advises against them
+  (`skills/animated-diagram/references/motion-vocabulary.md`, "Advice against,
+  in explainers"). The gate gives advice on the ones it can see and does not
+  fail a scene for them; a scene with a reason acknowledges it
+  (`spec/technique.md` §11.1, *Advice, not law*). A scene plays once and holds,
+  by construction, so no player or exporter loops one; an ambient display is a
+  page's own decision.
 - Shipping brand styles or icon sets: motion-kit ships only `neutral`; brands
   live in consumer repos (`README.md:79`, `iconPaths` in `runtime/parts.mjs`).
 - Font embedding in SVG (`skills/animated-diagram/references/styles.md`, "Fonts").
@@ -108,9 +114,11 @@ the cause and the remedy, e.g. `runtime/types/hub-spoke.mjs:119`).
 - Deterministic bytes at 121 sampled times; well-formed markup.
 - No numbers with ≥ 5 decimals; no colour literals (named colours included); no `NaN`/`undefined`/`Infinity`.
 - Settled step frames: at rest 1 ms before `at`, unchanged for 45 ms after it.
-- Something animates; the final frame holds after `duration`.
-- Duration ≤ 12 s (the docs say ≤ ~8–10 s; see Discrepancies in the spec).
-- Every step label visible in the final frame, unless the scene opts out.
+- The final frame holds after `duration`.
+- Advice, which never fails a scene unless strict mode is on and the scene has
+  not acknowledged it (a one-line reason names the rule it breaks on purpose):
+  something animates; duration ≤ 12 s (target ≤ 8 s); every step label visible
+  in the final frame; emphasis on accent ≥ 3:1 where a ring or dot touches it.
 - Ids come from the instance prefix: two renders with different prefixes share none.
 - No clock or randomness in `frame()` or the helpers it calls (rendered under stubbed clocks).
 - Style contrast (WCAG 4.5:1 text, 3:1 shapes, both themes) for the style in use, for the token pairs each scene draws: the scene types' own, or the pairs a custom scene declares (all shared pairs if it declares none); the shared pairs a scene does not draw are warnings.

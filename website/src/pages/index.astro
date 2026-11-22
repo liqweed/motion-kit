@@ -102,7 +102,7 @@ const brief = BRIEFS[0];
 			<div><h3>What the gate does not check</h3><p class="lede">It checks structure, not looks. <code>check</code>, <code>build</code>, <code>export</code>, <code>bake</code> and <code>video</code> all run the same gate before they write anything.</p></div>
 			<ul>
 				<li>How it looks. A human signs off on the storyboard, timing, phone size and dark mode.</li>
-				<li>Timing guidance. The hard limit is 12 s; the 8 s target, sibling stagger and entrance length are not enforced.</li>
+				<li>Timing guidance. Over 12 s is advice, not a failure: the check says why and what to do, and a scene acknowledges it with a reason. The 8 s target, sibling stagger and entrance length are not enforced.</li>
 				<li>Purity is sampled, not proved: 121 times per scene, format and locale, plus a scan of the source for clocks and randomness.</li>
 				<li>A custom scene is only checked in the locales it declares in <code>locales</code>; it must declare every one it ships.</li>
 				<li><a href="https://github.com/liqweed/motion-kit/blob/main/docs/spec/technique.md">The spec, and its list of known discrepancies</a></li>

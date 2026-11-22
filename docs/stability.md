@@ -1,7 +1,7 @@
 ---
 title: motion-kit — public API and stability
 status: draft
-last_updated: 2026-11-18
+last_updated: 2026-11-22
 ---
 
 # motion-kit — public API and stability
@@ -35,6 +35,13 @@ Two kinds of change are not breaking, even though output differs:
 - **Gate rules.** The gate may grow stricter in a minor release, when a new
   rule catches a defect (for example the rule that a scene's ids come from
   the instance prefix). The change note names the rule and how to comply.
+- **Advice.** The canon rules (spec §11.2) are advice: the set of advice rules
+  and their wording may change in any release, and advice never fails a scene
+  unless `--strict` (or `MOTION_KIT_STRICT=1`) is on. A rule moving from hard to
+  advice is not breaking; one moving from advice to hard is a gate rule growing
+  stricter, as above. The `acknowledge` field and the rule ids it names
+  (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`)
+  are public; the `advice` list in `manifest.json` is too.
 
 ## What is public
 
@@ -42,7 +49,7 @@ Two kinds of change are not breaking, even though output differs:
 
 - The scene contract: `{ id, width, height, duration, title, description,
   steps: [{ at, label, detail?, id? }], frame(t, { idPrefix, style }), stepLabelsInFrame?,
-  contrastPairs?, labelBoxes?(t) }`
+  acknowledge?: [{ rule, reason }], contrastPairs?, labelBoxes?(t) }`
   and its rules (spec §1–§8).
 - Custom scene modules: a default export `(opts) => scene`, called with
   `{ ...options, format, locale, kit }`, with optional exported `locales` for gate coverage.

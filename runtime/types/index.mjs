@@ -48,5 +48,7 @@ export const SCENE_TYPE_PAIRS = Object.freeze({
 export function createScene(spec, opts = {}) {
 	const make = SCENE_TYPES[spec.type];
 	if (!make) throw new Error(`unknown scene type "${spec.type}" (known: ${Object.keys(SCENE_TYPES).join(", ")})`);
-	return validateScene(make(spec, opts));
+	const scene = make(spec, opts);
+	// Any spec may acknowledge advice (runtime/advice.mjs); validateScene checks it.
+	return validateScene(spec.acknowledge === undefined ? scene : { ...scene, acknowledge: spec.acknowledge });
 }

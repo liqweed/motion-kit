@@ -46,7 +46,12 @@ it("gate validates finite dimensions and time, raw end hold, duration and shared
 	const scene = createScene(spec);
 	for (const extra of [{ duration: NaN }, { width: Infinity }, { steps: [{ at: -1, label: "Bad" }] }]) assert.equal(checkScene({ ...scene, ...extra }).ok, false);
 	assert.equal(checkScene({ ...scene, duration: 12 }).ok, true);
-	assert.match(checkScene({ ...scene, duration: 12.01 }).problems.join("\n"), /12 s limit/);
+	// Over 12 s is advice: the scene passes, and strict mode fails it.
+	const long = checkScene({ ...scene, duration: 12.01 });
+	assert.equal(long.ok, true);
+	assert.ok(long.advice.some((a) => a.rule === "duration"));
+	assert.match(long.advice.find((a) => a.rule === "duration")?.found ?? "", /duration 12\.0 s exceeds 12 s/);
+	assert.match(checkScene({ ...scene, duration: 12.01 }, { strict: true }).problems.join("\n"), /advice \[duration\].*strict mode/);
 	assert.match(checkScene({ ...scene, frame: (t, ctx) => scene.frame(t, ctx) + (t > scene.duration ? "<g/>" : "") }).problems.join("\n"), /after the end/);
 	assert.match(checkScene(scene, { style: { light: { onAccent: "#1d36a8" } } }).problems.join("\n"), /contrast/);
 });

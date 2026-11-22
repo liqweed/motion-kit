@@ -9,6 +9,7 @@ import { checkScene, colourLiteral, findColourLiteral, wellFormed } from "../lib
 import { bundle } from "../lib/bundle.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { loadScene } from "../lib/load.mjs";
+import { ADVICE_RULES, REASON_MAX, advice, adviceLines, applyAcknowledgements } from "../runtime/advice.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { DEFAULT_MOTION, cubicBezier, easeIn, easeOut, easeStandard, easings, progress, springStep, springTo, splitEdge, SPRING_SETTLE_X } from "../runtime/motion.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
@@ -159,11 +160,15 @@ describe("styles", () => {
 	it("holds a scene to the pairs it declares and only warns about the shared pairs it leaves out", () => {
 		// Blue accent, a mid-tone emphasis one shade off it: fine on the canvas, 1.13:1 on the accent.
 		const blue = { name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" } };
-		assert.equal(contrastReport(blue).problems.length, 2, "a scene that declares nothing is held to every shared pair");
+		// Emphasis on accent is advice, not a WCAG failure: a scene that declares nothing is still held to every other shared pair.
+		assert.equal(contrastReport(blue).problems.length, 0);
+		assert.deepEqual(contrastReport(blue).advice.map((a) => a.rule), ["emphasis-on-accent", "emphasis-on-accent"]);
 		assert.deepEqual(contrastReport(blue).warnings, []);
+		assert.ok(contrastReport({ name: "low", light: { muted: "#9a9a9a" } }).problems.length > 0, "a scene that declares nothing is held to every shared pair");
 		const drawn = sharedPairs("ink/bg", "line/bg", "accent/bg", "emphasis/bg");
 		assert.deepEqual(contrastReport(blue, drawn), {
 			problems: [],
+			advice: [],
 			warnings: [
 				"blue light: emphasis on accent is 1.13:1, 3:1 recommended (this scene does not draw it)",
 				"blue dark: emphasis on accent is 1.13:1, 3:1 recommended (this scene does not draw it)",
@@ -172,22 +177,24 @@ describe("styles", () => {
 		// Both themes, with ratio and threshold, for each pair.
 		const bleak = { name: "bleak", light: { onAccent: "#9ab0ff", emphasis: "#3b6cf0", accent: "#2563eb" }, dark: { emphasis: "#2563eb" } };
 		assert.deepEqual(contrastReport(bleak, drawn).warnings.map((w) => w.replace(/ is .*/, "")), ["bleak light: onAccent on accent", "bleak light: emphasis on accent", "bleak dark: emphasis on accent"]);
-		assert.deepEqual(contrastReport(NEUTRAL, drawn), { problems: [], warnings: [] });
+		assert.deepEqual(contrastReport(NEUTRAL, drawn), { problems: [], warnings: [], advice: [] });
 		// What a scene declares is held to the threshold it declares, text at 4.5 included.
 		assert.deepEqual(contrastReport({ name: "low", light: { muted: "#9a9a9a" } }, sharedPairs("muted/bg")).problems, ["low light: muted on bg is 2.81:1, needs 4.5:1"]);
 		// A declaration cannot weaken a shared threshold, and the shared entries cannot be edited.
 		assert.deepEqual(contrastReport({ name: "w", light: { ink: "#ffffff" } }, [{ fg: "ink", bg: "bg", min: 1 }]).problems.length, 1);
 		// The same adjacency written the other way round meets the same floor.
-		assert.equal(contrastReport({ name: "r", light: { emphasis: "#2563eb", accent: "#2563eb" } }, [{ fg: "accent", bg: "emphasis", min: 1 }]).problems.length, 2);
+		const reversed = contrastReport({ name: "r", light: { emphasis: "#2563eb", accent: "#2563eb" } }, [{ fg: "accent", bg: "emphasis", min: 1 }]);
+		assert.equal(reversed.problems.length, 0);
+		assert.match(reversed.advice.map((a) => a.found).join("\n"), /accent on emphasis is 1\.00:1, 3:1 recommended/);
 		assert.throws(() => { "use strict"; sharedPairs("ink/bg")[0].min = 1; }, TypeError);
 		// A malformed declaration is a problem and nothing else.
-		assert.deepEqual(contrastReport(NEUTRAL, [{ fg: "brand", bg: "bg", min: 3 }]), { problems: ['neutral: contrast pair 0 has unknown fg token "brand"'], warnings: [] });
+		assert.deepEqual(contrastReport(NEUTRAL, [{ fg: "brand", bg: "bg", min: 3 }]), { problems: ['neutral: contrast pair 0 has unknown fg token "brand"'], warnings: [], advice: [] });
 	});
 	it("each scene type records the shared pairs it draws, and neutral meets them all without a warning", () => {
 		const shared = new Set(CONTRAST_PAIRS);
 		for (const [type, pairs] of Object.entries(SCENE_TYPE_PAIRS)) {
 			assert.ok(pairs.length > 0 && pairs.every((p) => shared.has(p)), `${type} draws pairs from the shared list`);
-			assert.deepEqual(contrastReport(NEUTRAL, pairs), { problems: [], warnings: [] }, type);
+			assert.deepEqual(contrastReport(NEUTRAL, pairs), { problems: [], warnings: [], advice: [] }, type);
 		}
 		// Pinned per type, so dropping one (the timeline's emphasis/accent) fails here.
 		const expected = {
@@ -211,7 +218,9 @@ describe("styles", () => {
 	it("fails the built-in types on the pairs they draw, and a custom scene on the pairs it declares or, declaring none, on all", () => {
 		const blue = { name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" } };
 		const nothing = checkScene(clipped, { style: blue });
-		assert.deepEqual(nothing.problems, ["contrast: blue light: emphasis on accent is 1.13:1, needs 3:1", "contrast: blue dark: emphasis on accent is 1.13:1, needs 3:1"], "declares nothing: every shared pair, as before");
+		assert.deepEqual(nothing.problems, [], "emphasis on accent is advice, not a failure");
+		assert.deepEqual(nothing.advice.filter((a) => a.rule === "emphasis-on-accent").map((a) => a.acknowledged), [false], "declares nothing: every shared pair, so emphasis on accent is told once, for both themes");
+		assert.match(nothing.advice.find((a) => a.rule === "emphasis-on-accent")?.found ?? "", /blue light: emphasis on accent is 1\.13:1, 3:1 recommended; blue dark: emphasis on accent is 1\.13:1/);
 		// Declares what it draws, never emphasis: passes, with the warning.
 		const scene = { ...clipped, contrastPairs: sharedPairs("ink/surface", "onAccent/accent", "line/bg", "accent/bg") };
 		const r = checkScene(scene, { style: blue });
@@ -229,7 +238,10 @@ describe("styles", () => {
 		// a sequence or a hub-spoke on an emphasis under 3:1 on the canvas.
 		const hub = JSON.parse(readFileSync(new URL("../examples/smart-home.json", import.meta.url), "utf8"));
 		const seq = JSON.parse(readFileSync(new URL("../examples/order-flow.json", import.meta.url), "utf8"));
-		assert.ok(checkScene(createScene(seq, { format: "16:9", locale: "en" }), { style: blue }).problems.some((p) => /emphasis on accent is 1\.13:1/.test(p)));
+		const ring = checkScene(createScene(seq, { format: "16:9", locale: "en" }), { style: blue });
+		assert.equal(ring.ok, true);
+		assert.ok(ring.advice.some((a) => a.rule === "emphasis-on-accent" && /emphasis on accent is 1\.13:1/.test(a.found)));
+		assert.ok(checkScene(createScene(seq, { format: "16:9", locale: "en" }), { style: blue, strict: true }).problems.some((p) => /^advice \[emphasis-on-accent\]/.test(p)));
 		const faint = { name: "faint", light: { emphasis: "#f2f2f2" } }; // 1.1:1 on the white canvas
 		for (const spec of [seq, hub]) {
 			const { problems } = checkScene(createScene(spec, { format: "16:9", locale: "en" }), { style: faint });
@@ -244,7 +256,7 @@ describe("styles", () => {
 		// A type that does draw it fails: a hub-spoke labels its boxes in ink.
 		assert.ok(checkScene(createScene(hub, { format: "16:9", locale: "en" }), { style: dim }).problems.some((p) => /dim light: ink on surface/.test(p)));
 		// An empty declaration is no declaration: every shared pair is still held.
-		assert.deepEqual(checkScene({ ...clipped, contrastPairs: [] }, { style: blue }).problems, nothing.problems);
+		assert.deepEqual(checkScene({ ...clipped, contrastPairs: [] }, { style: blue }).advice, nothing.advice);
 		assert.deepEqual(checkScene(createScene(incident, { format: "16:9", locale: "en" })).warnings, [], "neutral: no warnings");
 	});
 	it("rejects unknown tokens and non-hex colours", () => {
@@ -641,5 +653,68 @@ describe("style motion", () => {
 		const scene = sceneFromModule(() => ({ id: "m", width: 10, height: 10, duration: 1, title: "t", description: "d", steps: [{ at: 1, label: "s" }], frame: (t, ctx) => ((seen = ctx.style.motion), "") }));
 		renderSvg(scene, 0, { style: { motion: CUSTOM } });
 		assert.deepEqual(seen, CUSTOM);
+	});
+});
+
+describe("advice and acknowledgements", () => {
+	const still = { id: "still", width: 100, height: 40, duration: 1, title: "Still", description: "A mark that does not move.", steps: [{ at: 1, label: "Mark" }], frame: () => `<rect width="100" height="40" fill="var(--mk-accent)"/><text x="4" y="20">Mark</text>` };
+	const ruleOf = (r) => r.advice.map((a) => a.rule);
+	it("says what a scene that breaks the canon is told, in the rule's own words", () => {
+		const r = checkScene(still);
+		assert.equal(r.ok, true);
+		assert.deepEqual(ruleOf(r), ["nothing-animates"]);
+		const [a] = r.advice;
+		assert.equal(a.acknowledged, false);
+		for (const k of ["found", "why", "whenFine", "alternative"]) assert.ok(a[k].length > 20, k);
+		assert.deepEqual(adviceLines(a)[0], "advice [nothing-animates]: the first and the last frame are identical");
+		assert.equal(adviceLines(a).length, 5);
+		// A step label the frame does not draw, and a scene over 12 s.
+		const loose = checkScene({ ...still, duration: 14, steps: [{ at: 14, label: "Elsewhere" }], frame: (t) => `<rect width="${t < 14 ? 50 : 100}" height="40" fill="var(--mk-accent)"/>` });
+		assert.deepEqual(ruleOf(loose).sort(), ["duration", "step-labels-in-frame"]);
+		assert.match(loose.advice.find((x) => x.rule === "step-labels-in-frame")?.found ?? "", /"Elsewhere" not found in the final frame/);
+	});
+	it("reports an acknowledged rule with its reason, and fails only unacknowledged advice, only in strict mode", () => {
+		const said = { ...still, acknowledge: [{ rule: "nothing-animates", reason: "A still logo mark." }] };
+		const r = checkScene(said, { strict: true });
+		assert.equal(r.ok, true);
+		assert.deepEqual(r.advice.map((a) => [a.rule, a.acknowledged, a.reason]), [["nothing-animates", true, "A still logo mark."]]);
+		assert.deepEqual(adviceLines(r.advice[0]), ["acknowledged [nothing-animates]: A still logo mark."]);
+		const strict = checkScene(still, { strict: true });
+		assert.equal(strict.ok, false);
+		assert.match(strict.problems[0], /^advice \[nothing-animates\]: .* \(strict mode: fix it, or acknowledge it with a reason\)$/);
+		assert.equal(checkScene(still).ok, true, "off by default");
+		// Acknowledging a rule nothing broke is said; a narrative scene's flag is its own acknowledgement.
+		assert.deepEqual(checkScene({ ...said, frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Mark</text>` }).unusedAcknowledgements, ["nothing-animates"]);
+		const narrative = checkScene({ ...clipped, steps: [{ at: 1, label: "Half" }, { at: 2, label: "Not drawn" }] }, { strict: true });
+		assert.equal(narrative.ok, true);
+		assert.deepEqual(narrative.advice.map((a) => [a.rule, a.reason]), [["step-labels-in-frame", "narrative steps (stepLabelsInFrame: false)"]]);
+	});
+	it("refuses an acknowledgement that gives no reason, names no advice rule or names one twice", () => {
+		const ack = (acknowledge) => () => validateScene({ ...still, acknowledge });
+		assert.doesNotThrow(ack(undefined));
+		assert.doesNotThrow(ack([{ rule: "duration", reason: "Voice-over sets the pace." }]));
+		assert.throws(ack("duration"), /acknowledge must be a list of \{ rule, reason \}/);
+		assert.throws(ack(["duration"]), /entry 0 must be \{ rule, reason \}/);
+		assert.throws(ack([{ rule: "duration" }]), /"duration" needs a reason/);
+		assert.throws(ack([{ rule: "duration", reason: " " }]), /"duration" needs a reason/);
+		assert.throws(ack([{ rule: "duration", reason: "one\ntwo" }]), /must be one line/);
+		assert.throws(ack([{ rule: "duration", reason: "x".repeat(REASON_MAX + 1) }]), /keep it to 240/);
+		assert.throws(ack([{ rule: "duration", reason: "a" }, { rule: "duration", reason: "b" }]), /acknowledged twice/);
+		// Hard rules are no advice rules: nothing acknowledges them away.
+		for (const rule of ["contrast", "determinism", "settled-steps", "markup", "wcag"]) assert.throws(ack([{ rule, reason: "no" }]), /is not an advice rule .*hard rule .* cannot be acknowledged/, rule);
+	});
+	it("lets a spec of any type acknowledge advice, and refuses a bad acknowledgement before building", () => {
+		const spec = { ...EXAMPLES[0], acknowledge: [{ rule: "step-labels-in-frame", reason: "The labels are captions." }] };
+		assert.deepEqual(createScene(spec, { format: "16:9", locale: "en" }).acknowledge, spec.acknowledge);
+		assert.equal(createScene(EXAMPLES[0], { format: "16:9", locale: "en" }).acknowledge, undefined);
+		assert.throws(() => createScene({ ...EXAMPLES[0], acknowledge: [{ rule: "duration" }] }, { format: "16:9", locale: "en" }), /needs a reason/);
+	});
+	it("keeps every rule's text complete, and the hard rules' ids out of it", () => {
+		for (const [rule, text] of Object.entries(ADVICE_RULES)) {
+			for (const k of ["title", "why", "whenFine", "alternative"]) assert.ok(text[k].length > 20, `${rule}.${k}`);
+			assert.equal(advice(rule, "x").rule, rule);
+		}
+		assert.throws(() => advice("nope", "x"), /unknown advice rule/);
+		assert.deepEqual(applyAcknowledgements([advice("duration", "16 s")], [{ rule: "duration", reason: " fine " }]).advice[0].reason, "fine");
 	});
 });
