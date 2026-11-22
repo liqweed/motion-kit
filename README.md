@@ -74,7 +74,7 @@ skills/         animated-diagram, motion-render, project-logo (Claude Code / Cra
 examples/       order-flow (sequence), smart-home (hub-spoke), incident (timeline),
                 web-stack (stack), custom-pulse (custom module),
                 isometric-swivel (custom module: isometric kit, several tokens),
-                isometric-platform (custom module: rounded slabs, grid backdrop, mark on a top face, pill tags)
+                isometric-platform (custom module: rounded slabs, grid backdrop, mark on a top face, pill tags),
                 connectors (custom module: connectors, diamond junctions, pulses),
                 text-reveal (custom module: blur-and-fade reveal, highlighter sweep)
 bench/          heavy scene for npm run bench:player (live-player frame cost)
