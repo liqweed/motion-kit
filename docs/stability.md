@@ -36,7 +36,7 @@ Two kinds of change are not breaking, even though output differs:
   rule catches a defect (for example the rule that a scene's ids come from
   the instance prefix). The change note names the rule and how to comply.
 - **Advice.** The canon rules (spec §11.2) are advice: advice wording and new advice
-  rules may change in any release (a new rule is advice only, and an unacknowledged one never fails a scene outside strict mode; a new rule that can fail a scene in strict mode is announced in the change note, as a stricter gate rule is), and advice never fails a scene
+  rules may change in any release (a new rule is advice only, and an unacknowledged one never fails a scene outside strict mode; until #95 the advisory curve, type-range, shape-style and font-size rules still refuse to build; a new rule that can fail a scene in strict mode is announced in the change note, as a stricter gate rule is), and advice never fails a scene
   unless `--strict` (or `MOTION_KIT_STRICT=1`) is on. A rule moving from hard to
   advice is not breaking; one moving from advice to hard is a gate rule growing
   stricter, as above. The `acknowledge` field and the rule ids it names
