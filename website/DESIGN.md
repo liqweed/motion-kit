@@ -97,9 +97,32 @@ use the easing curve above. The design's one motion moment,
 not yet built, is the hero's callout leaders drawing to the diagram, one at a
 time, after the scene has settled.
 
+## Decided in the build (#61, first pull request)
+
+The round drew the hero, "where it runs" and the player at 1200 px and wider.
+The build settled the rest, in `website/src/styles/site.css`:
+
+- **Below 1200 px** the 12-column grid loosens (32 px side margin) and every
+  two-column band stacks. At 720 px and below the margin is 16 px, the hero
+  heading drops to 40 / 48 and section headings to 32 / 40 (still multiples of
+  8), the figure switches to the portrait `tall` format, and callouts and their
+  legend are left out (the controls carry their own labels).
+- **Figures** are plates with the 8 px ruler, a "Fig. n" label and a row of
+  step squares (done, now, to come). The live player's own controls are drawn
+  in the design's language (square, 2 px ink edge, accent fill for play and the
+  current step).
+- **Gallery cards** are 1 px-ruled square plates with the player, the title, the
+  scene type and a "built" badge. A **needs card** has a dashed 1 px edge, a
+  hatched storyboard in place of the player, and a "needs: type" badge.
+- **The isometric showcase** is Fig. 6 on the home page, playing
+  `examples/isometric-swivel.scene.mjs` beside its step list.
+- **The motion moment**: after the hero scene has settled, the callout leaders
+  draw once, one at a time (160 ms each, the easing curve). Under reduced motion
+  and without JavaScript there is no drawing; the legend is the only key.
+- **Dark theme**: page chrome uses the site-dark tokens above. The diagrams keep
+  the neutral dark tokens (accent `#2563eb`), because accent `#1d36a8` is 1.9:1
+  on near-black and the scenes draw it as text-free shapes on the canvas.
+
 ## Not decided yet
 
-The round drew three frames in two themes. These are open and belong to #61 or
-to their own issues: the gallery and its cards, the docs pages and navigation,
-a "needs" card, the isometric showcase, any width below 1200 px, and the
-motion above.
+The docs pages and navigation (the second pull request of #61).

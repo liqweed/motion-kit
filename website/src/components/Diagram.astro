@@ -1,0 +1,29 @@
+---
+/**
+ * The first state of a live player, rendered at build time (the repository's Astro
+ * adapter does the same for a spec): the final frame, the step list and the style's
+ * colours, with the controls in place but inert. A visitor without JavaScript gets the
+ * whole diagram; the page script mounts the live player over it, so nothing moves.
+ */
+import { PLAYER_CSS, playerMarkup, themeCss } from "../../../runtime/player.mjs";
+import { claimId, claimStylesheet, newPageState } from "../../../runtime/page.mjs";
+import { styleFor } from "../scripts/site-style.mjs";
+
+interface Props {
+	scene: any;
+	id: string;
+	style?: string;
+	class?: string;
+	scrubber?: boolean;
+}
+const { scene, id: idProp, style: styleName = "studio", class: className, scrubber = false } = Astro.props;
+const page = ((Astro.locals as Record<string, any>).__motionKit ??= newPageState());
+const id = claimId(page, idProp, scene.id);
+const style = styleFor(styleName);
+const css = claimStylesheet(page) ? `<style data-mk-player-css>${PLAYER_CSS}</style>` : "";
+const tokens = `<style>${themeCss(`#${id}`, style)}</style>`;
+const markup = playerMarkup(scene, { id, style, scrubber });
+---
+
+<Fragment set:html={css + tokens} />
+<div id={id} class:list={["mk-player", "player-box", className]} data-diagram={scene.id} set:html={markup} />

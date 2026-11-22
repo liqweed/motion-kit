@@ -6,7 +6,7 @@
  * format × locale table runs the gate's construction rule (G13) live.
  */
 import { FORMAT_NAMES, FORMAT_STAGE, LOCALES, RULES, STYLE_NAMES, findExample } from "./catalog.mjs";
-import { $, chipGroup, initPage, commandBlock, failNote, fetchText, frameMarkup, h, loadScene, mount, siteTheme, styleFor } from "./site.mjs";
+import { $, chipGroup, initPage, commandBlock, failNote, fetchText, frameMarkup, h, loadScene, mount, onStep, paintProgress, siteTheme, styleFor } from "./site.mjs";
 
 initPage();
 const app = $("#ex-app");
@@ -14,7 +14,7 @@ const params = new URLSearchParams(location.search);
 const entry = findExample(app.dataset.id ?? "");
 if (!entry?.built) throw new Error("example.mjs runs on built examples only");
 
-const phone = matchMedia("(max-width: 640px)").matches;
+const phone = matchMedia("(max-width: 720px)").matches;
 const pick = (key, allowed, fallback) => (allowed.includes(params.get(key)) ? params.get(key) : fallback);
 const state = {
 	format: pick("format", FORMAT_NAMES, phone ? "tall" : "wide"),
@@ -26,8 +26,11 @@ const state = {
 const main = app;
 {
 	const live = /** @type {import("./catalog.mjs").LiveExample} */ (entry);
-	const stage = h("div", { class: "player-box" });
-	const stageBox = h("div", { class: "stage-box" }, stage);
+	// The page renders the figure's first state twice (wide, tall); keep the one that shows and mount over it.
+	const stage = /** @type {HTMLElement} */ (document.getElementById(phone ? "ex-tall" : "ex-wide"));
+	document.getElementById(phone ? "ex-wide" : "ex-tall")?.remove();
+	const stageBox = /** @type {HTMLElement} */ (document.getElementById("ex-stagebox"));
+	const figure = /** @type {HTMLElement} */ (stageBox.querySelector(".plate"));
 	const sync = () => {
 		const u = new URL(location.href);
 		for (const k of ["format", "locale", "theme", "style"]) u.searchParams.set(k, state[k]);
@@ -41,7 +44,8 @@ const main = app;
 		try {
 			const sc = await loadScene(live, { format: state.format, locale: state.locale });
 			if (mine !== token) return;
-			mount(stage, sc, { style: styleFor(state.style), theme: /** @type {any} */ (state.theme), autoplay: "visible", scrubber: true });
+			const { controller } = mount(stage, sc, { style: styleFor(state.style), theme: /** @type {any} */ (state.theme), autoplay: "visible", scrubber: true });
+			onStep(controller, (i) => paintProgress(figure.querySelector("[data-progress]"), i, sc.steps.length));
 		} catch (err) {
 			failNote(stage, new Error(`Not built for ${state.format} × ${state.locale}: ${err instanceof Error ? err.message : err}`));
 		}
@@ -49,10 +53,7 @@ const main = app;
 	}
 	const group1 = (label, key, values) =>
 		chipGroup({ label, className: "chip sm", value: state[key], options: values.map((v) => ({ value: v, label: v })), onChange: (v) => { state[key] = v; renderStage(); } });
-	main.append(
-		h("div", { class: "panel ex-toolbar" }, group1("Format", "format", FORMAT_NAMES), group1("Locale", "locale", LOCALES), group1("Theme", "theme", ["light", "dark"]), group1("Style", "style", STYLE_NAMES)),
-		h("div", { class: "stage-wrap" }, stageBox),
-	);
+	main.append(h("div", { class: "panel ex-toolbar" }, group1("Format", "format", FORMAT_NAMES), group1("Locale", "locale", LOCALES), group1("Theme", "theme", ["light", "dark"]), group1("Style", "style", STYLE_NAMES)));
 
 	/* tabs */
 	const TABS = [["frames", "Step frames"], ["spec", "Spec"], ["export", "Export"], ["gate", "Gate"]];

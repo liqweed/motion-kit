@@ -9,7 +9,7 @@ import { liveCard, plannedCard } from "./cards.mjs";
 import { $, chipGroup, initPage, failNote, h, loadScene, mount, styleFor, themeOpt } from "./site.mjs";
 
 initPage();
-const phone = matchMedia("(max-width: 640px)").matches;
+const phone = matchMedia("(max-width: 720px)").matches;
 /** @type {{ q: string, status: string, fmt: string, pins: string[] }} */
 const state = { q: "all", status: "all", fmt: "auto", pins: [] };
 const webFmt = () => (phone ? "tall" : "wide");
@@ -26,7 +26,7 @@ function filters() {
 			options: [{ value: "all", label: "Anything", hint: String(count("all")) }, ...GROUPS.map((g) => ({ value: g.key, label: g.label, hint: String(count(g.key)) }))],
 			onChange: (v) => { state.q = v; render(); },
 		}),
-		h("div", { class: "group", style: "gap:12px 24px" },
+		h("div", { class: "group", style: "gap:16px 32px" },
 			chipGroup({ label: "Status", className: "chip sm", value: state.status, options: [{ value: "all", label: "All" }, { value: "built", label: "Built today" }, { value: "needs", label: "Storyboards (needs)" }], onChange: (v) => { state.status = v; render(); } }),
 			chipGroup({ label: "Preview as", className: "chip sm", value: state.fmt, options: [{ value: "auto", label: "Web (wide/tall)" }, { value: "16:9", label: "Slide 16:9" }, { value: "9:16", label: "Reel 9:16" }], onChange: (v) => { state.fmt = v; render(); } })),
 	);
@@ -51,13 +51,13 @@ function renderCompare() {
 		const entry = LIVE.find((e) => e.id === id);
 		if (!entry) continue;
 		const stage = h("div", { class: "player-box" });
-		grid.append(h("div", { style: "display:flex;flex-direction:column;gap:8px;min-width:0" }, h("p", { style: "font-weight:600" }, entry.title, " ", h("span", { class: "mono", style: "font-weight:400;color:var(--muted);font-size:13px" }, entry.type)), stage));
+		grid.append(h("div", { style: "display:flex;flex-direction:column;gap:8px;min-width:0" }, h("p", { style: "font-weight:600" }, entry.title, " ", h("span", { class: "mono", style: "font-weight:400;color:var(--muted)" }, entry.type)), stage));
 		loadScene(entry, { format: fmt() })
 			.then((sc) => mount(stage, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "none" }))
 			.catch((err) => failNote(stage, err));
 	}
 	box.replaceChildren(
-		h("div", { style: "display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between" }, h("h2", { style: "font-size:18px;font-weight:650" }, "Compare"), h("button", { type: "button", class: "btn-sm", onClick: () => { state.pins = []; render(); $("#filters button")?.focus(); } }, "Clear")),
+		h("div", { style: "display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between" }, h("h2", { style: "font-size:24px;line-height:32px" }, "Compare"), h("button", { type: "button", class: "btn line sm", onClick: () => { state.pins = []; render(); $("#filters button")?.focus(); } }, "Clear")),
 		grid,
 	);
 }
@@ -74,8 +74,8 @@ function render() {
 					? liveCard(/** @type {any} */ (e), { format: fmt(), pin: { pressed: () => state.pins.includes(e.id), toggle: () => togglePin(e.id) } })
 					: plannedCard(/** @type {any} */ (e)),
 			);
-			return h("section", { "aria-label": g.label, style: "display:flex;flex-direction:column;gap:14px" },
-				h("div", { class: "group-head" }, h("h2", null, h("i", { "aria-hidden": "true" }), g.label), h("p", null, g.hint)),
+			return h("section", { "aria-label": g.label, style: "display:flex;flex-direction:column;gap:16px" },
+				h("div", { class: "group-head" }, h("h2", null, h("span", { class: "mark", "aria-hidden": "true" }, String(GROUPS.indexOf(g) + 1).padStart(2, "0")), g.label), h("p", null, g.hint)),
 				h("div", { class: "cards", style: state.fmt === "9:16" ? "grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr))" : "" }, cards));
 		})
 		.filter(Boolean);

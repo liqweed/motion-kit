@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 import { SCENE_TYPES, createScene } from "../runtime/types/index.mjs";
 import { checkContrast, normalizeStyle } from "../runtime/style.mjs";
-import { DEFECTS, DOCS_NAV, FORMAT_NAMES, GROUPS, LIVE, LOCALES, PLANNED, BRIEFS, STORY, STYLES, TARGETS, TRANSCRIPT, TYPES, findExample } from "../website/src/scripts/catalog.mjs";
+import { DEFECTS, DOCS_NAV, FORMAT_NAMES, GROUPS, LIVE, LOCALES, PLANNED, ISO_SHOWCASE, STORY, STYLES, TARGETS, TRANSCRIPT, TYPES, findExample } from "../website/src/scripts/catalog.mjs";
 
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 
@@ -43,8 +43,15 @@ describe("site catalog", () => {
 		assert.equal(findExample("checkout")?.built, true);
 		assert.equal(findExample("nope"), null);
 	});
-	it("hero briefs, the story and the transcript line up with their scenes", () => {
-		for (const b of BRIEFS) assert.equal(LIVE.find((e) => e.id === b.id)?.steps, b.steps, b.id);
+	it("the isometric showcase plays the isometric kit's example, a live custom scene", () => {
+		for (const id of [ISO_SHOWCASE.example, ISO_SHOWCASE.also]) {
+			const e = LIVE.find((x) => x.id === id);
+			assert.ok(e, id);
+			assert.equal(e.kind, "module", id);
+			assert.match(e.file, /^examples\/isometric-.*\.scene\.mjs$/, id);
+		}
+	});
+	it("the story and the transcript line up with their scenes", () => {
 		assert.equal(STORY.length, LIVE.find((e) => e.id === "release-pipeline")?.steps);
 		assert.equal(TRANSCRIPT.length, LIVE.find((e) => e.id === "agent-loop")?.steps);
 		assert.equal(DEFECTS.length, 5);
@@ -66,5 +73,13 @@ describe("site build", () => {
 		for (const e of [...LIVE, ...PLANNED]) assert.ok(existsSync(join(dist, "examples", e.id, "index.html")), `examples/${e.id}`);
 		const home = readFileSync(join(dist, "index.html"), "utf8");
 		assert.ok(home.includes("Give your agent the skills") && home.includes("<svg"), "landing is server-rendered, logo included");
+		// Without JavaScript the hero and the isometric showcase still show their final frame and step list.
+		assert.ok(home.includes('id="hero-wide"') && home.includes("How an order reaches the customer"), "hero figure is server-rendered");
+		assert.ok(home.includes('id="iso-wide"') && home.includes("Turned isometric"), "isometric showcase is server-rendered");
+		const dir = join(dist, "_astro");
+		const css = readdirSync(dir).filter((f) => f.endsWith(".css")).map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
+		assert.ok(css.includes("Instrument Sans") && css.includes("DM Mono"), "the site sets the Module typefaces");
+		assert.ok(!/Space Grotesk|Inter Variable|["']Inter["']/.test(css), "no Space Grotesk or Inter");
+		assert.ok(readdirSync(dir).some((f) => /instrument-sans.*\.woff2$/.test(f)) && readdirSync(dir).some((f) => /dm-mono.*\.woff2$/.test(f)), "both typefaces are self-hosted");
 	});
 });

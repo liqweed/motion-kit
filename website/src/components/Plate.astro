@@ -1,0 +1,28 @@
+---
+/**
+ * A figure plate of the Module design: 2 px edge, an 8 px ruler on the top and left,
+ * "Fig. n" and a title. The default slot is the figure; `progress` is the step squares.
+ */
+interface Props {
+	fig: string;
+	title: string;
+	titleId: string;
+	level?: "h2" | "h3";
+	progress?: boolean;
+	class?: string;
+}
+const { fig, title, titleId, level = "h2", progress = false, class: className } = Astro.props;
+const Tag = level;
+---
+
+<section class:list={["plate", className]} aria-labelledby={titleId}>
+	<span class="corner" aria-hidden="true"></span>
+	<div class="plate-body">
+		<div class="fig-head">
+			<span class="fig-no">Fig. {fig}</span>
+			<Tag id={titleId}>{title}</Tag>
+			{progress && <div class="progress" aria-hidden="true" data-progress></div>}
+		</div>
+		<slot />
+	</div>
+</section>

@@ -43,7 +43,16 @@ export const LIVE = [
 	{ id: "web-stack", group: "system", title: "A request through the layers", type: "stack", file: "examples/web-stack.json", kind: "spec", steps: 5 },
 	{ id: "custom-pulse", group: "custom", title: "Request and response", type: "custom scene", file: "examples/custom-pulse.scene.mjs", kind: "module", steps: 3 },
 	{ id: "logo", group: "custom", title: "The motion-kit mark", type: "custom scene", file: "brand/logo.scene.mjs", kind: "module", steps: 3, kit: true },
+	{ id: "isometric-swivel", group: "custom", title: "A floor plan that turns isometric", type: "custom scene", file: "examples/isometric-swivel.scene.mjs", kind: "module", steps: 3, kit: true },
+	{ id: "isometric-platform", group: "custom", title: "A platform that turns isometric", type: "custom scene", file: "examples/isometric-platform.scene.mjs", kind: "module", steps: 3, kit: true },
 ];
+
+/**
+ * The isometric showcase on the home page plays the isometric kit's example
+ * (examples/isometric-swivel.scene.mjs, issue #60). Three scene types the kit
+ * does not draw yet stay "needs" cards (PLANNED below), never faked here.
+ */
+export const ISO_SHOWCASE = { example: "isometric-swivel", also: "isometric-platform" };
 
 /**
  * `issue` is the tracker item for the type, once one exists; without it the
@@ -108,8 +117,8 @@ export const STYLES = {
 		name: "studio",
 		note: "this site",
 		file: "diagrams/studio.json",
-		font: "Inter",
-		fontStack: '"Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+		font: "Instrument Sans",
+		fontStack: '"Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
 		light: { bg: "#ffffff", surface: "#f3f4f6", ink: "#111827", muted: "#4b5563", line: "#8b929c", accent: "#1d36a8", onAccent: "#ffffff", emphasis: "#d97706" },
 		dark: { bg: "#0f1115", surface: "#1c2029", ink: "#f3f4f6", muted: "#a7adb8", line: "#6b7280", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
@@ -127,8 +136,8 @@ export const STYLES = {
 		note: "teal & rust",
 		file: "diagrams/tidewater.json",
 		motion: { enter: [0.16, 1, 0.3, 1], move: [0.23, 1, 0.32, 1] },
-		font: "Inter",
-		fontStack: '"Inter Variable", Inter, ui-sans-serif, system-ui, sans-serif',
+		font: "system-ui",
+		fontStack: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
 		light: { bg: "#ffffff", surface: "#eef6f5", ink: "#0b2a2e", muted: "#3f5f63", line: "#6f8c8e", accent: "#0f3f3b", onAccent: "#ffffff", emphasis: "#ea580c" },
 		dark: { bg: "#071a1c", surface: "#0f2a2d", ink: "#e6f4f2", muted: "#9cc0bd", line: "#4f7a7c", accent: "#0f766e", onAccent: "#ffffff", emphasis: "#fdba74" },
 	},
@@ -136,8 +145,8 @@ export const STYLES = {
 		name: "ledger",
 		note: "editorial",
 		file: "diagrams/ledger.json",
-		font: "Source Serif 4",
-		fontStack: '"Source Serif 4 Variable", "Source Serif 4", Georgia, serif',
+		font: "Georgia",
+		fontStack: 'Georgia, "Times New Roman", serif',
 		light: { bg: "#faf7f0", surface: "#f0ebe0", ink: "#1c1917", muted: "#57534e", line: "#8c8478", accent: "#5c200e", onAccent: "#ffffff", emphasis: "#3b82f6" },
 		dark: { bg: "#1a1714", surface: "#26221d", ink: "#f5f0e6", muted: "#b5ab9c", line: "#7d7468", accent: "#c2410c", onAccent: "#ffffff", emphasis: "#bfdbfe" },
 	},
@@ -145,21 +154,13 @@ export const STYLES = {
 		name: "blueprint",
 		note: "technical",
 		file: "diagrams/blueprint.json",
-		font: "JetBrains Mono",
-		fontStack: '"JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace',
+		font: "ui-monospace",
+		fontStack: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
 		light: { bg: "#eef4fb", surface: "#e1ecf8", ink: "#0b2545", muted: "#2f4a6b", line: "#5b7aa0", accent: "#172554", onAccent: "#ffffff", emphasis: "#d9480f" },
 		dark: { bg: "#0b1f3a", surface: "#11294b", ink: "#e6f0ff", muted: "#a9c1e0", line: "#5f86b8", accent: "#2563eb", onAccent: "#ffffff", emphasis: "#fbbf24" },
 	},
 };
 export const STYLE_NAMES = Object.keys(STYLES);
-
-/** The agent session in the hero: one brief per real scene. */
-export const BRIEFS = [
-	{ id: "order-flow", label: "Order flow", prompt: "Explain how an order reaches the customer, in plain language.", file: "diagrams/order-flow.json", type: "sequence", steps: 6 },
-	{ id: "smart-home", label: "Home hub", prompt: "What does the home hub connect? One step per device.", file: "diagrams/smart-home.json", type: "hub-spoke", steps: 6 },
-	{ id: "release-pipeline", label: "Release pipeline", prompt: "Walk through our release, from commit to published media.", file: "diagrams/release-pipeline.json", type: "sequence", steps: 5 },
-	{ id: "integrations", label: "Integrations", prompt: "Show the seven tools our platform plugs into.", file: "diagrams/integrations.json", type: "hub-spoke", steps: 8 },
-];
 
 export const PROOFS = [
 	{ h: "Same t, same bytes", p: "Rendering a time twice gives identical output, in Node and in the browser." },

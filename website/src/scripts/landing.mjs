@@ -6,10 +6,10 @@
  */
 import { linkSteps, scrollSteps } from "../../../runtime/links.mjs";
 import { stepIndexAt } from "../../../runtime/scene.mjs";
-import { BRIEFS, DEFECTS, LIVE, PLANNED, STORY, STYLES, TRANSCRIPT, TYPES } from "./catalog.mjs";
-import { liveCard } from "./cards.mjs";
+import { DEFECTS, ISO_SHOWCASE, LIVE, PLANNED, STORY, STYLES, TRANSCRIPT } from "./catalog.mjs";
+import { liveCard, plannedCard } from "./cards.mjs";
 import {
-	$, CONTRAST_PAIRS, chipGroup, initPage, contrastOf, contrastProblems, failNote, frameMarkup, h, loadScene, mount, onStep, reducedMotion, styleFor, themeOpt,
+	$, CONTRAST_PAIRS, chipGroup, contrastOf, contrastProblems, failNote, frameMarkup, h, initPage, keyControls, loadScene, mount, onStep, paintProgress, reducedMotion, siteTheme, styleFor, themeOpt,
 } from "./site.mjs";
 
 initPage();
@@ -19,77 +19,78 @@ const find = (id) => {
 	if (!e) throw new Error(`site catalog has no live example "${id}"`);
 	return e;
 };
-const phone = matchMedia("(max-width: 640px)").matches;
+const phone = matchMedia("(max-width: 720px)").matches;
 const wideFmt = phone ? "tall" : "wide";
 
+/**
+ * A figure is server-rendered twice, wide and tall; CSS shows one. Mount the
+ * live player over whichever shows, and the other if the window crosses the
+ * breakpoint later.
+ * @param {string} base id prefix of the two containers ("hero" for hero-wide and hero-tall)
+ * @param {(el: HTMLElement, format: "wide" | "tall") => void} mountOne
+ */
+function responsive(base, mountOne) {
+	const mounted = new Set();
+	const go = () => {
+		for (const format of /** @type {const} */ (["wide", "tall"])) {
+			const el = document.getElementById(`${base}-${format}`);
+			if (el && el.offsetParent !== null && !mounted.has(format)) {
+				mounted.add(format);
+				mountOne(el, format);
+			}
+		}
+	};
+	go();
+	matchMedia("(max-width: 720px)").addEventListener("change", go);
+}
 
 /* ---------------------------------------------------------------- hero */
 
-/** @type {(() => void)[]} */
-let heroStops = [];
-let heroToken = 0;
+const heroEntry = find("order-flow");
+const heroStyle = styleFor("studio");
+const heroPlate = $("#hero-fig .plate");
 
-async function renderHero(briefId) {
-	const token = ++heroToken;
-	heroStops.forEach((s) => s());
-	heroStops = [];
-	const brief = BRIEFS.find((b) => b.id === briefId) ?? BRIEFS[0];
-	const entry = find(brief.id);
-	const st = styleFor("studio");
-
-	$("#brief-prompt").textContent = brief.prompt;
-	const ok = (text, cmd) => h("li", null, h("b", null, "✓"), h("span", null, text, cmd ? h("code", null, cmd) : null));
-	$("#brief-lines").replaceChildren(
-		ok(`Storyboard: ${brief.steps} steps, one sentence each. Approved by you.`),
-		ok(`Wrote a ${brief.type} spec`, brief.file),
-		ok("Gate passes: 6 formats × 2 locales.", `motion-kit check ${brief.file}`),
-		ok("Rendered: live player, slide frames, README SVG, 9:16 reel."),
-		h("li", { class: "wait" }, h("b", null, "◆"), h("span", null, "Waiting for your sign-off on the look.")),
-	);
-
+/* The frames of "where it runs" follow the hero player's step. */
+/** @type {{ shots: any[][], shown: number, steps: number } | null} */
+let heroFrames = null;
+(async () => {
 	try {
-		const [web, slide, readme, reel] = await Promise.all([
-			loadScene(entry, { format: wideFmt }),
-			loadScene(entry, { format: "16:9" }),
-			loadScene(entry, { format: "wide" }),
-			loadScene(entry, { format: "9:16" }),
+		const [slide, readme, reel] = await Promise.all([
+			loadScene(heroEntry, { format: "16:9" }),
+			loadScene(heroEntry, { format: "wide" }),
+			loadScene(heroEntry, { format: "9:16" }),
 		]);
-		if (token !== heroToken) return;
-		const { controller } = mount($("#hero-stage"), web, { style: st, theme: "dark", autoplay: "visible" });
-		const shots = [[$("#shot-slide"), slide], [$("#shot-readme"), readme], [$("#shot-reel"), reel]];
-		let shownStep = -2;
-		const paint = (i) => {
-			const k = Math.max(i, 0);
-			if (k === shownStep) return;
-			shownStep = k;
-			for (const [el, sc] of shots) el.innerHTML = frameMarkup(sc, sc.steps[Math.min(k, sc.steps.length - 1)].at, { style: st, theme: "dark" });
-		};
-		let raf = 0;
-		let alive = true;
-		const readout = $("#readout");
-		const tick = () => {
-			if (!alive) return;
-			const t = controller.time;
-			const i = stepIndexAt(web, t);
-			paint(i);
-			const text = `frame(t) at t = ${t.toFixed(2)} s · step ${i + 1} of ${web.steps.length} · one scene, four targets`;
-			if (readout.textContent !== text) readout.textContent = text;
-			raf = requestAnimationFrame(tick);
-		};
-		raf = requestAnimationFrame(tick);
-		heroStops.push(() => {
-			alive = false;
-			cancelAnimationFrame(raf);
-		});
+		heroFrames = { shots: [[$("#shot-slide"), slide], [$("#shot-readme"), readme], [$("#shot-reel"), reel]], shown: -2, steps: slide.steps.length };
+		paintFrames(heroFrames.steps - 1);
 	} catch (err) {
-		if (token === heroToken) failNote($("#hero-stage"), err); // an obsolete request must not overwrite a newer brief
+		failNote($("#shot-slide"), err);
 	}
+})();
+/** @param {number} i step index, -1 before the first */
+function paintFrames(i, force = false) {
+	if (!heroFrames) return;
+	const k = Math.max(i, 0);
+	if (k === heroFrames.shown && !force) return;
+	heroFrames.shown = k;
+	for (const [el, sc] of heroFrames.shots) el.innerHTML = frameMarkup(sc, sc.steps[Math.min(k, sc.steps.length - 1)].at, { style: heroStyle, theme: siteTheme() });
 }
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => paintFrames(heroFrames?.shown ?? 0, true));
 
-$("#brief-chips").append(
-	chipGroup({ label: "Brief", showLabel: false, value: BRIEFS[0].id, options: BRIEFS.map((b) => ({ value: b.id, label: b.label })), onChange: renderHero }),
-);
-renderHero(BRIEFS[0].id);
+responsive("hero", async (el, format) => {
+	try {
+		const sc = await loadScene(heroEntry, { format: format === "wide" ? "16:9" : "tall" });
+		const { controller } = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: "visible" });
+		onStep(controller, (i) => {
+			paintProgress($("[data-progress]", heroPlate), i, sc.steps.length);
+			paintFrames(i);
+			const readout = $("#readout");
+			if (readout) readout.textContent = `frame(t) at step ${Math.max(i, 0) + 1} of ${sc.steps.length} · one scene, four targets`;
+		});
+		keyControls(el, controller, { legend: $("#hero-legend"), callouts: $("#hero-callouts"), plate: heroPlate });
+	} catch (err) {
+		failNote(el, err);
+	}
+});
 
 /* ---------------------------------------------------- 01 transcript ↔ player */
 
@@ -101,7 +102,7 @@ renderHero(BRIEFS[0].id);
 		const lines = TRANSCRIPT.map((l, i) =>
 			h(
 				"button",
-				{ type: "button", class: "line", "data-mk-step": String(i), "aria-label": `${l.who}: ${l.text}${l.cmd ? ` ${l.cmd}` : ""}. Shows step ${i + 1}.` },
+				{ type: "button", class: "tline", "data-mk-step": String(i), "aria-label": `${l.who}: ${l.text}${l.cmd ? ` ${l.cmd}` : ""}. Shows step ${i + 1}.` },
 				h("span", { class: `who${l.who === "You" ? " you" : ""}` }, l.who),
 				h("span", { class: "body" }, l.text, l.cmd ? h("code", null, l.cmd) : null),
 				h("span", { class: "tag" }, `step ${i + 1}`),
@@ -135,7 +136,7 @@ function showDefect(i) {
 }
 defectList.append(
 	chipGroup({
-		label: "A mistake to try", showLabel: false, className: "defect", value: "0",
+		label: "A mistake to try", showLabel: false, className: "chip defect", value: "0",
 		options: DEFECTS.map((d, i) => ({ value: String(i), label: d.title, hint: d.rule })),
 		onChange: (v) => showDefect(Number(v)),
 	}),
@@ -173,7 +174,7 @@ async function showStyle(name) {
 const swatch = (s) => h("span", { class: "sw", "aria-hidden": "true" }, ...[s.light.accent, s.light.emphasis, s.light.surface].map((c) => h("i", { style: `background:${c}` })));
 $("#style-tabs").append(
 	chipGroup({
-		label: "Style", showLabel: false, className: "style-tab", value: "tidewater",
+		label: "Style", showLabel: false, className: "chip style-tab", value: "tidewater",
 		options: Object.values(STYLES).map((s) => ({ value: s.name, label: s.name, content: [swatch(s), h("span", null, h("b", null, s.name), h("small", null, s.note))] })),
 		onChange: showStyle,
 	}),
@@ -204,10 +205,30 @@ showStyle("tidewater");
 	}
 })();
 
-/* ------------------------------------------------------- 05 gallery teaser */
+/* ------------------------------------------------------- 06 isometric showcase */
+
+{
+	const isoEntry = find(ISO_SHOWCASE.example);
+	const plate = $("#isometric .plate");
+	const items = [...document.querySelectorAll("#iso-steps li")];
+	responsive("iso", async (el, format) => {
+		try {
+			const sc = await loadScene(isoEntry, { format: format === "wide" ? "16:9" : "tall" });
+			const { controller } = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "visible" });
+			onStep(controller, (i) => {
+				paintProgress($("[data-progress]", plate), i, sc.steps.length);
+				items.forEach((li, j) => (j === i ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current")));
+			});
+		} catch (err) {
+			failNote(el, err);
+		}
+	});
+}
+
+/* ------------------------------------------------------- 07 gallery teaser */
 
 {
 	const live = ["order-flow", "pull-request", "smart-home", "incident", "web-stack", "checkout"].map(find);
-	$("#teaser").append(...live.map((e) => liveCard(e, { format: wideFmt, surface: true })));
-	$("#gal-lede").textContent = `${LIVE.length} diagrams run live today, across ${TYPES.length} scene types and your own custom scenes. ${PLANNED.length} more are storyboarded and marked “needs”: their scene types are not built.`;
+	$("#teaser").append(...live.map((e) => liveCard(e, { format: wideFmt })));
+	$("#teaser-needs").append(...PLANNED.map((e) => plannedCard(e)));
 }
