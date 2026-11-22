@@ -96,8 +96,9 @@ describe("codeBlock", () => {
 	});
 
 	it("refuses wide characters and over-indented lines that cannot wrap", () => {
-		assert.throws(() => codeBlock({ lines: ["ok", "日本"], x: 0, y: 0, width: 400 }), /line 2 has "日".*wider than one column/);
-		for (const ch of ["\u{18D00}", "\u{18D8F}", "\u{1F3FB}", "\u{1F3FF}"]) assert.throws(() => codeBlock({ lines: ["ok", ch], x: 0, y: 0, width: 400 }), /wider than one column/, String(ch.codePointAt(0)));
+		assert.throws(() => codeBlock({ lines: ["ok", "日本"], x: 0, y: 0, width: 400 }), /line 2 has "日".*not known to fit one column/);
+		for (const ch of ["\u{18D00}", "\u{18D8F}", "\u{18D90}", "\u{18DF2}", "\u{1F3FB}", "\u{1F3FF}", "\u1160", "\uFFA0", "\u2630", "\u{1D300}"]) assert.throws(() => codeBlock({ lines: ["ok", ch], x: 0, y: 0, width: 400 }), /not known to fit one column/, String(ch.codePointAt(0)));
+		assert.doesNotThrow(() => codeBlock({ lines: ["é ß Ж λ → ≤ │ … €"], x: 0, y: 0, width: 400 }));
 		assert.throws(() => codeBlock({ lines: ["a 😀"], x: 0, y: 0, width: 400 }), /line 1 has/);
 		assert.throws(() => codeBlock({ lines: [" ".repeat(50) + "x"], x: 0, y: 0, width: 300, overflow: "wrap" }), /line 1 is indented 50 columns.*cannot wrap/);
 		assert.throws(() => block({ radius: -1 }), /must not be negative/);
@@ -371,11 +372,16 @@ describe("codeBlock input hardening", () => {
 		const b = codeBlock({ lines: ["color: var(--mk-accent)"], x: 0, y: 0, width: 400 });
 		const scene = { id: "s", title: "t", description: b.text, width: 400, height: 100, duration: 1, steps: [], frame: () => drawCode(b, 0, [{ lines: [1, 1], start: 0 }]) };
 		const svg = renderSvg(scene, 1, { standalone: true });
-		assert.match(svg.split("</desc>")[1], /<tspan[^>]*>color: var\(&#45;-mk-accent\)<\/tspan>/);
+		const text = (/** @type {string} */ markup) => [...markup.split("</desc>")[1].matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map((m) => m[1].replace(/&#45;/g, "-")).join("|");
+		assert.equal(text(svg), "color: var(--mk-accent)");
 		assert.ok(svg.includes("<desc id=\"s-desc\">color: var(--mk-accent)</desc>"), "the description keeps the exact text");
 		const odd = codeBlock({ lines: ["var(--mk-nope)"], x: 0, y: 0, width: 400 });
 		const s2 = { ...scene, frame: () => drawCode(odd, 0, [{ lines: [1, 1], start: 0 }]) };
-		assert.doesNotThrow(() => renderSvg(s2, 1, { standalone: true }));
+		assert.equal(text(renderSvg(s2, 1, { standalone: true })), "var(--mk-nope)");
+	});
+
+	it("refuses a font that names a token", () => {
+		assert.throws(() => block({ font: "'var(--mk-nope)', monospace" }), /font/);
 	});
 
 	it("keeps the band's marker off the code", () => {

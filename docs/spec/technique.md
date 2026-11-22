@@ -335,11 +335,14 @@ functions; a colour is a token name (G4 applies).
   space that fits (a word longer than the row is hard-broken) with the continuation indented two columns past the line's own
   indent, but never past a quarter of the block's columns (`"wrap"`; a line that must wrap and is indented by half the columns, rounded down, or more is refused), or cut
   with `…` in the last column (`"clip"`). Code taller than `maxHeight` is
-  refused. Each error names the line and the remedies: shorten it, choose
+  refused. Each error caused by a line names it, with the remedies: shorten it, choose
   `wrap` or `clip`, give the block more width or height (another format), or show
   fewer lines (one scene per snippet; a longer walkthrough is several scenes or
-  a deck with one click per range). A character wider than one cell (CJK,
-  emoji) is refused, naming the line: the block is a grid of one-column cells. The text of every line, wrapped or clipped
+  a deck with one click per range). The panel needs room for eight columns of code, whatever the lines
+  say. Only characters known to take one cell are accepted (Latin, Greek,
+  Cyrillic, common punctuation and symbols); any other, such as CJK, emoji,
+  combining marks or invisible letters, is refused, naming the line: the block
+  is a grid of one-column cells. The text of every line, wrapped or clipped
   or not, stays in `block.text` and `block.rangeText(from, to)`, for the
   scene's `description` and its step `detail`s.
 - **Roles.** `CODE_ROLES` maps `code`, `keyword`, `string` and `comment` to a

@@ -114,8 +114,15 @@ function expandTabs(s, tabSize, col) {
 	return out;
 }
 
-/** Characters that take two cells (CJK, Tangut, Nüshu, supplementary kana, full-width forms, emoji) and regional indicators (flag sequences): a column grid cannot hold them. */
-const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{16FE0}-\u{16FE4}\u{17000}-\u{18D8F}\u{1AFF0}-\u{1B2FF}\u{1F1E6}-\u{1F1FF}\u{1F200}-\u{1F2FF}\u{1F3FB}-\u{1F3FF}\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
+/**
+ * The characters the grid accepts: ones known to take exactly one cell. Basic
+ * Latin, Latin-1 to the spacing modifiers, Greek, Cyrillic, currency signs,
+ * general punctuation, arrows, mathematical operators, box drawing and block
+ * elements. Everything else is refused, not listed: a list of the wide or
+ * invisible characters needs every Unicode release, and one that is behind
+ * puts the next run off its column.
+ */
+const NARROW_ONLY = /[^\t\u0020-\u007E\u00A0-\u02FF\u0370-\u03FF\u0400-\u04FF\u2010-\u2027\u2030-\u205E\u20A0-\u20BF\u2190-\u21FF\u2200-\u22FF\u2500-\u259F\u{1D400}-\u{1D7FF}]/u;
 
 /** Zero-advance characters (combining marks, joiners, bidi and other every Unicode format character such as soft hyphens, variation selectors): a cell grid cannot place them. */
 const ZERO_WIDTH = /\p{M}|\p{Cf}|[\u200B-\u200F\u2060-\u2064]/u;
@@ -146,8 +153,8 @@ function flatten(line, n, roles, tabSize) {
 		if (bad) throw new Error(`codeBlock: line ${n} has the character U+${bad.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}, which an SVG cannot hold; remove it`);
 		const zero = run.text.match(ZERO_WIDTH)?.[0];
 		if (zero) throw new Error(`codeBlock: line ${n} has U+${zero.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}, a combining or zero-width character; the block sets code on a grid of one-column characters, so use the precomposed character (or ASCII)`);
-		const wide = run.text.match(WIDE)?.[0];
-		if (wide) throw new Error(`codeBlock: line ${n} has "${wide}", which is wider than one column; the block sets code on a grid of one-column characters, so write that character in ASCII (or draw it outside the block)`);
+		const odd = run.text.match(NARROW_ONLY)?.[0];
+		if (odd) throw new Error(`codeBlock: line ${n} has "${odd}" (U+${odd.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}), which is not known to fit one column (wider than one column, or invisible); the block sets code on a grid of one-column characters and accepts Latin, Greek, Cyrillic and common symbols, so write that character in ASCII (or draw it outside the block)`);
 		for (const ch of expandTabs(run.text, tabSize, chars.length)) {
 			chars.push(ch);
 			names.push(role);
@@ -255,7 +262,7 @@ export function codeBlock(opts) {
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
 	if (!["error", "wrap", "clip"].includes(overflow)) throw new Error(`codeBlock: \`overflow\` must be "error", "wrap" or "clip", got ${JSON.stringify(overflow)}`);
-	if (typeof font !== "string" || /[<>{};\\]/.test(font) || NOT_XML.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
+	if (typeof font !== "string" || /[<>{};\\]/.test(font) || NOT_XML.test(font) || /var\(/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
 	/** @type {Record<string, CodeRole>} */
 	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
 	for (const [name, role] of Object.entries(given)) {
