@@ -60,8 +60,9 @@ from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
    (`references/custom-scenes.md`): that file also covers an isometric view
    (camera, solids, depth order, label anchors), several tokens moving at once, dashed
    connectors with diamond junctions and light pulses, text that sharpens into place
-   with a highlighter sweep (`blurReveal`, `highlightSweep`), and a code block whose
-   highlight band moves one line range per step.
+   with a highlighter sweep (`blurReveal`, `highlightSweep`), hatched bar tracks
+   with bars that grow and values that roll, and a code block whose highlight band
+   moves one line range per step.
 4. **Gate.** `motion-kit check spec.json` must pass in every format/locale
    shipped: deterministic, settled steps, rounded numbers, token-only colours,
    escaped labels, labels fit, holds the final frame.
@@ -116,7 +117,7 @@ headers when redistributing the vendored runtime and adapters.
 | `references/targets.md` | Where it will be shown and what each target allows |
 | `references/styles.md` | Neutral default, style files, brand presets, contrast |
 | `references/qc.md` | Review stages, checklist, review-report template |
-| `references/custom-scenes.md` | Writing a one-off scene module, including isometric views, several tokens at once, connectors with pulses, and a code block with a moving highlight |
+| `references/custom-scenes.md` | Writing a one-off scene module, including isometric views, several tokens at once, connectors with pulses, bars with rolling values, and a code block with a moving highlight |
 | `references/ecosystem.md` | When GSAP, HyperFrames, Remotion, Motion Canvas, Manim, Mermaid or ELK are the better tool |
 
 For rendering, slide packaging and video, see the **motion-render** skill.
