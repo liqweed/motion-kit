@@ -202,9 +202,9 @@ ranges, one per step).
 | A fit rule | `overflow: "error"` (default) refuses a line wider than the block, `"wrap"` breaks it at a space with the continuation indented, `"clip"` ends it with `…`. A snippet too tall for the picture is refused too. Each error names the line and the remedy. Text stays at 14 px or more |
 | The band | `drawCode(block, t, moves, { ease })` with `moves = [{ lines: [3, 5], start, duration? }, …]` (1-based, inclusive; a number is one line). The first move is where the band appears (it fades in); each later one moves it from the range before. Pass `ease: easings(style.motion).easeStandard` from `frame(t, { style })` so it moves on the style's curve |
 | Settled steps | `codeEnd(block, moves)` is when the last move is over; call it in the factory (it also checks the moves). Put each step's `at` at least 50 ms after the end of the move that leads to it: `codeEnd(block, moves.slice(0, i + 1)) + 0.1` |
-| Contrast | `contrastPairs: codePairs(block)` (add the pairs of anything else you draw) |
+| Contrast | `contrastPairs: codePairs(block)` (add the pairs of anything else you draw). The dimmed lines sit below 4.5:1 by design; the band's tint lowers the ratio a little, so check a style whose text is near 4.5:1 on `surface`. Characters wider than a cell (CJK, emoji) are refused |
 | An accessible text | `block.text` is the whole snippet, `block.rangeText(from, to)` a range: put the snippet in the scene's `description` and each range in its step's `detail` |
-| The monospace face | `font` takes a CSS stack. Until the style names one, the kit's own stack (`CODE_FONT`) is used. A rasterizer that resolves only the first family of a stack (resvg does) draws a face it does not have as its fallback; each run is placed by column, so the lines still align |
+| The monospace face | `font` takes a CSS stack. A style has no monospace field yet, so the kit's own stack (`CODE_FONT`) is used unless you pass one. A rasterizer that resolves only the first family of a stack (resvg does) draws a face it does not have as its fallback; each run is placed by column, so the lines still align |
 
 The band moves once per step and rests there; the leading edge goes first and the
 trailing edge follows 70 ms later, so it stretches in flight and gathers on

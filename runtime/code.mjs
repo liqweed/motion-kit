@@ -98,12 +98,22 @@ const finite = (n) => typeof n === "number" && Number.isFinite(n);
  */
 function expandTabs(s, tabSize, col) {
 	let out = "";
+	let n = 0;
 	for (const ch of s) {
-		if (ch === "\t") out += " ".repeat(tabSize - ((col + out.length) % tabSize));
-		else out += ch;
+		if (ch === "\t") {
+			const pad = tabSize - ((col + n) % tabSize);
+			out += " ".repeat(pad);
+			n += pad;
+		} else {
+			out += ch;
+			n++;
+		}
 	}
 	return out;
 }
+
+/** Characters that take two cells (CJK, full-width forms, emoji): a column grid cannot hold them. */
+const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
 
 /**
  * A line as a list of characters, each with its role.
@@ -124,6 +134,8 @@ function flatten(line, n, roles, tabSize) {
 		const role = run.role ?? "code";
 		if (!Object.hasOwn(roles, role)) throw new Error(`codeBlock: line ${n} uses the role "${role}", which is not defined (known: ${Object.keys(roles).join(", ")}); add it to the \`roles\` option`);
 		if (/[\r\n]/.test(run.text)) throw new Error(`codeBlock: line ${n} contains a line break; give each line of code its own entry in \`lines\``);
+		const wide = run.text.match(WIDE)?.[0];
+		if (wide) throw new Error(`codeBlock: line ${n} has "${wide}", which is wider than one column; the block sets code on a grid of one-column characters, so write that character in ASCII (or draw it outside the block)`);
 		for (const ch of expandTabs(run.text, tabSize, chars.length)) {
 			chars.push(ch);
 			names.push(role);
@@ -147,10 +159,12 @@ function flatten(line, n, roles, tabSize) {
 function toRuns(chars, names, col0) {
 	/** @type {{ text: string, role: string, col: number }[]} */
 	const runs = [];
+	let prev = -1;
 	for (let i = 0; i < chars.length; i++) {
 		const last = runs[runs.length - 1];
-		if (last && last.role === names[i] && last.col + last.text.length === col0 + i) last.text += chars[i];
+		if (last && last.role === names[i] && prev === i - 1) last.text += chars[i];
 		else runs.push({ text: chars[i], role: names[i], col: col0 + i });
+		prev = i;
 	}
 	return runs.filter((r) => r.text.trim() !== "");
 }
@@ -220,7 +234,7 @@ export function codeBlock(opts) {
 	if (!(width > 0)) throw new Error("codeBlock: `width` must be positive");
 	if (fontSize < FONT_MIN) throw new Error(`codeBlock: \`fontSize\` ${fontSize} is under ${FONT_MIN} px, the smallest text the kit draws; show fewer or shorter lines instead`);
 	if (!(lineHeight >= 1)) throw new Error("codeBlock: `lineHeight` must be at least 1");
-	if (!(padding >= 0)) throw new Error("codeBlock: `padding` must not be negative");
+	if (!(padding >= 0) || !(radius >= 0)) throw new Error("codeBlock: `padding` and `radius` must not be negative");
 	if (!Number.isInteger(tabSize) || tabSize < 1) throw new Error("codeBlock: `tabSize` must be a whole number from 1");
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
@@ -249,7 +263,11 @@ export function codeBlock(opts) {
 		source.push(flat.chars.join(""));
 		let laid;
 		if (flat.chars.length <= columns) laid = [{ chars: flat.chars, names: flat.roles, col0: 0 }];
-		else if (overflow === "wrap") laid = wrapRows(flat, columns);
+		else if (overflow === "wrap") {
+			const lead = flat.chars.findIndex((c) => c !== " ");
+			if (lead >= Math.floor(columns / 2)) throw new Error(`codeBlock: line ${n} is indented ${lead} columns, over half of the ${columns} the block fits, so it cannot wrap; dedent the snippet, or give the block more width (a wider format)`);
+			laid = wrapRows(flat, columns);
+		}
 		else if (overflow === "clip") laid = [{ chars: [...flat.chars.slice(0, columns - 1), "…"], names: flat.roles.slice(0, columns), col0: 0 }];
 		else {
 			throw new Error(
@@ -304,6 +322,7 @@ function normalize(block, moves) {
 	/** @type {NormalizedMove[]} */ const out = [];
 	let free = -Infinity;
 	for (const [i, m] of moves.entries()) {
+		if (Array.isArray(m?.lines) && m.lines.length !== 2) throw new RangeError(`code move ${i + 1}: lines must be a line number or a [from, to] pair, got ${JSON.stringify(m.lines)}`);
 		const [from, to] = Array.isArray(m?.lines) ? m.lines : [m?.lines, m?.lines];
 		if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from || to > block.lineCount) throw new RangeError(`code move ${i + 1}: lines ${JSON.stringify(m?.lines)} are not a line or a [from, to] range inside the snippet's ${block.lineCount} lines`);
 		const duration = m.duration ?? (i === 0 ? 0.3 : 0.5);
@@ -399,9 +418,12 @@ export function drawCode(block, t, moves, opts = {}) {
  * The token pairs a block draws, for `scene.contrastPairs`: each token a role
  * that appears (and the line numbers) sets text in, against `surface` at 4.5
  * (WCAG 1.4.3); the band's marker, `accent` on `surface`, and the panel's
- * outline, `line` on `bg`, at 3 (WCAG 1.4.11). The dimmed lines are the same
- * pairs at lower opacity: what a step frame says is in the band. Add the pairs
- * of whatever else the scene draws.
+ * outline, `line` on `bg`, at 3 (WCAG 1.4.11). Two things the pairs do not
+ * cover: the band's 18 % tint under the active lines lowers the ratio a little
+ * (the neutral style keeps a wide margin; check a style near 4.5:1), and the
+ * dimmed lines are the same pairs at `dim` opacity, below 4.5:1 by design: what
+ * a step frame says is in the band. Add the pairs of whatever else the scene
+ * draws.
  * @param {CodeBlock} block
  * @returns {readonly { fg: string, bg: string, min: number, use: string }[]}
  */

@@ -329,12 +329,14 @@ functions; a colour is a token name (G4 applies).
   its code; `maxHeight` is what the picture can spare.
 - **Fit.** `fontSize` is at least 14 px (§7). A line wider than the block's
   columns is refused (`overflow: "error"`, the default), wrapped at the last
-  space that fits with the continuation indented two columns (`"wrap"`), or cut
+  space that fits with the continuation indented two columns past the line's own
+  indent (`"wrap"`; a line indented over half the width is refused), or cut
   with `…` in the last column (`"clip"`). Code taller than `maxHeight` is
   refused. Each error names the line and the remedies: shorten it, choose
   `wrap` or `clip`, give the block more width or height (another format), or show
   fewer lines (one scene per snippet; a longer walkthrough is several scenes or
-  a deck with one click per range). The text of every line, wrapped or clipped
+  a deck with one click per range). A character wider than one cell (CJK,
+  emoji) is refused, naming the line: the block is a grid of one-column cells. The text of every line, wrapped or clipped
   or not, stays in `block.text` and `block.rangeText(from, to)`, for the
   scene's `description` and its step `detail`s.
 - **Roles.** `CODE_ROLES` maps `code`, `keyword`, `string` and `comment` to a
@@ -360,8 +362,11 @@ functions; a colour is a token name (G4 applies).
 - **Contrast.** `codePairs(block)` is the pairs the block draws, for
   `scene.contrastPairs`: each token a role in use (and the line numbers) sets text
   in, against `surface`, at 4.5; `accent` on `surface` (the marker) and `line` on
-  `bg` (the outline), at 3. The dimmed lines are the same pairs at lower opacity:
-  what a step frame says is in the band.
+  `bg` (the outline), at 3. The gate checks token pairs, not blended colours:
+  the band's 18 % tint under the active lines lowers the ratio a little (the
+  neutral style keeps a wide margin; check a style near 4.5:1), and the dimmed
+  lines, at `dim` opacity, are below 4.5:1 by design. What a step frame says is
+  in the band, and the full text is in the scene's description and step details.
 - **Canon.** The band moves once per step and rests there. `codeEnd(block,
   moves)` is the time the last move is over (it also checks the moves, so call it
   when the scene is built): put each step's `at` at least 50 ms after the end of

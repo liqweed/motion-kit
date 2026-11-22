@@ -95,6 +95,20 @@ describe("codeBlock", () => {
 		assert.throws(() => block({ fontSize: 12 }), /under 14 px/);
 	});
 
+	it("refuses wide characters and over-indented lines that cannot wrap", () => {
+		assert.throws(() => codeBlock({ lines: ["ok", "日本"], x: 0, y: 0, width: 400 }), /line 2 has "日".*wider than one column/);
+		assert.throws(() => codeBlock({ lines: ["a 😀"], x: 0, y: 0, width: 400 }), /line 1 has/);
+		assert.throws(() => codeBlock({ lines: [" ".repeat(50) + "x"], x: 0, y: 0, width: 300, overflow: "wrap" }), /line 1 is indented 50 columns.*cannot wrap/);
+		assert.throws(() => block({ radius: -1 }), /must not be negative/);
+	});
+
+	it("counts a tab stop and a run in characters, not UTF-16 units", () => {
+		const b = codeBlock({ lines: [["a\tb", "𝒳y"]], x: 0, y: 0, width: 400 });
+		assert.equal(b.source[0], "a b𝒳y");
+		// One run: an astral character does not start a new one.
+		assert.deepEqual(b.rows[0].runs.map((r) => [r.text, r.col]), [["a b𝒳y", 0]]);
+	});
+
 	it("refuses undefined roles, non-token roles and line breaks inside a run", () => {
 		assert.throws(() => codeBlock({ lines: [[{ text: "a", role: "nope" }]], x: 0, y: 0, width: 400 }), /line 1 uses the role "nope"/);
 		assert.throws(() => block({ roles: { keyword: { token: "#ff0000" } } }), /not a style token/);
@@ -129,6 +143,7 @@ describe("moves", () => {
 		assert.throws(() => codeEnd(b, [moves[0], { lines: 3, start: 0.7, duration: 0.5 }]), /code move 2 starts at 0.7s, before the move before it is over \(at 0.8s/);
 		assert.throws(() => codeEnd(b, [{ lines: [3, 9], start: 0 }]), /inside the snippet's 6 lines/);
 		assert.throws(() => codeEnd(b, [{ lines: [3, 2], start: 0 }]), /code move 1/);
+		assert.throws(() => codeEnd(b, [{ lines: [1, 2, 3], start: 0 }]), /\[from, to\] pair/);
 		assert.throws(() => codeEnd(b, [{ lines: 1, start: -1 }]), /start of 0 or more/);
 		assert.throws(() => codeEnd(b, []), /at least one move/);
 		assert.throws(() => b.rowSpan(0, 1), RangeError);
@@ -286,7 +301,10 @@ describe("the code-steps example", () => {
 	it("wraps in a phone column instead of failing", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "tall", locale: "en" });
 		assert.equal(scene.width, 360);
-		assert.ok(scene.height > 0);
+		const rows = (/** @type {string} */ svg) => (svg.match(/xml:space="preserve"/g) ?? []).length;
+		const wide = (await loadScene(EXAMPLE, { format: "16:9", locale: "en" })).scene;
+		assert.equal(rows(renderSvg(wide, wide.duration)), 11);
+		assert.ok(rows(renderSvg(scene, scene.duration)) > 11, "the longest lines wrapped");
 	});
 
 	it("fails construction with a message that names the line, when the snippet is too long for a format", async () => {
