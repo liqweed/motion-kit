@@ -178,7 +178,8 @@ animate, reduced })` (`"play"`, `"seek"` or null).
 
 ## Rules
 
-- Never autoplay sound. Never loop an explainer.
+- Never autoplay sound. Don't loop an explainer: the player never does, and a
+  page that loops a diagram on its own owns that choice.
 - Every interactive control is a real `<button>`/`<input>` with a visible focus
   style and an accessible name.
 - Don't hide information only in hover states; touch devices have no hover.

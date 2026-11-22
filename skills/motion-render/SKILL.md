@@ -24,7 +24,7 @@ else
 fi
 ```
 
-**Always run `mk check <scene>` first.** Exporters refuse scenes that fail the gate.
+**Always run `mk check <scene>` first.** Exporters refuse scenes that fail the gate. The gate also gives *advice* on the motion canon (a scene over 12 s, a still scene, step labels the frame does not draw); advice never stops an export, unless `--strict` (or `MOTION_KIT_STRICT=1`) is on and the scene has not acknowledged it. Every exporter prints the same advice as `check`.
 
 ## Slides
 
@@ -43,7 +43,7 @@ animated-diagram skill, `references/targets.md`.
 mk export spec.json -o out/review --png --qc
 ```
 `index.html` holds the steps, frames 0.2 s before and after each step, a phone-size row (the
-scene's `tall` layout at 360 px, as a phone shows it) and the review checklist. Fill in the review report (animated-diagram
+scene's `tall` layout at 360 px, as a phone shows it; if the tall layout fails the gate or cannot be built, the row shows the reason and the last primary frame instead, so check that it shows the tall layout, or that `manifest.json` has a `phone` entry) and the review checklist. Fill in the review report (animated-diagram
 `references/qc.md`) and get a human approval line before delivery.
 
 ## Video
@@ -62,6 +62,8 @@ Formats, sizes, encoder settings, variant matrices and the HyperFrames handoff:
 mk build spec.json -o out/page.html -f wide         # Craft Page / standalone interactive
 mk bake  spec.json -o out/diagram.svg -f wide --fps 12   # zero-JS animated SVG
 ```
+
+`bake` and `video` refuse more than 20,000 frames (a hard resource limit, not advice; no acknowledgement waives it): `bake` counts `ceil(duration × fps) + 1`, `video` counts `round((lead + duration + hold) × fps)`. For a very long scene lower `--fps`; `icon` bakes at 15 fps, so shorten the scene instead.
 
 A custom module whose text comes from the caller (a site's dictionary) takes
 scene options: `--options labels.json`, inline JSON, or an `.mjs` whose default
@@ -90,7 +92,8 @@ errors, and cleans up on disconnect. Full usage: `adapters/element/README.md`.
   REVIEW.md                      review report with human approval line
 ```
 `manifest.json` records scene, type, format, locale, size, duration, style,
-theme, an input hash, the source commit and `sourceDirty` (`true` when the
+theme, an input hash, the advice the gate gave (each piece with `acknowledged`, and
+the scene's `reason` when it acknowledged it), the source commit and `sourceDirty` (`true` when the
 source file has uncommitted changes, so the frames match no commit; `null`
 outside git), with no timestamps, so a re-render from the same inputs is
 byte-identical and a stale export is easy to spot. Deliver from a clean
@@ -102,7 +105,7 @@ folder holds exactly what the new manifest lists. Files no export wrote are
 left alone and named in a warning; keep notes and review files elsewhere.
 
 The CLI gates `build`, `export`, `bake`, `video` and `icon` before writing
-output, including the style contrast of the pairs the scene draws (a shared pair it does not draw is only a printed warning). `build` also holds the style to what the page's player paints, whatever the scene declares: ink/surface, onAccent/accent, muted/bg, emphasis/bg, line/bg, accent/bg, and ink/bg for the heading unless `--no-heading`; so `check` can pass where `build` fails. Exports
+output, including the style contrast of the pairs the scene draws (a shared pair it does not draw is only a printed warning), and print its advice the same way as `check`. `build` also holds the style to what the page's player paints, whatever the scene declares: ink/surface, onAccent/accent, muted/bg, emphasis/bg, line/bg, accent/bg, and ink/bg for the heading unless `--no-heading`; so `check` can pass where `build` fails. Exports
 include `runtimeHash`, a SHA-256 of runtime module paths and bytes, in the
 manifest and in `inputHash`, together with format, locale and render settings.
 A changed runtime invalidates the hash even before its package version changes.

@@ -2,7 +2,7 @@
 /**
  * motion-kit CLI.
  *
- *   motion-kit check  <scene...>             [--format F]… [--locale L]… [--style S]   gate (all formats/locales by default)
+ *   motion-kit check  <scene...>             [--format F]… [--locale L]… [--style S] [--strict]   gate (all formats/locales by default)
  *   motion-kit build  <scene> --out x.html   [--format F] [--locale L] [--style S] [--no-scrubber] [--no-heading]
  *   motion-kit export <scene> --out dir      [--format F] [--locale L] [--style S] [--theme light|dark] [--png] [--scale 2] [--qc] [--background]
  *   motion-kit bake   <scene> --out x.svg    [--fps 15] [--theme ...] [--style S]
@@ -15,6 +15,10 @@
  *   motion-kit --version                      print the version
  *
  * <scene> is a spec (.json, any registered type) or a custom module (.mjs).
+ * Every command that checks a scene prints the canon's advice the same way (what
+ * was found, why, when breaking it is fine, the alternative). A scene
+ * acknowledges advice with `acknowledge: [{ rule, reason }]`; --strict (or
+ * MOTION_KIT_STRICT=1) fails a scene that leaves advice unacknowledged.
  * --options O passes scene options to a custom module's factory, unchanged:
  * inline JSON ('{"view":"short"}'), a .json file, or an .mjs module whose
  * default export is the options or ({ format, locale }) => options.
@@ -28,18 +32,19 @@ import { closeSync, cpSync, existsSync, mkdirSync, openSync, readFileSync, renam
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { printable } from "../runtime/advice.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { FORMATS } from "../runtime/scene.mjs";
 import { checkContrast, sharedPairs } from "../runtime/style.mjs";
 import { SCENE_TYPES } from "../runtime/types/index.mjs";
 import { checkScene } from "../lib/check.mjs";
-import { checkFiles } from "../lib/gate.mjs";
+import { checkFiles, gateNotes } from "../lib/gate.mjs";
 import { mermaidToSpec } from "../lib/mermaid.mjs";
 import { compareVersions, isAdapterName, latestVersion, PACKAGE, shellQuote, vendoredVersion } from "../lib/outdated.mjs";
 import { buildHtml } from "../lib/build.mjs";
 import { writeIconSet } from "../lib/icon.mjs";
 import { exportSteps } from "../lib/export.mjs";
-import { isModule, loadOptions, loadScene, loadStyle } from "../lib/load.mjs";
+import { isModule, isStrict, loadOptions, loadScene, loadStyle } from "../lib/load.mjs";
 import { rasterizer } from "../lib/raster.mjs";
 import { probe, renderVideo, videoContactSheet } from "../lib/video.mjs";
 
@@ -54,6 +59,7 @@ const { values: a, positionals } = parseArgs({
 		locale: { type: "string", short: "l", multiple: true },
 		style: { type: "string", short: "s" },
 		options: { type: "string" },
+		strict: { type: "boolean", default: false },
 		theme: { type: "string", default: "light" },
 		png: { type: "boolean", default: false },
 		scale: { type: "string", default: "2" },
@@ -80,9 +86,9 @@ function fail(msg) {
 	console.error(`motion-kit: ${msg}`);
 	process.exit(1);
 }
-/** Contrast the scene does not draw but the style misses: said, never failed (G12). @param {string[]} warnings */
-function warnAll(warnings) {
-	for (const w of warnings) console.error(`motion-kit: warning: contrast: ${w}`);
+/** What the gate says about a scene that passed: contrast it does not draw but the style misses (G12) and the canon's advice, the same on every command. @param {Parameters<typeof gateNotes>[0]} result */
+function reportGate(result) {
+	for (const line of gateNotes(result)) console.error(`motion-kit: ${line}`);
 }
 function need(v, what) {
 	if (!v) fail(`${cmd}: ${what} is required`);
@@ -100,6 +106,7 @@ async function main() {
 		return;
 	}
 	const style = loadStyle(a.style);
+	const strict = isStrict(a.strict);
 	// Commands other than check build one format and locale: the last one given.
 	const format = a.format?.at(-1);
 	const where = { format: format ?? "16:9", locale: a.locale?.at(-1) ?? "en" };
@@ -119,7 +126,7 @@ async function main() {
 			return;
 		case "check": {
 			if (!args.length) fail("check: give at least one scene file");
-			const bad = await checkFiles(args, { formats: a.format, locales: a.locale, style, options: optionsFor });
+			const bad = await checkFiles(args, { formats: a.format, locales: a.locale, style, options: optionsFor, strict });
 			if (bad) process.exit(1);
 			return;
 		}
@@ -127,9 +134,9 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const sopts = await sceneOpts(file);
 			const loaded = await loadScene(file, sopts);
-			const r = checkScene(loaded.scene, { style });
+			const r = checkScene(loaded.scene, { style, strict });
+			reportGate(r);
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
-			warnAll(r.warnings);
 			// The page also paints the player: button text and borders, the selected step,
 			// captions, the focus outline, and (unless --no-heading) the heading on the canvas.
 			const player = checkContrast(style, sharedPairs(...(a["no-heading"] ? [] : ["ink/bg"]), "ink/surface", "onAccent/accent", "muted/bg", "emphasis/bg", "line/bg", "accent/bg"));
@@ -146,31 +153,45 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const sopts = await sceneOpts(file);
 			const { scene } = await loadScene(file, sopts);
-			const r = checkScene(scene, { style });
+			const r = checkScene(scene, { style, strict });
+			reportGate(r);
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
-			warnAll(r.warnings);
 			if (a.png && !(await rasterizer())) fail("--png needs @resvg/resvg-js or Chrome");
 			// The contact sheet's phone row shows the tall layout, as a phone does.
 			/** @type {{ scene?: any, error?: string }} */
 			const phone = {};
 			if (where.format === "tall") phone.scene = scene;
 			else {
+				let tall;
 				try {
-					phone.scene = (await loadScene(file, await sceneOpts(file, { ...where, format: "tall" }))).scene;
+					tall = (await loadScene(file, await sceneOpts(file, { ...where, format: "tall" }))).scene;
 				} catch (e) {
 					phone.error = e instanceof Error ? e.message : String(e);
 				}
+				if (tall) {
+					// The tall layout ships too, so it passes the same gate; its report is told apart from the primary's.
+					// An optional preview: a tall layout that fails the gate, or whose check throws, is left out, as one that cannot be built is.
+					try {
+						const tr = checkScene(tall, { style, strict });
+						for (const line of gateNotes({ ...tr, warnings: [] })) console.error(`motion-kit: tall layout: ${line}`);
+						if (tr.ok) phone.scene = tall;
+						else phone.error = `the tall layout fails the gate: ${tr.problems.join("; ")}`;
+					} catch (e) {
+						phone.error = `the tall layout could not be checked: ${e instanceof Error ? e.message : String(e)}`;
+					}
+				}
+				if (phone.error) console.error(`⚠ tall preview left out: ${printable(phone.error)}`);
 			}
-			const m = await exportSteps(scene, { out: need(a.out, "--out"), style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION, phone, ...sopts });
+			const m = await exportSteps(scene, { out: need(a.out, "--out"), advice: r.advice, style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION, phone, ...sopts });
 			console.log(`wrote ${m.files.length} frames + index.html + manifest.json to ${a.out}`);
 			return;
 		}
 		case "bake": {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file));
-			const gate = checkScene(scene, { style });
+			const gate = checkScene(scene, { style, strict });
+			reportGate(gate);
 			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
-			warnAll(gate.warnings);
 			const svg = bake(scene, { fps: Number(a.fps ?? 15), style, theme: a.theme, background: a.background });
 			const out = need(a.out, "--out");
 			writeFileSync(out, svg);
@@ -181,9 +202,9 @@ async function main() {
 		case "video": {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file));
-			const gate = checkScene(scene, { style });
+			const gate = checkScene(scene, { style, strict });
+			reportGate(gate);
 			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
-			warnAll(gate.warnings);
 			const out = need(a.out, "--out");
 			const r = await renderVideo(scene, {
 				out,
@@ -203,9 +224,9 @@ async function main() {
 		case "icon": {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file, { ...where, format: format ?? "1:1" }));
-			const r = checkScene(scene, { style });
+			const r = checkScene(scene, { style, strict });
+			reportGate(r);
 			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
-			warnAll(r.warnings);
 			const png = !a["no-png"];
 			if (png && !(await rasterizer())) fail("icon PNG needs @resvg/resvg-js or Chrome (or pass --no-png)");
 			const root = resolve(need(a.out, "--out"));
@@ -251,7 +272,7 @@ async function main() {
 				} finally {
 					closeSync(fd);
 				}
-				bad = await checkFiles([candidate], { formats: a.format, locales: a.locale, style });
+				bad = await checkFiles([candidate], { formats: a.format, locales: a.locale, style, strict });
 				if (!bad) renameSync(candidate, dest);
 			} finally {
 				if (created) rmSync(candidate, { force: true });
@@ -307,16 +328,19 @@ async function main() {
 const VENDOR_CHECK = `#!/usr/bin/env node
 // motion-kit gate for vendored copies: the same checks as \`motion-kit check\` (lib/gate.mjs).
 //
-//   node check.mjs <scene.json|scene.mjs …> [--format F]… [--locale L]… [--style style.json] [--options O]
+//   node check.mjs <scene.json|scene.mjs …> [--format F]… [--locale L]… [--style style.json] [--options O] [--strict]
 //
 // Every format unless --format; for a spec every locale its strings carry, for
 // a custom module its exported locales (default "en"), unless --locale. The style (neutral by default) must
 // pass the contrast of the pairs each scene draws (G12). --options passes scene options to custom modules:
 // a .json file, inline JSON, or an .mjs module exporting ({ format, locale }) => options.
+// The canon's advice (what was found, why, when breaking it is fine, the alternative) is printed
+// per scene; a scene acknowledges it with \`acknowledge: [{ rule, reason }]\`. --strict (or
+// MOTION_KIT_STRICT=1) fails a scene that leaves advice unacknowledged.
 // Exits 1 if anything fails; a file that cannot be loaded fails on its own.
 import { parseArgs } from "node:util";
 import { checkFiles } from "./lib/gate.mjs";
-import { loadOptions, loadStyle } from "./lib/load.mjs";
+import { isStrict, loadOptions, loadStyle } from "./lib/load.mjs";
 
 const { values, positionals } = parseArgs({
 	allowPositionals: true,
@@ -325,15 +349,16 @@ const { values, positionals } = parseArgs({
 		locale: { type: "string", multiple: true },
 		style: { type: "string" },
 		options: { type: "string" },
+		strict: { type: "boolean" },
 		help: { type: "boolean", short: "h" },
 	},
 });
 if (values.help || !positionals.length) {
-	console.log("usage: node check.mjs <scene.json|scene.mjs …> [--format F]… [--locale L]… [--style style.json] [--options O]");
+	console.log("usage: node check.mjs <scene.json|scene.mjs …> [--format F]… [--locale L]… [--style style.json] [--options O] [--strict]");
 	process.exit(values.help ? 0 : 1);
 }
 try {
-	const bad = await checkFiles(positionals, { formats: values.format, locales: values.locale, style: loadStyle(values.style), options: await loadOptions(values.options) });
+	const bad = await checkFiles(positionals, { formats: values.format, locales: values.locale, style: loadStyle(values.style), options: await loadOptions(values.options), strict: isStrict(values.strict) });
 	process.exit(bad ? 1 : 0);
 } catch (e) {
 	console.error(\`✗ \${e instanceof Error ? e.message : e}\`);

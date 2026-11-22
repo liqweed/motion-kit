@@ -58,6 +58,15 @@ runs `npm run gate`. Don't bypass them with `--no-verify`; fix the cause.
 
 ## Scene rules (the gate enforces them)
 
+Two classes (`docs/spec/technique.md` §11.1 *Advice, not law*, §11.2). The
+gate **fails** a scene that breaks a hard rule: correctness, a broken build,
+WCAG AA. It gives **advice** on the canon (duration, nothing animates, step
+labels, emphasis on accent), which a scene acknowledges with
+`acknowledge: [{ rule, reason }]` and which fails only in strict mode
+(`--strict` or `MOTION_KIT_STRICT=1`; off by default, on in `npm run check`).
+Never silence advice by bending a scene (a fake fade to pass "nothing
+animates"): acknowledge it with the real reason, or fix the cause.
+
 `lib/check.mjs` fails a scene that breaks any of these:
 
 - `frame(t)` reads only `t` and constants: no `Date`, `Math.random`,
@@ -65,9 +74,10 @@ runs `npm run gate`. Don't bypass them with `--no-verify`; fix the cause.
 - Same `t` ⇒ byte-identical output. Round every number through `num()`.
 - Colours come from tokens (`tok("accent")`), never literals.
 - Nothing moves at a step's `at`: step frames are settled.
-- After `duration` the frame holds; hard duration limit 12 s (authoring target ≤ 8 s).
+- After `duration` the frame holds. Advice, not a failure: over 12 s
+  (authoring target ≤ 8 s), no motion at all, a step label not in the final frame.
 - Custom modules declare shipped locales with `export const locales`; missing translations throw.
-- Narrative scenes set `stepLabelsInFrame: false`; otherwise final frames contain all step labels.
+- Narrative scenes set `stepLabelsInFrame: false` (or acknowledge `step-labels-in-frame`); otherwise final frames contain all step labels.
 - Labels are escaped (`text()`/`esc()`) and fit their wrap budget in every
   locale and format.
 - Ids (clip paths, gradients, …) are built from `frame(t, { idPrefix })`, so
