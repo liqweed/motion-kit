@@ -1,3 +1,7 @@
+---
+release: minor
+---
+
 ### Changed
 
 - The motion canon is advice, not a failure. The gate still checks it, but a scene over 12 s, a scene whose first and last frames are identical, a step label the final frame does not draw and an `emphasis` under 3:1 on the `accent` (where a ring or dot touches it) no longer fail `check`, `build`, `export`, `bake`, `video`, `icon` or the vendored `check.mjs`. Each prints advice instead: what was found, why the rule exists, when breaking it is fine and what to do instead. Hard rules (determinism, markup, settled steps, token-only colours, WCAG contrast of the pairs a scene draws, ids, label boxes) fail as before. The spec's §11.2 classes every rule.
@@ -5,4 +9,4 @@
 - `--strict` (or `MOTION_KIT_STRICT=1`) fails advice a scene has not acknowledged, on every command. It is off by default; a repository that publishes scenes can turn it on in CI.
 - The canon text in the skills and the PRD reads as advice with when-to-break, and no longer contradicts itself on loops: a scene plays once and holds by construction, and looping is a page's own decision.
 
-**Consumer action:** none required. A script that relied on `check` failing a scene over 12 s, or on the message "nothing animates", should pass `--strict`. `checkScene` also returns `advice` and `unusedAcknowledgements`; `contrastReport` returns `advice`.
+- **Consumer action:** none required. A script that relied on `check` failing a scene over 12 s, or on the message "nothing animates", should pass `--strict`. `checkScene` also returns `advice` and `unusedAcknowledgements`; `contrastReport` returns `advice`.
