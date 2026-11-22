@@ -38,7 +38,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `steps` | `{at, label, detail?, id?}[]` | MUST | ≥ 1 step; `at` strictly increasing; `at ≤ duration` (+1e-9); every `label` non-empty; an `id`, if present, is a non-empty string unique within the scene [throws] (`validateScene`). The last step is the finished diagram. Page scripts address steps by `id` (§10.2); scene types copy a spec node's, hub's or spoke's `id`. |
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
-| `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair but the optional tokens' (`caution`, `alert`, and their `on…` colours) [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known and `min` in [1, 21]. |
+| `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair but the optional tokens' (`caution`, `alert`, and their `on…` colours) [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known, a pair MUST NOT name one token twice (it shows no contrast), and `min` in [1, 21]. |
 | `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor` returns one, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
@@ -328,7 +328,7 @@ functions; a colour is a token name (G4 applies).
 
 - Scenes MUST NOT contain colour literals [gate] G4. Colours MUST be
   `tok(name)` → `var(--mk-<name>)`; an unknown name throws
-  (`runtime/style.mjs:52-55`). Besides tokens, a colour attribute (`fill`,
+  (`tok` in `runtime/style.mjs`). Besides tokens, a colour attribute (`fill`,
   `stroke`, `stop-color`, `color`, `flood-color`, `lighting-color`) or colour
   property (in `style="…"` or a `<style>` element: those, `background` and
   any `*-color`) MAY hold only `url(#…)` references and the keywords `none`,
@@ -355,9 +355,9 @@ functions; a colour is a token name (G4 applies).
   `style.mono` nor `inherit`, in an attribute, a `style` attribute or a `<style>`
   element, and any `font` shorthand.
   `normalizeStyle` fills missing fields from `NEUTRAL`
-  (`runtime/style.mjs:25-50,58-77`) and MUST throw on an unknown token or a
-  non-`#rrggbb` value (`runtime/style.mjs:70-73`). If `dark` is absent, dark
-  takes the `light` overrides on top of neutral dark (`runtime/style.mjs:66`).
+  (`normalizeStyle` in `runtime/style.mjs`) and MUST throw on an unknown token or a
+  non-`#rrggbb` value (`normalizeStyle`). If `dark` is absent, dark
+  takes the `light` overrides on top of neutral dark (`normalizeStyle`).
 - **Live** output MUST carry tokens as CSS custom properties on the container
   (`runtime/player.mjs:52`, `lib/build.mjs:39-40`) so light/dark can switch
   without re-rendering. **Standalone** output MUST resolve every token to a
@@ -378,7 +378,7 @@ functions; a colour is a token name (G4 applies).
   records which of them it draws (`contrastPairs` on its scenes,
   `SCENE_TYPE_PAIRS` in `runtime/types/index.mjs`): a `hub-spoke` draws no text
   on the canvas, a `sequence` draws no `ink` on `surface`.
-  A custom scene states what it draws in `contrastPairs` (§1; an empty list counts as none; `sharedPairs`
+  A custom scene states what it draws in `contrastPairs` (§1; an empty list counts as none, exactly like an omitted one: every non-optional shared pair applies; `sharedPairs`
   picks shared ones by name, others are written out). The pairs it declares
   are the gate's problems; the shared pairs it leaves out are only warnings,
   named with their ratio and threshold in both themes. A scene that declares
@@ -681,7 +681,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G9 | `duration ≤ 12` s. | `:68` | Hard limit; authoring target ≤ 8 s. |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
 | G11 | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
-| G12 | The style passes WCAG contrast in both themes for each pair the scene draws: its `contrastPairs`, which the scene types set to the shared pairs they draw, else every pair in `CONTRAST_PAIRS` except the optional tokens'. Shared pairs it does not draw are warnings, never failures; the run reports every shared pair the style misses once. | `lib/check.mjs`, `lib/gate.mjs` (`styleWarnings`), `runtime/style.mjs` (`contrastReport`) | Legibility in light and dark, for the pairs actually drawn (WCAG 1.4.3 and 1.4.11 judge rendered content, §6). |
+| G12 | The style passes WCAG contrast in both themes for each pair the scene draws: its `contrastPairs`, which the scene types set to the shared pairs they draw, else every pair in `CONTRAST_PAIRS` except the optional tokens'. Shared pairs it does not draw are warnings, never failures; the run reports every shared pair the style misses once, except a pair with an optional token the style leaves at neutral's (only a style that sets that token is told, §6). | `lib/check.mjs`, `lib/gate.mjs` (`styleWarnings`), `runtime/style.mjs` (`contrastReport`) | Legibility in light and dark, for the pairs actually drawn (WCAG 1.4.3 and 1.4.11 judge rendered content, §6). |
 | G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
 | G14 | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
 | G15 | If the scene defines `labelBoxes`, at each sampled time and each step time: no two boxes with `opacity` > 0 are closer than 4 px, no stem crosses another box and every box lies inside the picture (`0, 0, width, height`). `labelBoxes` MUST return an array and not throw. Each problem is reported once, at its first time. | `lib/check.mjs` (rule 9), `runtime/iso.mjs` (`labelProblems`) | Labels placed in a projected view move with the camera; nothing else checks them against one another. Opacity 0 is not drawn, so a scene hides labels while the camera moves. |

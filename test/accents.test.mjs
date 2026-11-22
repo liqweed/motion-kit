@@ -279,6 +279,40 @@ describe("optional token use and warnings", () => {
 		it("does not lose an escaped quote's string boundary", () => {
 			assert.match(findFontLiteral(`<style>text{content:"\\"";font-family:Courier} text::after{content:"x"}</style>`, style) ?? "", /Courier/);
 		});
+		it("decodes a <style> body, leading zeroes and presentation attributes", () => {
+			assert.match(findFontLiteral(`<style>text{font&#45;family:Courier}</style>`, style) ?? "", /Courier/);
+			assert.ok(paintSource(`<rect style="fill:var(&#000000045;&#x00002d;mk-caution)"/>`).includes("var(--mk-caution)"));
+			assert.ok(paintSource(`<rect fill="var(&#45;&#45;mk-caution)"/>`).includes("var(--mk-caution)"));
+			assert.equal(findFontLiteral(`<style>text{font-family:Courier}</style>`.replace("Courier", "Inherit"), style), null);
+			assert.equal(findFontLiteral(`<text font-family="INHERIT">x</text>`, style), null);
+		});
+		it("resolves an encoded token reference in a standalone export", () => {
+			const out = resolveTokens(`<rect style="fill:var(&#45;&#45;mk-caution)"/><style>r{fill:var(&#45;&#45;mk-alert)}</style>`, "neutral");
+			assert.ok(!out.includes("var(") && !out.includes("&#"), out);
+			assert.ok(out.includes(NEUTRAL.light.caution) && out.includes(NEUTRAL.light.alert));
+		});
+		it("ignores a stylesheet that is not CSS", () => {
+			const m = `<style type="text/plain">rect{fill:var(--mk-caution);font-family:Courier}</style>`;
+			assert.ok(!paintSource(m).includes("caution"));
+			assert.equal(findFontLiteral(m, style), null);
+			assert.match(findFontLiteral(m.replace("text/plain", "text/css"), style) ?? "", /Courier/);
+		});
+		it("keeps a surrogate-pair escape from shifting the declaration match", () => {
+			assert.equal(findFontLiteral(`<style>@supports (selector(.\\1f600)){text{font-family:inherit}}</style>`, style), null);
+		});
+		it("reads a declaration only at a declaration boundary", () => {
+			assert.equal(findFontLiteral(`<style>text font:hover{font-weight:600}</style>`, style), null);
+			assert.equal(findFontLiteral(`<style>text{--label: font:sample}</style>`, style), null);
+			assert.match(findFontLiteral(`<style>text{font-weight:600; font:12px Courier}</style>`, style) ?? "", /shorthand/);
+		});
+		it("rejects a pair of one token with itself", () => {
+			assert.ok(checkContrast(style, [{ fg: "caution", bg: "caution", min: 1 }])[0].includes("itself"));
+		});
+		it("checks the exact step frames, not only the sampled grid", () => {
+			const caution = `<rect width="5" height="5" fill="var(--mk-caution)"/>`;
+			const sc = { id: "s", width: 100, height: 50, duration: 1, title: "t", description: "d", steps: [{ at: 0.5035, label: "a" }, { at: 1, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.5 && t < 0.504 ? caution : t >= 1 ? "<g/>" : "<circle r=\"1\"/>") };
+			assert.ok(checkScene(sc).problems.some((p) => p.includes("draws caution")));
+		});
 		it("keeps a comment marker inside a quoted family", () => {
 			const s = normalizeStyle({ ...NEUTRAL, name: "t", mono: '"ACME/*Mono*/", monospace' });
 			assert.equal(findFontLiteral(`<style>text{font-family:${s.mono}}</style>`, s), null);

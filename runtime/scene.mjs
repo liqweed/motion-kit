@@ -173,7 +173,7 @@ export function renderSvg(scene, t, options = {}) {
 	const size = options.standalone ? ` width="${num(scene.width * scale)}" height="${num(scene.height * scale)}"` : "";
 	const body = scene.frame(time, { idPrefix: id, style });
 	const bg = options.background ? `<rect width="100%" height="100%" fill="var(--mk-bg)"/>` : "";
-	const vars = options.standalone ? "" : ` style="${cssVars(style, options.theme ?? "light", body)}"`;
+	const vars = options.standalone || options.live ? "" : ` style="${cssVars(style, options.theme ?? "light", body)}"`;
 	const markup =
 		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${num(scene.width)} ${num(scene.height)}"${size}` +
 		` font-family="${esc(style.font)}" role="img" aria-labelledby="${id}-title ${id}-desc"${options.live ? "" : vars}>` +

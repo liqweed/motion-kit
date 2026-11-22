@@ -218,8 +218,13 @@ export function styleBodies(markup, all = false) {
 	const out = [];
 	for (const t of scanTags(markup)) {
 		if (t.closing || t.selfClosing || t.name.toLowerCase() !== "style" || (t.inMetadata && !all)) continue;
+		// Only a CSS stylesheet styles anything: another `type` is plain data.
+		const type = t.attrs.find((a) => a.name === "type");
+		if (type && unescapeAttr(type.raw).trim().toLowerCase() !== "text/css") continue;
 		const close = /<\/style\s*>/i.exec(t.bare.slice(t.end));
-		out.push(t.bare.slice(t.end, close ? t.end + close.index : undefined));
+		const body = t.bare.slice(t.end, close ? t.end + close.index : undefined);
+		// Character data: an XML parser decodes references, except inside CDATA.
+		out.push(body.includes("<![CDATA[") ? body : unescapeAttr(body));
 	}
 	return out;
 }
@@ -230,7 +235,7 @@ export function styleBodies(markup, all = false) {
  * references, decimal or hex. Anything else stays as written.
  */
 export const unescapeAttr = (/** @type {string} */ v) =>
-	v.replace(/&(?:#(\d{1,7})|#[xX]([0-9a-fA-F]{1,6})|(quot|apos|lt|gt|amp));/g, (m, dec, hex, name) => {
+	v.replace(/&(?:#(\d+)|#[xX]([0-9a-fA-F]+)|(quot|apos|lt|gt|amp));/g, (m, dec, hex, name) => {
 		if (name) return { quot: '"', apos: "'", lt: "<", gt: ">", amp: "&" }[/** @type {"quot"} */ (name)];
 		const cp = dec ? parseInt(dec, 10) : parseInt(hex, 16);
 		return cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : m;
@@ -264,7 +269,8 @@ export function paintSource(markup) {
 		if (tag.closing || tag.inMetadata) continue;
 		for (const { name, raw } of tag.attrs) {
 			if (/^(data-|aria-)|^(id|class)$/.test(name)) continue;
-			out.push(name === "style" ? maskCssStrings(stripCssComments(unescapeAttr(raw))) : raw);
+			const value = unescapeAttr(raw);
+			out.push(name === "style" ? maskCssStrings(stripCssComments(value)) : value);
 		}
 	}
 	// A stylesheet inside <metadata> still styles elements outside it (SVG 1.1, styling scope).
@@ -275,11 +281,24 @@ export function paintSource(markup) {
 /** Replace every var(--mk-token) with its literal value. Unknown tokens throw. */
 export function resolveTokens(markup, style, theme = "light") {
 	const s = normalizeStyle(style);
-	return markup.replace(/var\(--mk-([a-zA-Z]+)\)/g, (_, name) => {
-		const v = s[theme][name];
-		if (!v) throw new Error(`unknown style token "${name}"`);
-		return v;
-	});
+	const resolve = (/** @type {string} */ text) =>
+		text.replace(/var\(--mk-([a-zA-Z]+)\)/g, (_, name) => {
+			const v = s[theme][name];
+			if (!v) throw new Error(`unknown style token "${name}"`);
+			return v;
+		});
+	// A reference spelling (`var(&#45;&#45;mk-caution)`) reads as the same token to an XML parser:
+	// decode such a value or style body, resolve it, and write it back with the markup characters escaped.
+	const escaped = (/** @type {string} */ v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
+	const viaDecoded = (/** @type {string} */ raw, /** @type {boolean} */ attr) => {
+		if (!raw.includes("&#")) return resolve(raw);
+		const decoded = unescapeAttr(raw);
+		if (!decoded.includes("var(--mk-")) return resolve(raw);
+		return attr ? escaped(resolve(decoded)) : resolve(decoded).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	};
+	return resolve(markup)
+		.replace(/(\s[\w:.-]+\s*=\s*)(["'])([\s\S]*?)\2/g, (m, pre, q, raw) => (raw.includes("&#") ? `${pre}${q}${viaDecoded(raw, true)}${q}` : m))
+		.replace(/(<style\b[^>]*>)([^<]*)(<\/style\s*>)/gi, (m, open, body, close) => (body.includes("&#") ? open + viaDecoded(body, false) + close : m));
 }
 
 /* ---------------------------------------------------------------- contrast */
@@ -387,7 +406,7 @@ function malformedPairs(name, pairs) {
 	if (!Array.isArray(pairs)) return [`${name}: contrast pairs must be an array of { fg, bg, min }`];
 	const problems = [];
 	for (const [i, p] of pairs.entries()) {
-		const bad = !p || typeof p !== "object" ? "is not an object" : !TOKENS.includes(p.fg) ? `has unknown fg token "${p.fg}"` : !TOKENS.includes(p.bg) ? `has unknown bg token "${p.bg}"` : !(typeof p.min === "number" && p.min >= 1 && p.min <= 21) ? "needs a min contrast between 1 and 21" : "";
+		const bad = !p || typeof p !== "object" ? "is not an object" : !TOKENS.includes(p.fg) ? `has unknown fg token "${p.fg}"` : !TOKENS.includes(p.bg) ? `has unknown bg token "${p.bg}"` : p.fg === p.bg ? `pairs "${p.fg}" with itself, which shows no contrast` : !(typeof p.min === "number" && p.min >= 1 && p.min <= 21) ? "needs a min contrast between 1 and 21" : "";
 		if (bad) problems.push(`${name}: contrast pair ${i} ${bad}`);
 	}
 	return problems;
