@@ -275,7 +275,7 @@ export function codeBlock(opts) {
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
 	if (!["error", "wrap", "clip"].includes(overflow)) throw new Error(`codeBlock: \`overflow\` must be "error", "wrap" or "clip", got ${JSON.stringify(overflow)}`);
-	if (typeof font !== "string" || !FONT_LIST.test(font) || NOT_XML.test(font) || /var\(\s*--mk-/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
+	if (typeof font !== "string" || !FONT_LIST.test(font) || NOT_XML.test(font) || /var\(\s*--mk-/i.test(font) || /^\s*(?:inherit|initial|unset|revert|revert-layer)\s*$/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
 	/** @type {Record<string, CodeRole>} */
 	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
 	for (const [name, role] of Object.entries(given)) {

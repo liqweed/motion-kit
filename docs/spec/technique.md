@@ -448,7 +448,7 @@ functions; a colour is a token name (G4 applies).
   its supplement, common punctuation and symbols; precomposed letters such as
   `ế`, `ἄ` and `ԁ` pass); any other, such as CJK, emoji, combining marks,
   unassigned code points or invisible letters, is refused with the line number
-  and the code point (an embedded line break is refused first, naming the line only) (a panel under eight columns is refused first, naming no line): the block
+  and the code point (an embedded CR or LF is refused first, naming the line only; U+2028 and U+2029 are refused here as unsupported characters) (a panel under eight columns is refused first, naming no line): the block
   is a grid of one-column cells. The text of every line, wrapped or clipped
   or not, stays in `block.text` and `block.rangeText(from, to)`, for the
   scene's `description` and its step `detail`s.
