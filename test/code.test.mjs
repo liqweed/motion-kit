@@ -325,6 +325,20 @@ describe("codeBlock input hardening", () => {
 		assert.throws(() => codeBlock({ lines: ["a\u000Bb"], x: 0, y: 0, width: 400 }), /U\+000B/);
 	});
 
+	it("refuses bidi marks and other invisible format controls", () => {
+		for (const c of ["\u200E", "\u200F", "\u061C", "\u202A", "\u202E", "\u2066", "\u2069"]) {
+			assert.throws(() => codeBlock({ lines: [`a${c}b`], x: 0, y: 0, width: 400 }), /combining or zero-width/, c.charCodeAt(0).toString(16));
+		}
+		assert.doesNotThrow(() => codeBlock({ lines: ["a b"], x: 0, y: 0, width: 400 }));
+	});
+
+	it("copies roles declared on a prototype", () => {
+		const role = Object.create({ token: "ink", weight: 700, italic: true });
+		const b = codeBlock({ lines: [[{ text: "x", role: "mine" }]], x: 0, y: 0, width: 400, roles: { mine: role } });
+		assert.deepEqual({ ...b.roles.mine }, { token: "ink", weight: 700, italic: true });
+		assert.doesNotThrow(() => drawCode(b, 1, [{ lines: 1, start: 0 }]));
+	});
+
 	it("keeps its own copy of the roles", () => {
 		const role = { token: "ink" };
 		const b = codeBlock({ lines: [[{ text: "x", role: "mine" }]], x: 0, y: 0, width: 400, roles: { mine: role } });

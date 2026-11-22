@@ -117,8 +117,8 @@ function expandTabs(s, tabSize, col) {
 /** Characters that take two cells (CJK, full-width forms, emoji): a column grid cannot hold them. */
 const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
 
-/** Zero-advance characters (combining marks, joiners, variation selectors): a cell grid cannot place them. */
-const ZERO_WIDTH = /\p{M}|[\u200B-\u200D\u2060\uFEFF]/u;
+/** Zero-advance characters (combining marks, joiners, bidi and other format controls, variation selectors): a cell grid cannot place them. */
+const ZERO_WIDTH = /\p{M}|[\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u206F\uFEFF]/u;
 
 /** Characters XML 1.0 forbids, lone surrogates included: they would make the SVG invalid. */
 const NOT_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
@@ -261,7 +261,7 @@ export function codeBlock(opts) {
 	}
 
 	/** Own, frozen copies: the caller's role objects can change after construction. */
-	const roles = Object.fromEntries(Object.entries(given).map(([name, role]) => [name, Object.freeze({ ...role })]));
+	const roles = Object.fromEntries(Object.entries(given).map(([name, role]) => [name, Object.freeze({ token: role.token, ...(role.weight !== undefined && { weight: role.weight }), ...(role.italic !== undefined && { italic: role.italic }) })]));
 	const lineCount = lines.length;
 	const charWidth = fontSize * ADVANCE;
 	const rowHeight = fontSize * lineHeight;
