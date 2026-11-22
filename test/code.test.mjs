@@ -326,7 +326,7 @@ describe("codeBlock input hardening", () => {
 	});
 
 	it("refuses bidi marks and other invisible format controls", () => {
-		for (const c of ["\u200E", "\u200F", "\u061C", "\u202A", "\u202E", "\u2066", "\u2069"]) {
+		for (const c of ["\u200E", "\u200F", "\u061C", "\u202A", "\u202E", "\u2066", "\u2069", "\u00AD", "\u180E", "\u{E0041}"]) {
 			assert.throws(() => codeBlock({ lines: [`a${c}b`], x: 0, y: 0, width: 400 }), /combining or zero-width/, c.charCodeAt(0).toString(16));
 		}
 		assert.doesNotThrow(() => codeBlock({ lines: ["a b"], x: 0, y: 0, width: 400 }));
