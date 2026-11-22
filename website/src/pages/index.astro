@@ -1,7 +1,6 @@
 ---
 import orderFlow from "../../../examples/order-flow.json";
-import isoSwivel from "../../../examples/isometric-swivel.scene.mjs";
-import { sceneFromModule } from "../../../runtime/kit.mjs";
+import { buildScene } from "../scripts/build-scene.mjs";
 import { createScene } from "../../../runtime/types/index.mjs";
 import CommandBlock from "../components/CommandBlock.astro";
 import Diagram from "../components/Diagram.astro";
@@ -12,8 +11,10 @@ import { INSTALLS, ISO_SHOWCASE, LIVE, NEIGHBOURS, PLANNED, PROOFS, REPO, TARGET
 const exampleTitle = (id: string) => LIVE.find((e) => e.id === id)?.title ?? id;
 const heroWide = createScene(orderFlow, { format: "16:9" });
 const heroTall = createScene(orderFlow, { format: "tall" });
-const isoWide = sceneFromModule(isoSwivel, { format: "16:9" });
-const isoTall = sceneFromModule(isoSwivel, { format: "tall" });
+const isoEntry = LIVE.find((e) => e.id === ISO_SHOWCASE.example);
+if (!isoEntry) throw new Error(`site catalog has no live example "${ISO_SHOWCASE.example}"`);
+const isoWide = buildScene(isoEntry, { format: "16:9" });
+const isoTall = buildScene(isoEntry, { format: "tall" });
 const isoPlatform = LIVE.find((e) => e.id === ISO_SHOWCASE.also);
 ---
 

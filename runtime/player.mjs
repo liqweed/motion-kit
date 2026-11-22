@@ -489,7 +489,7 @@ export function mountPlayer(container, scene, options = {}) {
 		themeQuery?.removeEventListener?.("change", applyTheme);
 		if (g.__motionKit[id] === controller) delete g.__motionKit[id];
 	}
-	const controller = { seek, play, pause, seekStep, playToStep, onStep, destroy, get time() { return t; }, scene };
+	const controller = { seek, play, pause, seekStep, playToStep, onStep, destroy, get time() { return t; }, get playing() { return playing; }, get autoplayPending() { return autoplayPending; }, scene };
 	const g = /** @type {any} */ (globalThis);
 	g.__motionKit = g.__motionKit ?? {};
 	g.__motionKit[id] = controller;

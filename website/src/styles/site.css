@@ -165,14 +165,14 @@ button { font: inherit; cursor: pointer; color: inherit; border-radius: 0; }
 .mk-player .mk-controls { gap: 8px; margin-top: 16px; }
 .mk-player .mk-btn { min-width: 44px; min-height: 44px; padding: 0 16px; border-radius: 0; border: 2px solid var(--ink); background: var(--bg); color: var(--ink); font: 500 16px/24px var(--sans); }
 .mk-player .mk-btn[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: var(--onAccent); box-shadow: 0 0 0 1px var(--keyline); }
-.mk-player .mk-play { background: var(--accent); border-color: var(--accent); color: var(--onAccent); }
+.mk-player .mk-play { background: var(--accent); border-color: var(--accent); color: var(--onAccent); box-shadow: 0 0 0 1px var(--keyline); }
 .mk-player .mk-caption { margin-top: 8px; padding: 8px 16px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font-size: 16px; line-height: 24px; min-height: 42px; }
 .mk-player .mk-scrub { accent-color: var(--accent); }
 .mk-player.mk-mini .mk-controls, .mk-player.mk-mini .mk-caption { display: none; }
 .mk-player.mk-hide-controls .mk-controls { display: none; }
 .mini-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
 .mini-bar button { min-width: 44px; min-height: 44px; padding: 0 8px; border: 2px solid var(--ink); background: var(--bg); color: var(--ink); font: 500 16px/24px var(--mono); }
-.mini-bar button.play { background: var(--accent); border-color: var(--accent); color: var(--onAccent); }
+.mini-bar button.play { background: var(--accent); border-color: var(--accent); color: var(--onAccent); box-shadow: 0 0 0 1px var(--keyline); }
 .mini-bar button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: var(--onAccent); box-shadow: 0 0 0 1px var(--keyline); }
 .mini-cap { margin-top: 8px; padding: 8px 16px; min-height: 42px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); }
 .player-box { min-width: 0; }

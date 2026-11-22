@@ -5,8 +5,8 @@
  * invented thing is the agent session wording, and the page says so.
  */
 import { linkSteps, scrollSteps } from "../../../runtime/links.mjs";
-import { stepIndexAt } from "../../../runtime/scene.mjs";
 import { DEFECTS, ISO_SHOWCASE, LIVE, PLANNED, STORY, STYLES, TRANSCRIPT } from "./catalog.mjs";
+import { autoplayFor, release, responsive, resumeFrom } from "./handoff.mjs";
 import { liveCard, plannedCard } from "./cards.mjs";
 import {
 	$, CONTRAST_PAIRS, chipGroup, contrastOf, contrastProblems, failNote, frameMarkup, h, initPage, keyControls, loadScene, mount, onStep, paintProgress, reducedMotion, siteTheme, styleFor, themeOpt,
@@ -21,49 +21,6 @@ const find = (id) => {
 };
 const phone = matchMedia("(max-width: 720px)").matches;
 const wideFmt = phone ? "tall" : "wide";
-
-/**
- * What a mount is told about the window it lives in.
- * @typedef {{ live: () => boolean, resumeAt: number | null }} MountContext
- *   `live` turns false once the window crosses the breakpoint (check it after any await, before mounting or publishing);
- *   `resumeAt` is the outgoing player's time when this mount replaces one, else null.
- */
-
-/**
- * A figure is server-rendered twice, wide and tall; CSS shows one. Mount the
- * live player over whichever shows, and the other if the window crosses the
- * breakpoint later, carrying the outgoing player's time across so a reader's
- * place (and an autoplay already spent) survives.
- * @param {string} base id prefix of the two containers ("hero" for hero-wide and hero-tall)
- * @param {(el: HTMLElement, format: "wide" | "tall", ctx: MountContext) => Promise<(() => number | void) | void>} mountOne resolves to its teardown, which may return the player's time
- */
-function responsive(base, mountOne) {
-	/** @type {Map<string, { pending: Promise<(() => number | void) | void>, cancel: () => void }>} */
-	const mounted = new Map();
-	/** @type {number | null} */
-	let resumeAt = null;
-	const go = () => {
-		for (const format of /** @type {const} */ (["wide", "tall"])) {
-			const el = document.getElementById(`${base}-${format}`);
-			if (el && el.offsetParent !== null && !mounted.has(format)) {
-				// Only one format shows: release the hidden one's player and listeners first.
-				for (const [other, m] of mounted) {
-					mounted.delete(other);
-					m.cancel();
-					m.pending.then((stop) => {
-						const t = stop?.();
-						if (typeof t === "number") resumeAt = t;
-					});
-				}
-				let alive = true;
-				const ctx = { live: () => alive, resumeAt };
-				mounted.set(format, { pending: mountOne(el, format, ctx), cancel: () => (alive = false) });
-			}
-		}
-	};
-	go();
-	matchMedia("(max-width: 720px)").addEventListener("change", go);
-}
 
 /* ---------------------------------------------------------------- hero */
 
@@ -103,22 +60,20 @@ responsive("hero", async (el, format, ctx) => {
 	try {
 		const sc = await loadScene(heroEntry, { format: format === "wide" ? "16:9" : "tall" });
 		if (!ctx.live()) return;
-		const { controller } = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: ctx.resumeAt == null ? "visible" : "none" });
-		if (ctx.resumeAt != null) controller.seek(Math.min(ctx.resumeAt, sc.duration));
+		const { controller } = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: autoplayFor(ctx) });
+		resumeFrom(controller, sc, ctx);
 		const unsub = onStep(controller, (i) => {
 			heroStep = i;
 			paintProgress($("[data-progress]", heroPlate), i, sc.steps.length);
 			paintFrames(i);
 			const readout = $("#readout");
-			if (readout) readout.textContent = `frame(t) at step ${Math.max(i, 0) + 1} of ${sc.steps.length} · one scene, four targets`;
+			if (readout) readout.textContent = i < 0 ? `frame(t) before step 1 of ${sc.steps.length} · one scene, four targets` : `frame(t) at step ${i + 1} of ${sc.steps.length} · one scene, four targets`;
 		});
 		const stopKeys = keyControls(el, controller, { legend: $("#hero-legend"), callouts: $("#hero-callouts"), plate: heroPlate });
 		return () => {
 			unsub?.();
 			stopKeys();
-			const t = controller.time;
-			controller.destroy();
-			return t;
+			return release(controller);
 		};
 	} catch (err) {
 		failNote(el, err);
@@ -248,17 +203,15 @@ showStyle("tidewater");
 		try {
 			const sc = await loadScene(isoEntry, { format: format === "wide" ? "16:9" : "tall" });
 			if (!ctx.live()) return;
-			const { controller } = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: ctx.resumeAt == null ? "visible" : "none" });
-			if (ctx.resumeAt != null) controller.seek(Math.min(ctx.resumeAt, sc.duration));
+			const { controller } = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: autoplayFor(ctx) });
+			resumeFrom(controller, sc, ctx);
 			const unsub = onStep(controller, (i) => {
 				paintProgress($("[data-progress]", plate), i, sc.steps.length);
 				items.forEach((li, j) => (j === i ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current")));
 			});
 			return () => {
 				unsub?.();
-				const t = controller.time;
-				controller.destroy();
-				return t;
+				return release(controller);
 			};
 		} catch (err) {
 			failNote(el, err);

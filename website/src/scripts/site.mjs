@@ -286,14 +286,19 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 	const off = new AbortController();
 	if (!drawn && !reducedMotion() && !plate.classList.contains("leaders-draw")) {
 		plate.classList.add("leaders-armed");
-		const t0 = performance.now();
+		// The player rests on its final frame until autoplay starts, so only a playback that has begun can end.
+		let started = false;
 		const watch = () => {
 			if (drawn) return;
-			if (controller.time >= controller.scene.duration - 0.02 && performance.now() - t0 > 300) return draw();
+			const end = controller.scene.duration - 0.02;
+			if (!started && (controller.playing || controller.time < end)) started = true;
+			if (started && controller.time >= end) return draw();
 			raf = requestAnimationFrame(watch);
 		};
 		raf = requestAnimationFrame(watch);
 		timer = window.setTimeout(draw, (controller.scene.duration + 4) * 1000); // a paused or hidden player still gets its leaders
+		// Turning reduced motion on later shows the leaders at once rather than leaving them hidden.
+		matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => e.matches && draw(), { signal: off.signal });
 		root.addEventListener("pointerdown", draw, { once: true, signal: off.signal });
 		root.addEventListener("keydown", draw, { once: true, signal: off.signal });
 	}

@@ -104,15 +104,19 @@ in the layout that shows the callouts.
 The round drew the hero, "where it runs" and the player at 1200 px and wider.
 The build settled the rest, in `website/src/styles/site.css`:
 
-- **Below 1200 px** the 12-column grid loosens (32 px side margin) and every
-  two-column band stacks. At 720 px and below the margin is 16 px, the hero
+- **At 1200 px and below** (the breakpoint is inclusive) the 12-column grid
+  loosens (32 px side margin) and the two-column bands stack, except the gallery
+  comparison, which keeps both columns while they fit, and the scroll story,
+  which keeps its rail beside the text after moving the stage above it. At 720 px and below the margin is 16 px, the hero
   heading drops to 40 / 48 and section headings to 32 / 40 (still multiples of
   8), the figure switches to the portrait `tall` format, and callouts and their
   legend are left out (the controls carry their own labels).
-- **Figures** are plates with the 8 px ruler, a "Fig. n" label and a row of
-  step squares (done, now, to come). The live player's own controls are drawn
-  in the design's language (square, 2 px ink edge, accent fill for play and the
-  current step).
+- **Figures** are plates with the 8 px ruler, a "Fig. n" label and, on figures that
+  track the active step, a row of step squares (done, now, to come; filled in by
+  script, and absent from figures that carry none). The live player's own
+  controls are drawn in the design's language (square, 2 px ink edge; play and
+  the current step have an accent fill and a 1 px light keyline, because the
+  accent alone is about 1.8:1 against the dark plate).
 - **Gallery cards** are 1 px-ruled square plates with the player, the title, the
   scene type and a "built" badge. A **needs card** has a dashed 1 px edge, a
   hatched storyboard in place of the player, and a "needs: type" badge.
@@ -123,8 +127,9 @@ The build settled the rest, in `website/src/styles/site.css`:
   is paused or the hero stays out of view), the callout leaders draw once, one at a time (160 ms each, the easing curve). Under reduced motion
   the leaders are simply there. Without JavaScript the callouts and the legend
   are not built; the controls carry their own labels.
-- **Dark theme**: page chrome uses the site-dark tokens above. The diagrams keep
-  the neutral dark tokens (accent `#2563eb`), because accent `#1d36a8` is 1.9:1
+- **Dark theme**: page chrome uses the site-dark tokens above. The default
+  studio diagrams keep the neutral dark tokens (accent `#2563eb`; the style
+  previews, such as Tidewater, show their own palettes), because accent `#1d36a8` is 1.9:1
   on near-black, under the 3:1 that reached nodes and connectors need.
 
 ## Not decided yet
