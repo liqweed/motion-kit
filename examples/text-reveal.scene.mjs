@@ -87,7 +87,7 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 
 	// One sweep over all the lines of the quote: line i fills while the sweep
 	// is inside its share of the total width.
-	// estimateWidth is a rough heuristic; 0.9 of it hugs a typical sans-serif for these lines (the gate checks they fit).
+	// estimateWidth is a rough heuristic; 0.9 of it hugs a typical sans-serif for these fixed lines (checked by eye in the rendered frames; the gate does not measure glyph widths).
 	const widths = quote.map((line) => estimateWidth(line, fsQuote) * 0.9 + 2 * pad);
 	const total = widths.reduce((a, b) => a + b, 0);
 	const before = widths.map((_, i) => widths.slice(0, i).reduce((a, b) => a + b, 0));
