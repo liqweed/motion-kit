@@ -38,7 +38,7 @@ b, strong { font-weight: 600; }
 a { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 a:hover { text-decoration-thickness: 2px; }
 button { font: inherit; cursor: pointer; color: inherit; border-radius: 0; }
-:focus-visible { outline: 2px solid var(--emph); outline-offset: 2px; border-radius: 0; box-shadow: 0 0 0 2px var(--bg); } /* the gap reads as white, so the ring holds 3:1 on a plate too */
+:focus-visible { outline: 2px solid var(--emph); outline-offset: 2px; border-radius: 0; box-shadow: 0 0 0 2px var(--ink); } /* an ink gap beside the amber ring: the pair holds 3:1 on a plate in either theme */
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip { position: absolute; left: 8px; top: -64px; z-index: 10; background: var(--bg); color: var(--ink); padding: 8px 16px; border: 2px solid var(--ink); }
 .skip:focus { top: 8px; }
@@ -448,4 +448,4 @@ button { font: inherit; cursor: pointer; color: inherit; border-radius: 0; }
 	.callouts, .legend { display: none; }
 }
 /* Filled controls set their own keyline shadow; keep the focus halo so the ring holds 3:1 on a plate. */
-.btn:focus-visible, .mk-player .mk-btn:focus-visible, .mk-player .mk-play:focus-visible, .mini-bar button:focus-visible { box-shadow: 0 0 0 2px var(--bg); }
+.btn:focus-visible, .mk-player .mk-btn:focus-visible, .mk-player .mk-play:focus-visible, .mini-bar button:focus-visible { box-shadow: 0 0 0 2px var(--ink); }

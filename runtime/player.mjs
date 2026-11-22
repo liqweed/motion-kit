@@ -320,10 +320,16 @@ export function mountPlayer(container, scene, options = {}) {
 			}
 		}
 	}
-	/** @param {number} time */
+	/** Public seek: a valid call is a takeover, so a start in flight sees it. @param {number} time */
 	function seek(time) {
 		if (destroyed) return;
 		if (!Number.isFinite(time)) throw new RangeError("seek time must be finite");
+		takeovers++;
+		jump(time);
+	}
+	/** Internal reset to a time; not a takeover. @param {number} time */
+	function jump(time) {
+		if (destroyed) return;
 		autoplayPending = false;
 		playing = false;
 		suspended = false;
@@ -450,7 +456,7 @@ export function mountPlayer(container, scene, options = {}) {
 		if (autoplayPending && shown(e)) {
 			autoplayPending = false;
 			const before = takeovers;
-			seek(0);
+			jump(0);
 			// A step subscriber may have taken control while the reset frame published.
 			if (destroyed || takeovers !== before || t !== 0) return;
 			play();
@@ -458,7 +464,7 @@ export function mountPlayer(container, scene, options = {}) {
 	}
 
 	// Initial state: final frame (also what reduced motion and no-autoplay keep).
-	seek(scene.duration);
+	jump(scene.duration);
 	const autoplay = options.autoplay ?? "visible";
 	if (!reduced) {
 		if (typeof IntersectionObserver === "function") {
@@ -467,7 +473,7 @@ export function mountPlayer(container, scene, options = {}) {
 			visibilityObserver.observe(container);
 		}
 		if (autoplay !== "none" && !autoplayPending) {
-			seek(0);
+			jump(0);
 			play();
 		}
 	}

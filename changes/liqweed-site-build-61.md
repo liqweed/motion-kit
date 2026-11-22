@@ -1,5 +1,5 @@
 ---
-release: patch
+release: minor
 ---
 
 ### Added
@@ -8,4 +8,4 @@ release: patch
 
 ### Changed
 
-- `pause()` now cancels a pending visible autoplay, so a player paused before it appeared stays paused when it scrolls into view.
+- `pause()` now cancels a pending visible autoplay, so a player paused before it appeared stays paused when it scrolls into view. A page that relied on playback starting on entry after an offscreen `pause()` must now call `play()` itself. Every valid `seek()` also ends a pending autoplay, including one made by a step subscriber while the reset frame publishes.

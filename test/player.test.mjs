@@ -572,6 +572,16 @@ it("a step subscriber that pauses while the reset frame publishes keeps autoplay
 	assert.equal(env.player.autoplayPending, false);
 });
 
+it("a step subscriber that seeks to 0 while the reset frame publishes keeps autoplay from starting", () => {
+	const env = setup({ autoplay: "visible" });
+	let armed = false;
+	env.player.onStep((i) => { if (armed && i === 0) { armed = false; env.player.seek(0); } });
+	armed = true;
+	env.show();
+	assert.equal(env.player.playing, false, "an explicit seek during the reset wins");
+	assert.equal(env.player.autoplayPending, false);
+});
+
 it("playing and autoplayPending follow the controller through play, completion and a seek", () => {
 	const waiting = setup({ autoplay: "visible" });
 	assert.deepEqual([waiting.player.playing, waiting.player.autoplayPending], [false, true], "autoplay waits for the view");
