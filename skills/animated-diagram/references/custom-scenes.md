@@ -209,8 +209,7 @@ ambient motion, which the canon rules out.
 | A value | `drawValue({ x, y, to, from?, p, format?, fontSize?, anchor?, family?, opacity?, id? })` draws `format(rollingValue(from, to, p))`: it shares the bar's raw progress, and exactly `to` once the bar has settled. A formatter may round to its final display early, so do not claim intermediate visible digits are synchronized. Without `format`, it rounds to a whole number (`to: 0.8` settles as `1`). `format` is yours (units, decimals, locale: `(v) => new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(v) + " s"`) and returns a string |
 
 Anchor the value at a fixed x with `anchor: "end"` so the digits do not push the
-text sideways, and set `family: style.mono` (from `frame(t, { idPrefix, style })`) so they do
-not jitter as they change and the font gate passes with a custom style. The
+text sideways, and set `family: style.mono` (from `frame(t, { idPrefix, style })`; fall back to `style?.mono ?? "monospace"` if the frame may be called without a style) so the style's monospace stack applies and the font gate passes with a custom style. The digits stay put only when the renderer resolves that stack to an equal-width face; resvg can fall back to a proportional one. The
 bar's accent sits on the track's colour: declare `{ fg: "accent", bg: "surface",
 min: 3, use: "the bar's fill on its track" }` and `{ fg: "line", bg: "surface",
 min: 2.5, use: "decorative hatching on the track" }` in `contrastPairs`. Hatching that conveys information is a shape and needs 3:1.
@@ -235,7 +234,7 @@ quoted line reveals and is marked).
 
 | Need | Use |
 |---|---|
-| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card. The default region holds the blur when the element's painted bounds are at least 12 × `blur` units wide (48 units at the default blur of 4) **and** at least 3 × `blur` units tall (it adds only one element height above and below). For a narrower or shallower element, a short label, a thin rule or an icon, a larger `blur`, or any shape whose stroke or markers reach past its geometry by more than that padding (a thick stroke on a small shape, at any size), pass `box: { x, y, width, height }` covering the painted bounds (all four finite; `width` and `height` positive; `x` and `y` may be anything) |
+| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card. The default region holds the blur when the element's geometry (its bounding box, before stroke or markers) is at least 12 × `blur` units wide (48 units at the default blur of 4) **and** at least 3 × `blur` units tall (it adds only one element height above and below); the default region extends 25% of the box on each horizontal side, so subtract any stroke or marker overhang from that side before comparing the clearance with 3 × `blur`. For a narrower or shallower element, a short label, a thin rule or an icon, a larger `blur`, or any shape whose stroke or markers reach past its geometry by more than that padding (a thick stroke on a small shape, at any size), pass `box: { x, y, width, height }` covering the painted bounds (all four finite; `width` and `height` positive; `x` and `y` may be anything) |
 | Its filter id | `id: idPrefix + "-reveal-" + i`, one per revealed element. The gate reports ids shared across instances at its sampled times (it can miss a short reveal between samples), so keep the prefix, and every slice of a baked SVG has its own prefix |
 | A highlighter | `highlightSweep(p, { x, y, width, height, token, opacity, radius })`: a band in a token (default `emphasis`) at 30 % that grows from `x` to `x + width` as `p` (eased) goes 0 → 1; its `token` is checked once the band is drawn. Draw it **before** the text; size it from `estimateWidth(line, fontSize)` plus padding each side (the estimate is generous; do not shrink it where wide glyphs such as a capital W may appear, since they can run past a shortened band. `examples/text-reveal.scene.mjs` takes 0.9 of it for its fixed lines only, checked by eye in the rendered frames; the gate does not compare glyph widths with the band) |
 
@@ -251,11 +250,11 @@ Rules that keep it inside the canon:
   repeats. Stagger siblings 80–150 ms in reading order. A blinking cursor or any
   other loop is ambient motion and stays out; a static cursor is fine.
 - **Reduced motion** shows the final frame, which is the settled text and the
-  full band: no filter, no motion.
+  full band: no filter, no motion, provided the scene finished the reveal.
 - **Renderers.** The live player (in-place patch), `bake`, PNG export (resvg,
   Chrome) and video use the same helper and filter parameters; the raster blur can vary with renderer, fonts and scale, and only one resvg frame is checked. A consumer that ignores SVG filters
   shows the fade and the rise only, and only mid-reveal; step frames carry no
-  filter.
+  filter provided the reveal finished in time.
 - **Cost.** A blur is the most expensive thing a frame can ask the browser for.
   Reveal the handful of elements the viewer must watch arrive, not every
   element in a dense diagram; for those, `fade()` is enough

@@ -390,7 +390,7 @@ functions; a colour is a token name (G4 applies).
   the group when the reveal ends), `renderSvg` and `bake` use the same helper and filter parameters; their SVG bytes differ (`bake` renames filter ids per slice and wraps frames in groups; `renderSvg` resolves token references only in standalone mode), so do not compare or reuse them interchangeably. PNG export and video rasterize with resvg or Chrome, and raster appearance can vary with renderer, fonts and scale (`test/reveal.test.mjs`,
   `test/player.test.mjs`). A consumer that ignores SVG filters (some slide
   applications) shows the fade and the rise without the blur, and only in a
-  frame taken mid-reveal: step frames carry no filter.
+  frame taken mid-reveal: step frames carry no filter when the reveal finished in time (below).
 - **Timing.** The reveal is one entrance, 300 to 600 ms (§4.2), on the style's
   entrance curve (`easings(style.motion).easeOut`), finished 50 ms or more
   before the step it belongs to. That is the scene's obligation: G6 only checks that frames around a step are stable, so a scene that holds `enter` at, say, 0.5 through a step or the end keeps a filter in those frames and passes. The no-filter guarantee holds only for a reveal completed in time. It happens once per element and holds.
@@ -464,7 +464,7 @@ functions; a colour is a token name (G4 applies).
   carries the units, decimals and locale; it must return a string, which is
   escaped. It throws for a `format` that is not a function or returns another
   type, and for a non-finite number. A scene passes `family: style.mono` (from
-  `frame(t, { style })`) to keep the digits from jittering.
+  `frame(t, { style })`; `style` is optional in the signature, so a frame called directly may fall back to a neutral stack such as `style?.mono ?? "monospace"`) so the style's monospace stack applies. The digits stay put only when the renderer resolves that stack to a face with equal-width digits; resvg can fall back to a proportional system font.
 - **Canon.** A bar grows once, in a step's beat, and rests (§4.8): every bar of
   the beat has settled (`barEnd`) at least 50 ms before the step's `at`, and from
   then its value is exactly `format(to)`, so the step frame is the settled
