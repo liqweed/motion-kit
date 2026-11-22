@@ -47,8 +47,8 @@ const ISSUED = new WeakSet();
  * Diagonal hatching: lines at 45°, rising to the right, `spacing` pixels apart
  * (measured across the lines) and `width` pixels wide, in the token `stroke`.
  * The pattern is anchored to the picture, not to a track, so tracks that use it
- * show one continuous hatch. Its id is `<prefix>-<name>`; a `name` has no "-", so the last "-" ends the prefix and two prefixes never share an id (the prefix made a
- * safe id token, as `renderSvg` does): `idPrefix` is the frame's, so two instances on a page never share one, and a scene that draws
+ * show one continuous hatch. Its id is `<prefix>-<name>`; a `name` has no "-", so the last "-" ends the prefix. `idPrefix` is normalized with `safeId`, so prefixes must
+ * be unique after that normalization: the frame's prefix keeps two instances on a page separate, and a scene that draws
  * several hatchings gives each its own `name`.
  * @param {{ idPrefix: string, name?: string, stroke?: string, spacing?: number, width?: number }} o
  * @returns {Hatch}
