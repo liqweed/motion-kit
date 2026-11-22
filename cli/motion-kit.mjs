@@ -32,6 +32,7 @@ import { closeSync, cpSync, existsSync, mkdirSync, openSync, readFileSync, renam
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { printable } from "../runtime/advice.mjs";
 import { bake, bakeStats } from "../runtime/bake.mjs";
 import { FORMATS } from "../runtime/scene.mjs";
 import { checkContrast, sharedPairs } from "../runtime/style.mjs";
@@ -172,14 +173,14 @@ async function main() {
 					// An optional preview: a tall layout that fails the gate, or whose check throws, is left out, as one that cannot be built is.
 					try {
 						const tr = checkScene(tall, { style, strict });
-						reportGate({ ...tr, warnings: [], advice: tr.advice.map((x) => ({ ...x, found: `tall layout: ${x.found}` })) });
+						for (const line of gateNotes({ ...tr, warnings: [] })) console.error(`motion-kit: tall layout: ${line}`);
 						if (tr.ok) phone.scene = tall;
 						else phone.error = `the tall layout fails the gate: ${tr.problems.join("; ")}`;
 					} catch (e) {
 						phone.error = `the tall layout could not be checked: ${e instanceof Error ? e.message : String(e)}`;
 					}
 				}
-				if (phone.error) console.error(`⚠ tall preview left out: ${phone.error}`);
+				if (phone.error) console.error(`⚠ tall preview left out: ${printable(phone.error)}`);
 			}
 			const m = await exportSteps(scene, { out: need(a.out, "--out"), advice: r.advice, style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION, phone, ...sopts });
 			console.log(`wrote ${m.files.length} frames + index.html + manifest.json to ${a.out}`);

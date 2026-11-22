@@ -345,6 +345,22 @@ describe("instance ids", () => {
 		const { problems } = checkScene(twice);
 		assert.ok(problems.some((p) => /duplicate id ".*-clip"/.test(p)), problems.join("; "));
 	});
+	it("the id scan reads element attributes, decoded, on every sampled frame", () => {
+		// A stylesheet selector on an id is no declaration.
+		const styled = { ...clipped, frame: (t, o) => `<style>[ id="${o.idPrefix}-clip"] { opacity: 1 }</style>${clipped.frame(t, o)}` };
+		assert.deepEqual(checkScene(styled).problems, []);
+		// "c" and its character reference are one id.
+		const spelled = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="${o.idPrefix}-&#99;lip"/>` };
+		assert.ok(checkScene(spelled).problems.some((p) => /duplicate id/.test(p)));
+		// A duplicate only between the sparse id probes (t = 0.1 … 0.15 s) is still found.
+		const brief = { id: "brief", width: 100, height: 40, duration: 1, title: "B", description: "B", stepLabelsInFrame: false, steps: [{ at: 1, label: "End" }], frame: (t, { idPrefix }) => `<rect id="${idPrefix}-a" width="${Math.round(t * 50)}" height="4" fill="var(--mk-accent)"/>${t > 0.1 && t < 0.15 ? `<rect id="${idPrefix}-a" width="1" height="1" fill="var(--mk-accent)"/>` : ""}` };
+		assert.ok(checkScene(brief).problems.some((p) => /duplicate id/.test(p)));
+		// Control characters in an id never reach a diagnostic raw.
+		const ctrl = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}<g id="x&#27;[2J"/><g id="x&#27;[2J"/>` };
+		const msg = checkScene(ctrl).problems.join("\n");
+		assert.match(msg, /duplicate id "x\\u001b\[2J"/);
+		assert.ok(!msg.includes("\u001b"));
+	});
 	it("bake gives each slice that defines ids its own prefix", () => {
 		const svg = bake(clipped, { fps: 4 });
 		const all = ids(svg);

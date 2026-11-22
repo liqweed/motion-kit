@@ -364,6 +364,35 @@ describe("cli", () => {
 		assert.match(svg, /viewBox="0 0 360 \d+" width="360"/);
 		assert.match(readFileSync(join(dir, "index.html"), "utf8"), /Phone size \(tall layout, 360 px wide\)<\/h2><div class="grid phone"><figure><img src="qc\/phone\.svg"/);
 	});
+	it("export leaves a tall layout out, with a diagnostic, when it throws mid-timeline", () => {
+		const dir = join(tmp, "exp-tall-throws");
+		mkdirSync(dir, { recursive: true });
+		const mod = join(dir, "flaky.scene.mjs");
+		writeFileSync(mod, `export default function make({ format = "16:9" } = {}) {
+	return {
+		id: "flaky-" + format.replace(":", "x"), width: 200, height: format === "tall" ? 300 : 100, duration: 1, title: "Flaky", description: "Tall throws mid-way.", stepLabelsInFrame: false,
+		steps: [{ at: 1, label: "End" }],
+		frame(t) {
+			if (format === "tall" && t > 0.2 && t < 0.3) throw new Error("tall breaks\\u001b[31m here");
+			return '<rect width="' + Math.round(100 * Math.min(t, 1)) + '" height="20" fill="var(--mk-accent)"/>';
+		},
+	};
+}
+`);
+		const out = join(dir, "out");
+		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8" }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
+		const r = both(CLI, "export", mod, "-o", out, "-f", "16:9");
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /tall preview left out: .*tall breaks\\u001b\[31m here/, "one-line, escaped diagnostic");
+		assert.ok(!r.out.includes("\u001b"), "no raw escape reaches the terminal");
+		const m = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
+		assert.ok(!m.files.some((f) => f.kind === "phone"), "no phone entry in the manifest");
+		assert.ok(!existsSync(join(out, "qc/phone.svg")), "no phone SVG on disk");
+		assert.match(readFileSync(join(out, "index.html"), "utf8"), /The tall layout could not be built/);
+		const strict = both(CLI, "export", mod, "-o", join(dir, "out2"), "-f", "16:9", "--strict");
+		assert.equal(strict.status, 0, strict.out);
+		assert.match(strict.out, /tall preview left out/);
+	});
 	it("build writes one self-contained HTML file", () => {
 		const f = join(tmp, "p.html");
 		run("build", `${EX}smart-home.json`, "-o", f);
