@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-22
+
+### Added
+
+- Bars with rolling values for custom scenes, in `kit` beside the connectors. `hatchPattern` makes a pattern of diagonal lines at 45° in a token colour, its id built from the frame's `idPrefix` so two instances whose prefixes differ after `safeId` normalization never share one; `drawTrack` fills a rounded, empty bar with it; `drawBar` grows a bar, rounded at both ends, over the track; `barProgress` gives its growth on the style's movement curve and `barEnd` the time it has settled; `drawValue` and `rollingValue` roll a number from a start value to its end value with the bar's progress, formatted by the caller (units, decimals, locale), and show exactly the end value once the bar has settled. The hatch draws the same in the live player, the baked SVG, PNG and video. A bar grows once inside its step's beat and rests; nothing repeats. Colours are style tokens. **Consumer action:** none.
+- A generic example, `examples/bars.scene.mjs`: three rows of a small benchmark that reveal top to bottom, one step each. It plays once, holds its final frame, lasts 4.45 s and passes the gate in every format and in English and Dutch. The `animated-diagram` skill's custom-scenes and motion-vocabulary references describe the parts and the timing rule. **Consumer action:** none.
+
 ## [0.13.0] - 2026-11-22
 
 ### Added
@@ -175,7 +182,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/liqweed/motion-kit/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/liqweed/motion-kit/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/liqweed/motion-kit/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/liqweed/motion-kit/compare/v0.10.0...v0.11.0
