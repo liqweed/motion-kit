@@ -51,7 +51,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
   serializable scene options, passed unchanged; option names `format`,
-  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `bars` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
+  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `bars`, `code` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
@@ -478,6 +478,81 @@ functions; a colour is a token name (G4 applies).
   is a shape and needs 3:1; the opaque bar itself is adjacent to `surface`, not
   to the hatch beneath it.
 
+### 4.13 Code blocks (`runtime/code.mjs`)
+
+For custom scenes that walk through a snippet; handed to them in `kit`. Pure
+functions; a colour is a token name (G4 applies).
+
+- **Block.** `codeBlock({lines, x, y, width, maxHeight?, fontSize, lineHeight,
+  padding, radius, overflow, lineNumbers, tabSize, dim, font, roles})` lays
+  the lines out once, when the scene is built. A line is a string, or an array
+  of strings and `{text, role}` runs: the caller supplies the roles; there is
+  no grammar. Tabs expand to `tabSize` columns and trailing spaces are dropped.
+  A column is 0.6 em (the advance of the common monospace faces) and each run
+  is set at its own column, so a fallback face does not shift the lines against
+  one another. `font` defaults to `CODE_FONT`, a monospace stack, and is read as a plain
+  comma-separated family list (unquoted names are a portable subset of CSS identifiers: ASCII letters, digits, `_` and `-`, each starting with a letter or `_` after at most one hyphen, so quote a name such as `Móno`, not starting with a digit, joined by single spaces, and a generic keyword such as `monospace` or `ui-serif` may not start a multiword name; a name that is not one, such as `Hawaii 5-0`, is quoted; CSS-wide keywords are refused; quoted names are any text but `<>{};`, a backslash, a tab and a line break, and neither start nor end with whitespace); any other CSS outside quotes is refused. For PNG and video resvg splits the list at every comma (so a quoted name with a comma never matches), removes quotes and then trims, so write the opening quote right after the comma and the closing quote right before the next comma or the end (`skills/animated-diagram/references/custom-scenes.md`) A style's own
+  monospace face, when it names one, is passed here. It must be a monospace face
+  whose advance is 0.6 em: the columns are fixed, so a proportional face, or a
+  fixed-pitch one with another advance (Iosevka's is 0.5 em), can overflow the
+  panel, overlap runs or leave gaps, and the gate cannot tell. The panel is as tall as
+  its code; `maxHeight` is what the picture can spare.
+- **Fit.** `fontSize` is at least 14 px (§7). A line wider than the block's
+  columns is refused (`overflow: "error"`, the default), wrapped at the last
+  space that fits (a word longer than the row is hard-broken) with the continuation indented two columns past the line's own
+  indent, but never past a quarter of the block's columns (`"wrap"`; a line that must wrap and is indented by half the columns, rounded down, or more is refused), or cut
+  with `…` in the last column (`"clip"`). Code taller than `maxHeight` is
+  refused. Each error caused by a line names it, with the remedies: shorten it, choose
+  `wrap` or `clip`, give the block more width or height (another format), or show
+  fewer lines (one scene per snippet; a longer walkthrough is several scenes or
+  a deck with one click per range). The panel needs room for eight columns of code, whatever the lines
+  say. Only assigned characters known to take one cell are accepted (Latin
+  through Latin Extended Additional, IPA, Greek and Greek Extended, Cyrillic and
+  its supplement, common punctuation and symbols; precomposed letters such as
+  `ế`, `ἄ` and `ԁ` pass); any other, such as CJK, emoji, combining marks,
+  unassigned code points or invisible letters, is refused with the line number
+  and the code point (an embedded CR or LF is refused first, naming the line only; U+2028 and U+2029 are refused here as unsupported characters) (a panel under eight columns is refused first, naming no line): the block
+  is a grid of one-column cells. The scene gate skips the code's own text (the `data-mk-code` runs) when it looks for the words `NaN`, `undefined` and `Infinity` and for a number with five or more decimals, and skips `<title>` and `<desc>` text for the decimals, so a snippet may show `3.14159` or `NaN`. The text of every line, wrapped or clipped
+  or not, stays in `block.text` and `block.rangeText(from, to)`, for the
+  scene's `description` and its step `detail`s.
+- **Roles.** `CODE_ROLES` maps `code`, `keyword`, `string` and `comment` to a
+  token with an optional weight and slant; `roles` adds or replaces roles. A
+  token that is not one of `TOKENS` throws. The defaults are `ink` and `muted`,
+  the tokens that read as text on `surface` in both themes of the neutral style,
+  told apart by weight and slant too. A role set in `accent` or `emphasis` is
+  held to 4.5:1 on `surface` by `codePairs`, and a style that misses it fails G12.
+- **Band.** `drawCode(block, t, moves, {ease})` draws the panel (`surface`,
+  outlined in `line`), the band and the lines. A move is `{lines, start,
+  duration?}`: `lines` is a line or a `[from, to]` range (1-based, inclusive).
+  The first move is where the band appears, fading in over its `duration` (at least 0.001 s, for every move)
+  (default 0.3 s); each later one moves the band from the range before it
+  (default 0.5 s) on `ease`, the style's movement curve
+  (`easings(style.motion).easeStandard`): the leading edge moves first and the
+  trailing edge follows `CODE_BAND_LAG` (0.07 s) later on the same curve (split
+  edges, §4.5), so when both edges travel the same way the band stretches in flight and gathers on arrival; an edge the two ranges share stays put while the other moves.
+  Moves must not overlap, and their starts must strictly increase (a move that starts with the one before it is refused). The band is `accent` at 18 % with a solid 3 px marker
+  on its left edge. A line's brightness is `dim` (default 0.45) plus the rest,
+  in proportion to how much of the line the band covers, so lines light as the
+  band reaches them and dim as it leaves; before the first move every line is
+  dimmed. `codeFocus` returns the band's rows and strength at `t`.
+- **Contrast.** `codePairs(block)` is the pairs the block draws, for
+  `scene.contrastPairs`: each token a role in use (and the line numbers) sets text
+  in, against `surface`, at 4.5; `accent` on `surface` (the marker) and `line` on
+  `bg` (the outline), at 3. The gate checks token pairs, not blended colours:
+  the band's 18 % tint under the active lines lowers the ratio a little (the
+  neutral style keeps a wide margin; check a style near 4.5:1), and the dimmed
+  lines, at `dim` opacity, are below 4.5:1 by design. What a step frame says is
+  in the band, and the full text is in the scene's description and step details.
+- **Canon.** The band moves once per step and rests there. `codeEnd(block,
+  moves)` is the time the last move is over (it also checks the moves, so call it
+  when the scene is built): put each step's `at` at least 50 ms after the end of
+  the move that leads to it, and the next move's `start` at least 50 ms after
+  that `at` (`moves[i + 1].start >= steps[i].at + 0.05`), and the settled-frame
+  rule (G6) holds. Nothing
+  loops, and the scene is at most 12 s, so a snippet that does not fit one scene
+  is several scenes. A deck advances it one range per click (in Slidev the first range is
+  shown on arrival and each click moves to the next, so n ranges take n − 1
+  clicks; one slide per step in Marp).
 
 ## 5. Markup
 
@@ -830,11 +905,11 @@ media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`
 
 | ID | Class | Rule | Code | Rationale |
 |---|---|---|---|---|
-| G1 | hard | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs:41-42` | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
-| G2 | hard | Each sampled frame MUST be well-formed (balanced tags, no stray `<`, entities only `amp lt gt quot #39 #n`). | `:12-31,43-44` | Escaping failures and broken markup break every target. |
-| G3 | hard | No number with ≥ 5 decimals in the full SVG. | `:45-46` | Rounding (T4). |
-| G4 | hard | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content is not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
-| G5 | hard | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
+| G1 | hard | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs` (`checkScene`, rule 1) | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
+| G2 | hard | Each sampled frame MUST be well-formed (balanced tags, no repeated attribute on a tag, no stray `<`, entities only `amp lt gt quot #39 #n`). | `lib/check.mjs` (`wellFormed`, `checkScene` rule 1) | Escaping failures and broken markup break every target. |
+| G3 | hard | No number with ≥ 5 decimals in the full SVG (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Rounding (T4). |
+| G4 | hard | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content and `font-family` values (font names are data, so `"Mono #123"` is a name) are not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
+| G5 | hard | No `NaN`, `undefined`, `Infinity` in `frame()` output (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Silent geometry bugs. |
 | G6 | hard | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | advice | `nothing-animates`: first frame ≠ last frame. | `lib/check.mjs` (rule 3) | Something should animate; a still mark acknowledges it. |
 | G8 | hard | The raw `frame(duration + 5)` equals `frame(duration)`: the gate calls the scene directly, because `renderSvg` clamps `t` to the duration before calling it (T3 requires a frame to hold past the end even though callers clamp). | `:65` | Holds the final frame. |

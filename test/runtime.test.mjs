@@ -20,6 +20,7 @@ import * as sceneMod from "../runtime/scene.mjs";
 import * as styleMod from "../runtime/style.mjs";
 import * as svgMod from "../runtime/svg.mjs";
 import * as barsMod from "../runtime/bars.mjs";
+import * as codeMod from "../runtime/code.mjs";
 import * as connectorsMod from "../runtime/connectors.mjs";
 import * as isoMod from "../runtime/iso.mjs";
 import * as wrapMod from "../runtime/wrap.mjs";
@@ -271,7 +272,7 @@ describe("styles", () => {
 	it("rejects unknown tokens and non-hex colours", () => {
 		assert.throws(() => normalizeStyle({ light: { brand: "#000000" } }));
 		assert.throws(() => normalizeStyle({ light: { accent: "blue" } }));
-		assert.throws(() => resolveTokens("var(--mk-nope)", NEUTRAL));
+		assert.throws(() => resolveTokens('<rect fill="var(--mk-nope)"/>', NEUTRAL));
 	});
 	it("rejects a font that could break out of CSS or markup", () => {
 		assert.equal(normalizeStyle({ font: 'Inter, "Segoe UI", sans-serif' }).font, 'Inter, "Segoe UI", sans-serif');
@@ -618,8 +619,8 @@ describe("buildHtml with a custom module that reaches the kit only through kit",
 });
 
 describe("KIT", () => {
-	it("holds every export of the motion, scene, style, svg, iso, connectors, bars and wrap modules", () => {
-		for (const mod of [motionMod, sceneMod, styleMod, svgMod, isoMod, connectorsMod, barsMod, wrapMod]) {
+	it("holds every export of the motion, scene, style, svg, iso, connectors, bars, code and wrap modules", () => {
+		for (const mod of [motionMod, sceneMod, styleMod, svgMod, isoMod, connectorsMod, barsMod, codeMod, wrapMod]) {
 			for (const name of Object.keys(mod)) assert.ok(name in KIT, `KIT lacks ${name}`);
 		}
 	});

@@ -65,6 +65,7 @@ runtime/        dependency-free ES modules (browser + Node)
   iso.mjs       isometric kit for custom scenes: camera, solids (rounded too), depth order, grid backdrop, content on faces, label anchors and pills
   connectors.mjs dashed connectors, diamond junctions and single-pass light pulses for custom scenes
   bars.mjs      hatched tracks, rounded bars on the style's curve and rolling values for custom scenes
+  code.mjs      code block with a highlight band that moves one line range per step, for custom scenes
   wrap.mjs      label wrapping with hard budgets
   style.mjs     tokens, neutral style, contrast checks, token resolution
   scene.mjs     scene contract, formats, renderSvg
@@ -83,7 +84,8 @@ examples/       order-flow (sequence), smart-home (hub-spoke), incident (timelin
                 isometric-platform (custom module: rounded slabs, grid backdrop, mark on a top face, pill tags),
                 connectors (custom module: connectors, diamond junctions, pulses),
                 text-reveal (custom module: blur-and-fade reveal, highlighter sweep),
-                bars (custom module: hatched tracks, bars, rolling values)
+                bars (custom module: hatched tracks, bars, rolling values),
+                code-steps (custom module: a code block, a highlight band per step)
 bench/          heavy scene for npm run bench:player (live-player frame cost)
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
 assets/         generated project icon: icon.svg, icon.png, icon-animated.svg
