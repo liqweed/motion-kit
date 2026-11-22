@@ -33,14 +33,18 @@ const finite = (n) => typeof n === "number" && Number.isFinite(n);
 const ID_PART = /^[A-Za-z0-9_]+$/;
 /** Names `renderSvg` already uses for ids (`${id}-title`, `${id}-desc`). */
 const RESERVED_NAMES = new Set(["title", "desc"]);
-/** A hatch is safe across separately-vendored runtime copies when its immutable paint is self-consistent. */
-const isHatch = (hatch) => Boolean(hatch
-	&& typeof hatch === "object"
-	&& Object.isFrozen(hatch)
-	&& typeof hatch.id === "string"
-	&& /^[A-Za-z][A-Za-z0-9_-]*$/.test(hatch.id)
-	&& hatch.fill === `url(#${hatch.id})`
-	&& typeof hatch.markup === "string");
+/** @param {unknown} value */
+const renderedFinite = (value) => typeof value === "number" && finite(value) && finite(Number(num(value)));
+/** Capture only stable, portable hatch data from another vendored runtime copy. */
+const hatchParts = (hatch) => {
+	if (!hatch || typeof hatch !== "object" || !Object.isFrozen(hatch)) return null;
+	const fields = ["id", "fill", "markup"].map((key) => Object.getOwnPropertyDescriptor(hatch, key));
+	if (fields.some((field) => !field || !("value" in field))) return null;
+	const [idField, fillField, markupField] = /** @type {[PropertyDescriptor, PropertyDescriptor, PropertyDescriptor]} */ (fields);
+	const [id, fill, markup] = [idField.value, fillField.value, markupField.value];
+	if (typeof id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(id) || fill !== `url(#${id})` || typeof markup !== "string" || !markup.includes(`<pattern id="${id}"`)) return null;
+	return { id, fill, markup };
+};
 
 /**
  * @typedef {{ readonly id: string, readonly fill: string, readonly markup: string }} Hatch
@@ -79,7 +83,7 @@ export function hatchPattern({ idPrefix, name = "hatch", stroke = "line", spacin
 
 /** @param {string} who @param {{ x: number, y: number, width: number, height: number }} r */
 function checkRect(who, { x, y, width, height }, allowEmpty = false) {
-	if (![x, y, width, height].every(finite)) throw new Error(`${who}: x, y, width and height must be finite numbers`);
+	if (![x, y, width, height].every(renderedFinite)) throw new Error(`${who}: x, y, width and height must remain finite after SVG rounding`);
 	if (allowEmpty && width === 0 && height > 0) return;
 	if (width <= 0 || height <= 0) throw new Error(`${who}: width and height must be positive, got ${width} × ${height}`);
 	if ((!allowEmpty && Number(num(width)) <= 0) || Number(num(height)) <= 0) throw new Error(`${who}: width and height must remain positive after SVG rounding, got ${width} × ${height}`);
@@ -88,7 +92,7 @@ function checkRect(who, { x, y, width, height }, allowEmpty = false) {
 /** The corner radius for a rect `w` × `h`: `radius`, never more than half of either side. */
 const corner = (/** @type {number | undefined} */ radius, /** @type {number} */ w, /** @type {number} */ h) => {
 	const r = radius ?? h / 2;
-	if (!finite(r) || r < 0) throw new Error(`radius must be a number of 0 or more, got ${radius}`);
+	if (!renderedFinite(r) || r < 0) throw new Error(`radius must be a finite number of 0 or more after SVG rounding, got ${radius}`);
 	return Math.min(r, w / 2, h / 2);
 };
 
@@ -102,11 +106,12 @@ const corner = (/** @type {number | undefined} */ radius, /** @type {number} */ 
  */
 export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius, opacity = 1, id }) {
 	checkRect("drawTrack", { x, y, width, height });
-	if (hatch !== undefined && !isHatch(hatch)) throw new Error("drawTrack: hatch must be an immutable hatchPattern result");
-	if (!hatch && fill === null) throw new Error("drawTrack: a track needs a fill or a hatch");
+	const issuedHatch = hatch === undefined ? null : hatchParts(hatch);
+	if (hatch !== undefined && !issuedHatch) throw new Error("drawTrack: hatch must be an immutable, self-consistent hatchPattern result");
+	if (!issuedHatch && fill === null) throw new Error("drawTrack: a track needs a fill or a hatch");
 	const rx = corner(radius, width, height);
 	const rect = (/** @type {string} */ paint) => el("rect", { x, y, width, height, rx, fill: paint });
-	return fade(opacity, id ? { "data-track": id } : {}, fill === null ? "" : rect(tok(fill)), hatch ? rect(hatch.fill) : "");
+	return fade(opacity, id ? { "data-track": id } : {}, fill === null ? "" : rect(tok(fill)), issuedHatch ? rect(issuedHatch.fill) : "");
 }
 
 /**
@@ -122,14 +127,16 @@ export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius
 export function drawBar({ x, y, width, height, p, fill = "accent", radius, trackRadius, opacity = 1, id, idPrefix, trackWidth }) {
 	checkRect("drawBar", { x, y, width, height }, true); // a zero value is a zero-width bar: nothing to draw
 	if (!finite(p)) throw new Error(`drawBar: p must be a finite number, got ${p}`);
-	if (trackWidth !== undefined && (!finite(trackWidth) || trackWidth <= 0 || trackWidth < width)) throw new Error(`drawBar: trackWidth must be finite and at least the bar width, got ${trackWidth}`);
-	if (trackWidth !== undefined && (typeof idPrefix !== "string" || idPrefix === "" || typeof id !== "string" || !ID_PART.test(id))) throw new Error("drawBar: trackWidth needs the frame idPrefix and an id using letters, digits and _");
+	if (trackWidth !== undefined && (!renderedFinite(trackWidth) || trackWidth <= 0 || trackWidth < width)) throw new Error(`drawBar: trackWidth must remain finite and at least the bar width, got ${trackWidth}`);
+	if (trackWidth !== undefined && (typeof idPrefix !== "string" || idPrefix === "" || typeof id !== "string" || !ID_PART.test(id) || RESERVED_NAMES.has(id))) throw new Error("drawBar: trackWidth needs the frame idPrefix and a non-reserved id using letters, digits and _");
 	const share = clamp01(p);
 	if (share <= 0) return "";
 	const w = width * share;
 	if (w <= 0) return "";
 	if (Number(num(w)) <= 0) return "";
-	const bar = el("rect", { x, y, width: w, height, rx: corner(radius, w, height), fill: tok(fill) });
+	if (!renderedFinite(w)) throw new Error(`drawBar: rendered width must remain finite, got ${w}`);
+	const paint = tok(fill);
+	const bar = el("rect", { x, y, width: w, height, rx: corner(radius, w, height), fill: paint, stroke: paint, "stroke-width": 1 });
 	if (trackWidth === undefined) return fade(opacity, id ? { "data-bar": id } : {}, bar);
 	const clipId = `${safeId(idPrefix)}-clip-${id}`;
 	const clip = el("defs", {}, el("clipPath", { id: clipId }, el("rect", { x, y, width: trackWidth, height, rx: corner(trackRadius, trackWidth, height) })));

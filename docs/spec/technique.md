@@ -386,7 +386,7 @@ functions; a colour is a token name (G4 applies).
   progress 0..1 of its growth), rounded at both ends all the way, so it grows as
   a pill. Nothing for `p ≤ 0`; `p ≥ 1` is the bar it rests as. `fill` is a token
   (default `accent`). Give `trackWidth`, the frame's `idPrefix`, and a local safe
-  `id` (letters, digits and `_`) to clip a short bar to its rounded track; clip IDs use a separate `-clip-` namespace. Use
+  `id` (letters, digits and `_`, except `title` and `desc`) to clip a short bar to its rounded track; clip IDs use a separate `-clip-` namespace. Use
   `trackRadius` when that silhouette differs from the bar's own radius.
 - **Growth.** `barProgress(t, {start, duration}, style)` is the bar's `p`: 0
   before `start` and exactly 1 from `barEnd(run)` = `start + duration` on, on the
@@ -413,8 +413,9 @@ functions; a colour is a token name (G4 applies).
   this part. A scene that draws the bar's accent on the track's colour declares
   the pairs in `contrastPairs` (G12), for example `accent` on `surface` at 3 and
   `line` on `surface` at 2.5 for decorative hatch texture. Informative hatching
-  is a shape and needs 3:1; the opaque bar itself is adjacent to `surface`, not
-  to the hatch beneath it.
+  is a shape and needs 3:1. The bar has an opaque outline in its own fill where
+  it meets the hatched track, so hatch lines cannot show through its anti-aliased
+  silhouette; the bar itself is adjacent to `surface`, not the hatch beneath it.
 
 ## 5. Markup
 

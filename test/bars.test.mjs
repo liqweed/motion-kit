@@ -96,7 +96,7 @@ describe("drawBar", () => {
 	it("draws nothing at the start and the full bar once done", () => {
 		assert.equal(bar(0), "");
 		assert.equal(bar(-1), "");
-		assert.match(bar(1), /<rect x="10" y="20" width="200" height="24" rx="12" fill="var\(--mk-accent\)"\/>/);
+		assert.match(bar(1), /<rect x="10" y="20" width="200" height="24" rx="12" fill="var\(--mk-accent\)" stroke="var\(--mk-accent\)" stroke-width="1"\/>/);
 		assert.equal(bar(1), bar(2));
 	});
 	it("grows from its start, rounded at both ends all the way", () => {
@@ -351,6 +351,16 @@ describe("bars: review edge cases", () => {
 	});
 	it("reserves the picture's own id names", () => {
 		for (const name of ["title", "desc"]) assert.throws(() => hatchPattern({ idPrefix: "p", name }), /reserved/);
+		for (const id of ["title", "desc"]) assert.throws(() => drawBar({ x: 0, y: 0, width: 5, height: 4, p: 1, trackWidth: 10, idPrefix: "p", id }), /non-reserved/);
+	});
+	it("rejects descriptor accessors, missing patterns, and geometry that serializes invalidly", () => {
+		const hatch = hatchPattern({ idPrefix: "safe" });
+		const accessor = Object.freeze({ get id() { return hatch.id; }, fill: hatch.fill, markup: hatch.markup });
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: accessor }), /hatchPattern/);
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: "<defs/>" }) }), /hatchPattern/);
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 1e307, height: 4 }), /after SVG rounding/);
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 0.004, height: 4 }), /positive after SVG rounding/);
+		assert.throws(() => barEnd({ start: 1e308, duration: 1e308 }), /end must be finite/);
 	});
 	it("rolls between far-apart endpoints without overflow", () => {
 		assert.equal(rollingValue(-1e308, 1e308, 0.5), 0);
