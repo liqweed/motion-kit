@@ -636,6 +636,51 @@ it("a step subscriber that seeks to 0 while the reset frame publishes keeps auto
 	assert.equal(env.player.autoplayPending, false);
 });
 
+it("rejected commands from a step subscriber during the reset frame do not veto autoplay", () => {
+	const env = setup({ autoplay: "visible" });
+	let armed = false;
+	env.player.onStep(() => {
+		if (!armed) return;
+		armed = false;
+		assert.throws(() => env.player.seek(Number.NaN));
+		assert.throws(() => env.player.seekStep(99));
+		assert.throws(() => env.player.seekStep("no-such-step"));
+		assert.throws(() => env.player.playToStep(-1));
+		assert.throws(() => env.player.playToStep("no-such-step"));
+	});
+	armed = true;
+	env.show();
+	assert.equal(env.player.playing, true, "a rejected command is no takeover, so autoplay still starts");
+	assert.equal(env.player.autoplayPending, false);
+});
+
+it("a step subscriber that retargets with playToStep during the reset keeps its stop point", () => {
+	const env = setup({ autoplay: "visible" });
+	const target = scene.steps[1].at;
+	let armed = false;
+	env.player.onStep(() => { if (armed) { armed = false; env.player.playToStep(1); } });
+	armed = true;
+	env.show();
+	assert.equal(env.player.playing, true);
+	env.advance((target + 1) * 1000);
+	assert.equal(env.player.time, target, "playback holds at the subscriber's target, not the scene's end");
+	assert.equal(env.player.playing, false);
+});
+
+it("omitting autoplay uses the visible default; none and reduced motion leave the final frame with nothing queued", () => {
+	const omitted = setup({ options: { autoplay: undefined }, observer: false });
+	assert.equal(omitted.player.playing, true, "the omitted option autoplays at mount");
+	assert.equal(omitted.frames.size, 1);
+	const none = setup({ autoplay: "none", observer: false });
+	assert.equal(none.player.playing, false);
+	assert.equal(none.player.time, scene.duration);
+	assert.equal(none.frames.size, 0);
+	const reduced = setup({ options: { autoplay: undefined }, observer: false, reduced: true });
+	assert.equal(reduced.player.playing, false);
+	assert.equal(reduced.player.time, scene.duration);
+	assert.equal(reduced.frames.size, 0);
+});
+
 it("playing and autoplayPending follow the controller through play, completion and a seek", () => {
 	const waiting = setup({ autoplay: "visible" });
 	assert.deepEqual([waiting.player.playing, waiting.player.autoplayPending], [false, true], "autoplay waits for the view");
