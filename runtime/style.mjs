@@ -214,7 +214,7 @@ function scanTags(markup) {
  * The opening tags of a frame, read with their quoted attributes whole (a `>`
  * inside a value does not end the tag). Comments are skipped.
  * @param {string} markup
- * @returns {{ name: string, attrs: { name: string, raw: string }[] }[]}
+ * @returns {{ name: string, attrs: { name: string, raw: string }[], inMetadata: boolean }[]}
  */
 export function svgTags(markup) {
 	return scanTags(markup).filter((t) => !t.closing);

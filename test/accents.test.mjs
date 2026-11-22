@@ -170,8 +170,15 @@ describe("the gate and the new tokens", () => {
 		assert.equal(findFontLiteral('<style>text{content:"a\\\r\n;font-family:Courier"}</style>', style), null);
 		// Attribute names are read in any case, as the live renderer does.
 		assert.equal(findColourLiteral('<rect FILL="red"/>'), 'fill="red"');
+		// Descriptive attributes inside <metadata> paint nothing; a stylesheet there still counts.
+		assert.equal(findColourLiteral('<metadata><sample FILL="red"/></metadata>'), null);
+		assert.match(findColourLiteral('<metadata><style>rect{fill:red}</style></metadata>') ?? "", /red/);
 		// A non-breaking space is no CSS whitespace, and an unknown token is no token.
 		assert.notEqual(findColourLiteral('<rect fill="var(\u00a0--mk-caution)"/>'), null);
+		// The runtime agrees: no declaration, no substitution for the same spelling.
+		const nbsp = '<rect fill="var(\u00a0--mk-caution)"/>';
+		assert.ok(!cssVars(NEUTRAL, "light", nbsp).includes("--mk-caution"));
+		assert.equal(resolveTokens(nbsp, NEUTRAL), nbsp);
 		assert.notEqual(findColourLiteral('<rect fill="var( --mk-unknown )"/>'), null);
 		assert.equal(findColourLiteral('<rect fill="var( --mk-caution )"/>'), null);
 		assert.match(findFontLiteral(`<text style="font-family: Courier">1</text>`, style) ?? "", /Courier/);
