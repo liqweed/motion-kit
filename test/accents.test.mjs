@@ -7,7 +7,7 @@ import { loadScene } from "../lib/load.mjs";
 import { KIT } from "../runtime/kit.mjs";
 import { FORMATS, renderSvg } from "../runtime/scene.mjs";
 import { num } from "../runtime/svg.mjs";
-import { CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, paintSource, resolveTokens, sharedPairs, tok } from "../runtime/style.mjs";
+import { CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, paintSource, resolveTokens, setsOptionalToken, sharedPairs, tok } from "../runtime/style.mjs";
 
 const EXAMPLE = fileURLToPath(new URL("../examples/release-check.scene.mjs", import.meta.url));
 const ORIGINAL = ["bg", "surface", "ink", "muted", "line", "accent", "onAccent", "emphasis"];
@@ -310,10 +310,10 @@ describe("optional token use and warnings", () => {
 		});
 		it("checks the exact step frames, not only the sampled grid", () => {
 			const caution = `<rect width="5" height="5" fill="var(--mk-caution)"/>`;
-			const sc = { id: "s", width: 100, height: 50, duration: 4, title: "t", description: "d", stepLabelsInFrame: false, steps: [{ at: 0.5035, label: "a" }, { at: 4, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.5 && t < 0.6 ? caution : t >= 3.5 ? "<g/>" : "<circle r=\"1\"/>") };
+			const sc = { id: "s", width: 100, height: 50, duration: 4, title: "t", description: "d", stepLabelsInFrame: false, steps: [{ at: 0.5035, label: "a" }, { at: 0.53, label: "c" }, { at: 4, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.5 && t < 0.52 ? caution : t >= 3.5 ? "<g/>" : "<circle r=\"1\"/>") };
 			const problems = checkScene(sc).problems;
 			assert.ok(problems.some((p) => p.includes("draws caution")), problems.join("; "));
-			// The plateau covers the step's whole look-ahead, so the draw is the only problem it causes.
+			// The draw covers the step's whole look-ahead (the next step cuts it short) and no grid sample, so the draw is the only problem it causes.
 			assert.ok(!problems.some((p) => p.includes("not settled")), problems.join("; "));
 		});
 		it("reads an empty stylesheet type as CSS and attribute names in any case", () => {
@@ -339,7 +339,37 @@ describe("optional token use and warnings", () => {
 		});
 		it("validates malformed or unrounded markup at a step between grid samples", () => {
 			const sc = { id: "n", width: 100, height: 50, duration: 12, title: "t", description: "d", steps: [{ at: 0.242, label: "a" }, { at: 12, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.24 && t < 0.29 ? `<circle r="NaN"/>` : t >= 12 ? "<g/>" : `<circle r="1"/>`) };
-			assert.ok(checkScene(sc).problems.some((p) => p.includes("NaN") && p.includes("step")));
+			assert.ok(checkScene(sc).problems.some((p) => p.includes("NaN") && p.includes("t=0.242")));
+		});
+		it("holds an exact step to the determinism checks, and an empty settled step to the grid's", () => {
+			const year = () => (new Date().getFullYear() > 2050 ? "<g/>" : "<circle r=\"1\"/>");
+			const sc = { id: "d", width: 100, height: 50, duration: 12, title: "t", description: "d", steps: [{ at: 0.242, label: "a" }, { at: 12, label: "b" }], frame: (/** @type {number} */ t) => (t > 0.24 && t < 0.29 ? year() : t >= 12 ? "<g/>" : "<rect width=\"1\" height=\"1\"/>") };
+			assert.ok(checkScene(sc).problems.some((p) => p.includes("clock or randomness")));
+			const empty = { id: "e", width: 100, height: 50, duration: 4, title: "t", description: "d", stepLabelsInFrame: false, steps: [{ at: 0, label: "a" }, { at: 4, label: "b" }], frame: (/** @type {number} */ t) => (t < 1 ? "" : "<g/>") };
+			assert.ok(!checkScene(empty).problems.some((p) => p.includes("malformed")));
+		});
+		it("ends a CSS string at an unescaped newline", () => {
+			assert.match(findFontLiteral(`<style>text{--label:"bad\n;font-family:Courier}</style>`, style) ?? "", /Courier/);
+		});
+		it("resolves a token across CDATA, with CSS whitespace, in own palette entries only", () => {
+			const css = `<style>rect{fill:var(&#45;<![CDATA[-mk-caution]]>)}</style>`;
+			assert.ok(paintSource(css).includes("--mk-caution"));
+			assert.ok(resolveTokens(css, "neutral").includes(`fill:${NEUTRAL.light.caution}`));
+			assert.ok(resolveTokens(`<rect style="fill:var( --mk-caution )"/>`, "neutral").includes(NEUTRAL.light.caution));
+			assert.ok(cssVars("neutral", "light", `<rect style="fill:var( --mk-caution )"/>`).includes("--mk-caution"));
+			assert.throws(() => resolveTokens(`<rect fill="var(&#45;&#45;mk-constructor)"/>`, "neutral"), /unknown style token/);
+		});
+		it("leaves data attributes, self-closing styles and the spelling of the tag alone", () => {
+			const note = `<g data-note="var(&#45;&#45;mk-caution)"/>`;
+			assert.equal(resolveTokens(note, "neutral"), note);
+			const out = resolveTokens(`<style/><rect fill="var(&#45;&#45;mk-caution)"/><STYLE>a{}</STYLE>`, "neutral");
+			assert.ok(out.includes(`<rect fill="${NEUTRAL.light.caution}"/>`) && out.endsWith("<STYLE>a{}</STYLE>"), out);
+		});
+		it("refuses a blank font and keeps a moved optional palette as set", () => {
+			assert.throws(() => normalizeStyle({ mono: "  " }), /font-family list/);
+			const n = normalizeStyle({ name: "t" });
+			const moved = normalizeStyle({ ...n, light: { ...n.light, caution: "#123456" } });
+			assert.ok(setsOptionalToken(moved, { fg: "caution", bg: "bg", min: 3 }));
 		});
 		it("keeps a comment marker inside a quoted family", () => {
 			const s = normalizeStyle({ ...NEUTRAL, name: "t", mono: '"ACME/*Mono*/", monospace' });

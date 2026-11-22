@@ -23,7 +23,7 @@
  */
 import { DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 } from "./motion.mjs";
 import { FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId } from "./scene.mjs";
-import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, paintSource, resolveTokens, setsOptionalToken, sharedPairs, styleBodies, svgTags, tok, unescapeAttr } from "./style.mjs";
+import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, paintSource, resolveTokens, setsOptionalToken, sharedPairs, styleBodies, svgTags, tok, unescapeAttr, usesToken } from "./style.mjs";
 import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab } from "./iso.mjs";
 import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment } from "./svg.mjs";
 import { PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead } from "./connectors.mjs";
@@ -38,7 +38,7 @@ import { estimateWidth, wrapLabel } from "./wrap.mjs";
 export const KIT = Object.freeze({
 	...{ DEFAULT_MOTION, ENTRANCE_MAX, SPRING_SETTLE_X, clamp01, cubicBezier, easeIn, easeOut, easeStandard, easings, lerp, linear, progress, splitEdge, springSettleTime, springStep, springTo, stagger, window01 },
 	...{ FORMATS, localize, renderSvg, safeId, stepIndex, stepIndexAt, stepTimes, validateScene, withId },
-	...{ CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, paintSource, resolveTokens, setsOptionalToken, sharedPairs, styleBodies, svgTags, tok, unescapeAttr },
+	...{ CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, OPTIONAL_TOKENS, TOKENS, checkContrast, contrast, contrastReport, cssVars, normalizeStyle, paintSource, resolveTokens, setsOptionalToken, sharedPairs, styleBodies, svgTags, tok, unescapeAttr, usesToken },
 	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment },
 	...{ CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab },
 	...{ PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead },

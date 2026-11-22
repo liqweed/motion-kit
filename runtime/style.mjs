@@ -135,13 +135,16 @@ export function normalizeStyle(style) {
 	}
 	// The font goes into CSS and markup: a family list never needs these characters.
 	for (const key of /** @type {const} */ (["font", "mono"])) {
-		if (typeof out[key] !== "string" || /[<>{};\\]/.test(out[key])) throw new Error(`style "${out.name}": ${key} must be a CSS font-family list, got ${JSON.stringify(out[key])}`);
+		if (typeof out[key] !== "string" || !out[key].trim() || /[<>{};\\]/.test(out[key])) throw new Error(`style "${out.name}": ${key} must be a CSS font-family list, got ${JSON.stringify(out[key])}`);
 	}
 	// Which optional tokens the author set, kept (not enumerable, so the style
 	// still compares and serializes as data) for `setsOptionalToken`: the
 	// filled-in colours no longer say.
-	// A style already normalized carries them filled in, so what it remembers wins.
-	const set = style[SET_TOKENS] ?? OPTIONAL_TOKENS.filter((t) => style.light?.[t] !== undefined || style.dark?.[t] !== undefined);
+	// A style already normalized carries them filled in: what it remembers counts,
+	// and so does any optional colour a caller has since moved off the neutral one.
+	const set = style[SET_TOKENS]
+		? OPTIONAL_TOKENS.filter((t) => style[SET_TOKENS].includes(t) || style.light?.[t] !== NEUTRAL.light[t] || style.dark?.[t] !== NEUTRAL.dark[t])
+		: OPTIONAL_TOKENS.filter((t) => style.light?.[t] !== undefined || style.dark?.[t] !== undefined);
 	Object.defineProperty(out, SET_TOKENS, { value: Object.freeze([...set]), enumerable: false });
 	for (const theme of ["light", "dark"]) {
 		for (const key of Object.keys(out[theme])) {
@@ -166,9 +169,19 @@ export function normalizeStyle(style) {
 export function cssVars(style, theme = "light", markup) {
 	const s = normalizeStyle(style);
 	// A token can only be used through `--mk-`, or through a numeric reference spelling it.
-	const paint = markup === undefined || !/--mk-|&#/.test(markup) ? "" : paintSource(markup);
-	const used = (/** @type {string} */ t) => markup === undefined || !OPTIONAL_TOKENS.includes(t) || paint.includes(`var(--mk-${t})`);
+	const paint = markup === undefined || !/--mk-|&#|CDATA/.test(markup) ? "" : paintSource(markup);
+	const used = (/** @type {string} */ t) => markup === undefined || !OPTIONAL_TOKENS.includes(t) || usesToken(paint, t);
 	return TOKENS.filter(used).map((t) => `--mk-${t}:${s[theme][t]}`).join(";");
+}
+
+/**
+ * Whether paint source (`paintSource`) uses a token: `var(--mk-token)`, with the
+ * optional whitespace CSS allows inside the parentheses.
+ * @param {string} paint
+ * @param {string} token
+ */
+export function usesToken(paint, token) {
+	return new RegExp(`var\\(\\s*--mk-${token}\\s*\\)`).test(paint);
 }
 
 /**
@@ -231,13 +244,13 @@ export function styleBodies(markup, all = false) {
 }
 
 /**
- * Character data as an XML parser reads it: references decoded, except inside
- * CDATA sections, which stay as written (without their delimiters' effect on
- * the text around them).
+ * Character data as an XML parser reads it: references decoded, CDATA
+ * sections joined to the text around them as their literal payload (their
+ * delimiters are no text, so a token can span them).
  * @param {string} body
  */
 function decodeCharacterData(body) {
-	return body.split(/(<!\[CDATA\[[\s\S]*?\]\]>)/).map((part, i) => (i % 2 ? part : unescapeAttr(part))).join("");
+	return body.split(/<!\[CDATA\[([\s\S]*?)\]\]>/).map((part, i) => (i % 2 ? part : unescapeAttr(part))).join("");
 }
 
 /**
@@ -264,6 +277,9 @@ function stripCssComments(/** @type {string} */ css) {
 	return css.replace(new RegExp(`${CSS_STRING.source}|/\\*[\\s\\S]*?\\*/`, "g"), (m) => (m[0] === "/" ? " " : m));
 }
 
+/** Attributes that describe, label or identify an element and paint nothing. */
+const NON_PAINT_ATTR = /^(data-|aria-)|^(id|class|title|xlink:title|href|xlink:href|lang|xml:lang|xml:space|role|tabindex|alt)$/i;
+
 /**
  * The part of a frame that can paint: the attributes of its tags that are not
  * metadata (`data-*`, `aria-*`, `id`, `class`) and `<style>` bodies, without
@@ -279,7 +295,7 @@ export function paintSource(markup) {
 	for (const tag of scanTags(markup)) {
 		if (tag.closing || tag.inMetadata) continue;
 		for (const { name, raw } of tag.attrs) {
-			if (/^(data-|aria-)|^(id|class|title|xlink:title|href|xlink:href|lang|xml:lang|xml:space|role|tabindex|alt)$/i.test(name)) continue;
+			if (NON_PAINT_ATTR.test(name)) continue;
 			const value = unescapeAttr(raw);
 			out.push(name === "style" ? maskCssStrings(stripCssComments(value)) : value);
 		}
@@ -293,29 +309,33 @@ export function paintSource(markup) {
 export function resolveTokens(markup, style, theme = "light") {
 	const s = normalizeStyle(style);
 	const resolve = (/** @type {string} */ text) =>
-		text.replace(/var\(--mk-([a-zA-Z]+)\)/g, (_, name) => {
-			const v = s[theme][name];
+		text.replace(/var\(\s*--mk-([a-zA-Z]+)\s*\)/g, (_, name) => {
+			// An own token only: `constructor` is no token.
+			const v = Object.hasOwn(s[theme], name) ? s[theme][name] : undefined;
 			if (!v) throw new Error(`unknown style token "${name}"`);
 			return v;
 		});
 	// A reference spelling (`var(&#45;&#45;mk-caution)`) reads as the same token to an XML parser:
 	// decode such a value or style body, resolve it, and write it back with the markup characters escaped.
 	const escaped = (/** @type {string} */ v) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
-	const viaDecodedBody = (/** @type {string} */ body) =>
-		body.split(/(<!\[CDATA\[[\s\S]*?\]\]>)/).map((part, k) => (k % 2 ? part : viaDecoded(part, false))).join("");
-	const viaDecoded = (/** @type {string} */ raw, /** @type {boolean} */ attr) => {
+	const viaDecodedBody = (/** @type {string} */ body) => {
+		const decoded = decodeCharacterData(body);
+		if (!/var\(\s*--mk-/.test(decoded)) return resolve(body);
+		return resolve(decoded).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+	};
+	const viaDecoded = (/** @type {string} */ raw) => {
 		if (!raw.includes("&#")) return resolve(raw);
 		const decoded = unescapeAttr(raw);
-		if (!decoded.includes("var(--mk-")) return resolve(raw);
-		return attr ? escaped(resolve(decoded)) : resolve(decoded).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		if (!/var\(\s*--mk-/.test(decoded)) return resolve(raw);
+		return escaped(resolve(decoded));
 	};
 	// Only tag spans and style bodies are rewritten: a quote in text content is text.
-	const attrs = (/** @type {string} */ span) => span.replace(/(\s[\w:.-]+\s*=\s*)(["'])([\s\S]*?)\2/g, (m, pre, q, raw) => (raw.includes("&#") ? `${pre}${q}${viaDecoded(raw, true)}${q}` : m));
+	const attrs = (/** @type {string} */ span) => span.replace(/(\s)([\w:.-]+)(\s*=\s*)(["'])([\s\S]*?)\4/g, (m, sp, an, eq, q, raw) => (raw.includes("&#") && !NON_PAINT_ATTR.test(an) ? `${sp}${an}${eq}${q}${viaDecoded(raw)}${q}` : m));
 	const A = `((?:"[^"]*"|'[^']*'|[^>"'])*)`;
-	return resolve(markup).replace(new RegExp(`<!--[\\s\\S]*?-->|<style(?=[\\s>/])${A}>([\\s\\S]*?)(</style\\s*>)|<([a-zA-Z][\\w:-]*)${A}>`, "gi"), (m, sAttrs, body, close, name, tAttrs) => {
+	return resolve(markup).replace(new RegExp(`<!--[\\s\\S]*?-->|<(style)(?=[\\s>/])${A}(?<!/)>([\\s\\S]*?)(</style\\s*>)|<([a-zA-Z][\\w:-]*)${A}>`, "gi"), (m, sName, sAttrs, body, close, name, tAttrs) => {
 		if (m.startsWith("<!--")) return m;
 		if (name !== undefined) return `<${name}${attrs(tAttrs)}>`;
-		return `<style${attrs(sAttrs)}>${body.includes("&#") ? viaDecodedBody(body) : body}${close}`;
+		return `<${sName}${attrs(sAttrs)}>${/&#|<!\[CDATA\[/.test(body) ? viaDecodedBody(body) : body}${close}`;
 	});
 }
 

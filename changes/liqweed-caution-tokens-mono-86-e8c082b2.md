@@ -11,4 +11,4 @@ release: minor
 ### Changed
 
 - The exported `checkContrast(style)` now defaults to the enlarged `CONTRAST_PAIRS`, so a style that sets only its own `bg` can fail against an inherited caution or alert colour. **Consumer action:** advised at instructions. Callers of `checkContrast` without pairs pass the pairs they need, `checkContrast(style, pairs)`, to keep the earlier checks.
-- The gate now fails a custom scene's own `font-family` (see Added). **Consumer action:** none.
+- The gate now fails a custom scene's own `font-family` (see Added). **Consumer action:** advised at instructions. Replace the literal family with `style.font` or `style.mono`.
