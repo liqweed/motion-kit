@@ -39,7 +39,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
 | `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known and `min` in [1, 21]. |
-| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` and `labelPill(...)` return `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers, `width` and `height` not negative, `opacity`, when given, finite, and `stem`, when given, `{x1, y1, x2, y2}` with four finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
+| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` and `labelPill(...)` return `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with `id` a string and the rest finite numbers, `width` and `height` not negative, `opacity`, when given, finite, and `stem`, when given, `{x1, y1, x2, y2}` with four finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
@@ -306,7 +306,7 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   opacity})` draws a dot on the projected point, a vertical stem `lift` pixels
   up and a label box above it (or beside its top), and returns the markup and
   the `LabelBox`, rounded to two decimals as the SVG attributes are, so the gate
-  and the picture agree on those coordinates. `labelProblems(boxes, {width, height, gap = 4, limit})`
+  and the picture agree on those coordinates (`labelPill` rounds its box the same way). `labelProblems(boxes, {width, height, gap = 4, limit})`
   lists the collisions G15 reports, and stops at `limit` (a whole number from 0 or Infinity, else `RangeError`; default all; 0 returns none; only distinct sentences count). Labels follow §7 (wrapped, localized, ≥ 14 px).
   `labelPill({id, x, y, lines, fontSize, fill, stroke, ink, opacity})` is a
   stemless tag: a rounded box of text centred on the screen point (`x`, `y`),
@@ -690,7 +690,7 @@ that removes every listener, observer and mark they added.
 ## 11. The gate
 
 `checkScene(scene)` (`lib/check.mjs`) samples 121 evenly spaced times
-(`SAMPLES = 120`). The per-sample rules stop after 13 problems; the settled-step and fixed-id checks and the label gate (rule 9) each hold to what is left of that 13, so one rule can add several messages before a later check sees the cap.
+(`SAMPLES = 120`). The per-sample rules test for 13 problems between samples, so one sample can add a few more; the fixed-id check and the label gate (rule 9) hold to what is left of 13, but the settled-step check appends one problem per moving step whatever the count, so the total can exceed 13.
 `motion-kit check` and the vendored `check.mjs` both run `checkFiles`
 (`lib/gate.mjs`): every file × format (all six unless `--format`, repeatable)
 × locale (`--locale`, repeatable; else every locale a spec's strings carry, and

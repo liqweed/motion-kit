@@ -828,8 +828,7 @@ export function labelAnchor(cam, { id, at, lines, fontSize = 14, lift = 40, side
 	const x = side === "up" ? tipX - width / 2 : side === "right" ? tipX : tipX - width;
 	const y = side === "up" ? tipY - height : tipY - height / 2;
 	const stem = { x1: p.x, y1: p.y, x2: tipX, y2: tipY };
-	// The gate checks what the SVG draws, and the attributes round to two decimals.
-	const r = (/** @type {number} */ n) => Number(num(n));
+	const r = drawn2;
 	const labelBox = { id, x: r(x), y: r(y), width: r(width), height: r(height), stem: { x1: r(stem.x1), y1: r(stem.y1), x2: r(stem.x2), y2: r(stem.y2) }, opacity };
 	const markup = fade(
 		opacity,
@@ -841,6 +840,9 @@ export function labelAnchor(cam, { id, at, lines, fontSize = 14, lift = 40, side
 	);
 	return { markup, box: labelBox };
 }
+
+/** A coordinate as the SVG attributes draw it: rounded to two decimals, which is what the gate checks. */
+const drawn2 = (/** @type {number} */ n) => Number(num(n));
 
 /**
  * A pill: a stemless tag, a rounded box of text centred on the screen point
@@ -865,7 +867,7 @@ export function labelPill({ id, x, y, lines, fontSize = 14, fill = "surface", st
 		el("rect", { x: left, y: top, width, height, rx: height / 2, fill: tok(token(fill)), stroke: tok(token(stroke)), "stroke-width": 1.5 }),
 		text({ x, y, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fontSize, "font-weight": 600, fill: tok(token(ink)) }, lines, LINE_HEIGHT),
 	);
-	return { markup, box: { id, x: left, y: top, width, height, opacity } };
+	return { markup, box: { id, x: drawn2(left), y: drawn2(top), width: drawn2(width), height: drawn2(height), opacity } };
 }
 
 /**
@@ -905,7 +907,7 @@ function segmentHits(s, r) {
  * @returns {string[]}
  */
 export function labelProblems(boxes, { width, height, gap = 4, limit = Infinity, ignore }) {
-	if (!(limit === Infinity || (Number.isInteger(limit) && limit >= 0))) throw new RangeError(`labelProblems: limit must be a whole number from 0, or Infinity, got a value of type ${typeof limit}`);
+	if (!(limit === Infinity || (Number.isInteger(limit) && limit >= 0))) throw new RangeError(`labelProblems: limit must be a whole number from 0, or Infinity, got ${typeof limit === "number" ? limit : `a value of type ${typeof limit}`}`);
 	if (limit === 0) return [];
 	const eps = 1e-9; // rounded box edges that meet exactly must not fail on float noise
 	// Drawn unless it fades out: `fade` drops an element whose opacity rounds to 0.
