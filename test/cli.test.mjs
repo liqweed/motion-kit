@@ -147,32 +147,32 @@ describe("cli", () => {
 		// check: the rule, the value, why, when it is fine, the alternative; exit 0.
 		let r = both("check", plain, "-f", "16:9");
 		assert.equal(r.status, 0, r.out);
-		for (const part of [/advice \[duration\]: duration 16\.0 s exceeds 12 s/, /why: .*watched once/, /fine when: .*voice-over/, /instead: .*Split the scene/, /acknowledge: \[\{ rule: "duration"/]) assert.match(r.out, part);
+		for (const part of [/advice \[duration\]: duration 16 s exceeds 12 s/, /why: .*watched once/, /fine when: .*voice-over/, /instead: .*Split the scene/, /acknowledge: \[\{ rule: "duration"/]) assert.match(r.out, part);
 		// The other commands print the same text; strict mode fails each before it writes anything.
 		const out = (/** @type {string} */ f) => join(dir, f);
 		const commands = [["build", "-o", out("p.html")], ["export", "-o", out("exp")], ["bake", "-o", out("b.svg")], ["icon", "-o", out("icons"), "--no-png"]];
 		// video: strict rejection comes before any rendering, so it needs no ffmpeg; an ordinary render does.
 		r = both("video", plain, "-f", "1:1", "--strict", "-o", out("v-strict.mp4"));
 		assert.equal(r.status, 1, r.out);
-		assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/);
+		assert.match(r.out, /motion-kit: advice \[duration\]: duration 16 s exceeds 12 s/);
 		assert.match(r.out, /scene fails the gate:\n {2}- advice \[duration\]/);
 		assert.equal(existsSync(out("v-strict.mp4")), false, "video wrote nothing");
 		if (hasFfmpeg() && hasRaster) {
 			r = both("video", plain, "-f", "1:1", "-o", out("v.mp4"), "--fps", "5", "--scale", "1", "--hold", "0");
 			assert.equal(r.status, 0, r.out);
-			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/);
+			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16 s exceeds 12 s/);
 		}
 		for (const [cmd, ...rest] of commands) {
 			r = both(cmd, plain, "-f", "1:1", ...rest);
 			assert.equal(r.status, 0, `${cmd}: ${r.out}`);
-			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/, cmd);
+			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16 s exceeds 12 s/, cmd);
 			assert.match(r.out, /motion-kit: {3}fine when: /, cmd);
 		}
 		assert.equal(JSON.parse(readFileSync(out("exp/manifest.json"), "utf8")).advice[0].acknowledged, false);
 		for (const [cmd, ...rest] of commands) {
 			r = both(cmd, plain, "-f", "1:1", "--strict", ...rest.map((x) => (x.startsWith(dir) ? `${x}-strict` : x)));
 			assert.equal(r.status, 1, cmd);
-			assert.match(r.out, /scene fails the gate:\n {2}- advice \[duration\]: duration 16\.0 s exceeds 12 s .*strict mode/, cmd);
+			assert.match(r.out, /scene fails the gate:\n {2}- advice \[duration\]: duration 16 s exceeds 12 s .*strict mode/, cmd);
 			assert.match(r.out, /motion-kit: {3}why: /, `${cmd} explains the advice before refusing`);
 			assert.equal(existsSync(`${rest[1]}-strict`), false, `${cmd} wrote nothing`);
 		}
@@ -192,7 +192,7 @@ describe("cli", () => {
 		run("vendor", vendored, "--adapter", "astro");
 		const v = spawnSync(process.execPath, [join(vendored, "check.mjs"), plain, "--format", "16:9", "--options", join(dir, "labels.json"), "--strict"], { encoding: "utf8" });
 		assert.equal(v.status, 1, `${v.stdout}${v.stderr}`);
-		assert.match(`${v.stdout}${v.stderr}`, /advice \[duration\]: duration 16\.0 s exceeds 12 s/);
+		assert.match(`${v.stdout}${v.stderr}`, /advice \[duration\]: duration 16 s exceeds 12 s/);
 	});
 	it("refuses an acknowledgement without a reason, of an unknown rule or of a hard rule, and fails a hard rule whatever is acknowledged", () => {
 		const dir = join(tmp, "refused");
@@ -254,7 +254,8 @@ describe("cli", () => {
 		assert.match(r.out, /ℹ .*order-flow\.json: advice \[emphasis-on-accent\]: blue light: emphasis on accent is 1\.13:1, 3:1 recommended/);
 		r = both("check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"), "--strict");
 		assert.equal(r.status, 1);
-		assert.match(r.out, /✗ .*order-flow\.json · 16:9 · en\n {2}- advice \[emphasis-on-accent\]: blue light: emphasis on accent is 1\.13:1/);
+		assert.match(r.out, /✗ .*order-flow\.json · 16:9 · en\n {2}- unacknowledged advice, strict mode/);
+		assert.equal(r.out.match(/advice \[emphasis-on-accent\]: blue light/g)?.length, 1);
 		// A lighter dark surface passes the shared pairs but not custom-pulse's bar on its track.
 		writeFileSync(join(dir, "raised.json"), JSON.stringify({ name: "raised", dark: { surface: "#2b3242" } }));
 		r = node(CLI, "check", `${EX}order-flow.json`, `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "raised.json"));

@@ -84,8 +84,8 @@ Hard (the gate fails these; no acknowledgement helps):
 
 - Step frames are settled: nothing moves at the step's `at` (the gate samples
   up to 45 ms after it). The 50 ms gap before the next motion is advice (below).
-- The final frame holds after `duration`. Nothing plays twice: a scene is a
-  pure function of `t` with no `Date`, `Math.random`, `performance.now`.
+- The final frame holds after `duration`. A scene is a pure function of `t`
+  with no `Date`, `Math.random`, `performance.now`.
 - Colours are tokens; text and shapes a scene draws meet WCAG AA contrast.
 - Player requirements, not checked by the gate (a green check does not prove a custom host has them): always a pause control (WCAG 2.2.2); reduced motion = final frame, no autoplay.
 
