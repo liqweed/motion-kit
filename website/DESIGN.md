@@ -121,7 +121,7 @@ The build settled the rest, in `website/src/styles/site.css`:
   and without JavaScript there is no drawing; the legend is the only key.
 - **Dark theme**: page chrome uses the site-dark tokens above. The diagrams keep
   the neutral dark tokens (accent `#2563eb`), because accent `#1d36a8` is 1.9:1
-  on near-black and the scenes draw it as text-free shapes on the canvas.
+  on near-black, under the 3:1 that reached nodes and connectors need.
 
 ## Not decided yet
 
