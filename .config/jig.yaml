@@ -19,6 +19,13 @@ review:
 drive:
   # The service runs with AI_REVIEW_REVIEW_DRAFTS=true.
   reviews_drafts: true
+  # A drive stops (MAX_ROUNDS) for a person after this many rounds, down from 10.
+  # In the 2026-11 contention investigation 95 of 156 review threads came at
+  # reviewer round 6 or later, medium findings with diminishing returns.
+  max_rounds: 6
+  # Which parts of the repository a change touches: spec text, kit runtime,
+  # scene gate, website.
+  change_areas_catalog: .config/change-areas.yaml
 issue_tracker:
   adapter: github # GitHub Issues on liqweed/motion-kit
   # Repo-local taxonomy; also overrides the one set in ~/.jig/jig.yaml.
