@@ -1,7 +1,7 @@
 ---
 title: motion-kit — public API and stability
 status: draft
-last_updated: 2026-11-18
+last_updated: 2026-11-22
 ---
 
 # motion-kit — public API and stability
@@ -27,7 +27,7 @@ Versions follow [Semantic Versioning](https://semver.org/). While the version is
 
 From `1.0` on, breaking changes come only in major releases.
 
-Two kinds of change are not breaking, even though output differs:
+Some kinds of change are not breaking, even though output differs:
 
 - **Rendered output.** The same version renders the same bytes for the same
   input. A new version may draw differently (layout, motion, markup); the
@@ -35,6 +35,12 @@ Two kinds of change are not breaking, even though output differs:
 - **Gate rules.** The gate may grow stricter in a minor release, when a new
   rule catches a defect (for example the rule that a scene's ids come from
   the instance prefix). The change note names the rule and how to comply.
+- **Advice.** The canon rules (spec §11.2) are advice: advice wording may change in any release; a new advice rule is added in a minor release, because an unacknowledged one fails a scene in strict mode (it never fails one outside it; until #95 the advisory curve, type-range, shape-style and font-size rules still refuse to build; the change note names it, as it does a stricter gate rule), and advice never fails a scene
+  unless `--strict` (or `MOTION_KIT_STRICT=1`) is on. A rule moving from hard to
+  advice is not breaking; one moving from advice to hard is a gate rule growing
+  stricter, as above. The `acknowledge` field and the rule ids it names
+  (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`)
+  are public; the `advice` list in `manifest.json` is too. Retiring or renaming an id a scene may name makes that scene fail validation, so it is a breaking change.
 
 ## What is public
 
@@ -42,7 +48,7 @@ Two kinds of change are not breaking, even though output differs:
 
 - The scene contract: `{ id, width, height, duration, title, description,
   steps: [{ at, label, detail?, id? }], frame(t, { idPrefix, style }), stepLabelsInFrame?,
-  contrastPairs?, labelBoxes?(t) }`
+  acknowledge?: [{ rule, reason }], contrastPairs?, labelBoxes?(t) }`
   and its rules (spec §1–§8).
 - Custom scene modules: a default export `(opts) => scene`, called with
   `{ ...options, format, locale, kit }`, with optional exported `locales` for gate coverage.
@@ -63,6 +69,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/iso.mjs` | `camera`, `CAMERA_PLAN`, `CAMERA_ISOMETRIC`, `ISO_ELEVATION`, `lerpCamera`, `fitCamera`, `projector`, `project`, `path3`, `box`, `slab`, `roundedBox`, `roundedSlab`, `prism`, `regularPolygon`, `orderSolids`, `drawSolid`, `drawSolids`, `drawGrid`, `planeMatrix`, `drawOnPlane`, `labelAnchor`, `labelPill`, `labelProblems` (the solid, plane and label-box shapes they take and return) |
 | `runtime/connectors.mjs` | `connectorPath` (its `at`, `cut`, `tip`), `drawConnector`, `drawJunction`, `drawPulse`, `pulseEnd`, `pulseHead`, `PULSE_LAG` (the option and `run` shapes they take) |
 | `runtime/bars.mjs` | `hatchPattern` (its `{ id, fill, markup }`), `drawTrack`, `drawBar`, `drawValue`, `rollingValue`, `barProgress`, `barEnd` (the option and `run` shapes they take) |
+| `runtime/code.mjs` | `codeBlock` (its `text`, `rangeText`, `rowSpan`), `drawCode`, `codeFocus`, `codeEnd`, `codePairs`, `CODE_ROLES`, `CODE_FONT`, `CODE_BAND_LAG` (the option and move shapes they take) |
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
 | `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` (and its optional pair list), `contrastReport`, `sharedPairs`, `CONTRAST_PAIRS`, `CONTRAST_EXEMPT` |
 | `runtime/patch.mjs` | `patchMarkup` |
@@ -70,7 +77,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/links.mjs` | `scrollSteps` and `linkSteps` (their options, the `data-mk-step` attribute, the `aria-current="step"` marks, the returned dispose function), `stepRef`, `sectionSteps`, `activeSection`, `scrollMove` |
 | `runtime/bake.mjs` | `bake`, `bakeStats` |
 
-`KIT` holds every export of `motion`, `svg`, `iso`, `connectors`, `bars`, `style`, `scene` and `wrap`; only
+`KIT` holds every export of `motion`, `svg`, `iso`, `connectors`, `bars`, `code`, `style`, `scene` and `wrap`; only
 the ones listed above are covered. Anything else in `runtime/` (for example
 `runtime/parts.mjs`, `withId`, `ENTRANCE_MAX`) is internal and may change in
 any release.
@@ -83,7 +90,7 @@ any release.
   `data-mk-player-css` marker on the stylesheet. The markup inside them is not
   public: style by class, not by structure.
 - Behaviour the spec states as MUST in §10.2 (autoplay, reduced motion, the
-  keyboard, 44 px targets, announcements).
+  keyboard, announcements). The 44 px control size is a SHIPPED DEFAULT (§10.2 says SHOULD; a page may override it).
 
 ### Adapters
 

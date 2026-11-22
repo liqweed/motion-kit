@@ -65,6 +65,7 @@ runtime/        dependency-free ES modules (browser + Node)
   iso.mjs       isometric kit for custom scenes: camera, solids (rounded too), depth order, grid backdrop, content on faces, label anchors and pills
   connectors.mjs dashed connectors, diamond junctions and single-pass light pulses for custom scenes
   bars.mjs      hatched tracks, rounded bars on the style's curve and rolling values for custom scenes
+  code.mjs      code block with a highlight band that moves one line range per step, for custom scenes
   wrap.mjs      label wrapping with hard budgets
   style.mjs     tokens, neutral style, contrast checks, token resolution
   scene.mjs     scene contract, formats, renderSvg
@@ -83,7 +84,8 @@ examples/       order-flow (sequence), smart-home (hub-spoke), incident (timelin
                 isometric-platform (custom module: rounded slabs, grid backdrop, mark on a top face, pill tags),
                 connectors (custom module: connectors, diamond junctions, pulses),
                 text-reveal (custom module: blur-and-fade reveal, highlighter sweep),
-                bars (custom module: hatched tracks, bars, rolling values)
+                bars (custom module: hatched tracks, bars, rolling values),
+                code-steps (custom module: a code block, a highlight band per step)
 bench/          heavy scene for npm run bench:player (live-player frame cost)
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
 assets/         generated project icon: icon.svg, icon.png, icon-animated.svg
@@ -182,8 +184,13 @@ for inline specs, styles, lifecycle and error handling.
 
 Deterministic bytes · settled step frames · rounded numbers · token-only colours ·
 escaped labels · labels fit their budget in every locale · holds the final frame ·
-hard limit 12 s (aim for ≤ 8 s) · no clock or randomness in scenes · ids from the instance prefix. See
-`skills/animated-diagram/references/technique.md`.
+WCAG contrast of what a scene draws · no clock or randomness in scenes · ids from the instance prefix.
+These fail a scene. The motion canon (a scene over 12 s, no motion at all, a step label
+the frame does not draw, emphasis on accent under 3:1) is advice: the check says what it
+found, why, when breaking it is fine and what to do instead. A scene that breaks it on
+purpose acknowledges it with a reason (`acknowledge: [{ rule, reason }]`), and `--strict`
+(or `MOTION_KIT_STRICT=1`) fails advice nobody acknowledged. See
+`skills/animated-diagram/references/technique.md` and the spec's §11.
 
 ## Contributing, changes and stability
 
@@ -219,5 +226,5 @@ shares a JSON spec directly in the browser.
 Localized dictionaries must contain the requested locale; plain strings are
 shared. Custom modules can export `locales = ["en", "nl"]` for gate coverage.
 Narrative scenes may set `stepLabelsInFrame: false`; otherwise every step label
-must appear in the final frame. `controller.onStep(callback)` observes changes
+should appear in the final frame (advice). `controller.onStep(callback)` observes changes
 without polling and returns an unsubscribe function.

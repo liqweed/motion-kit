@@ -23,7 +23,7 @@ custom scene's `frame` rather than importing the constants.
 | State fill (pending → active) | 200–300 ms |
 | Travel between nodes | 350–500 ms |
 | Pause between beats | ≥ 50 ms, so step frames settle |
-| Whole explainer | aim for ≤ 8 s, then hold; gate limit 12 s |
+| Whole explainer | aim for ≤ 8 s, then hold; the gate advises above 12 s |
 
 ## Blur reveal or plain fade (`blurReveal`, `highlightSweep`)
 
@@ -113,7 +113,7 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   at once to fan out from a junction (twin pulses outward), or in sequence, each
   starting as the last arrives.
 - **Never** a pulse that repeats or runs while a step rests; that is looping
-  ambient motion (canon above). Loops are forbidden by contract and need review;
+  ambient motion (canon above). Loops are advised against (an authored repetition is not caught by the gate) and need review;
   the gate's settled-frame rule only catches motion around the sampled step
   boundaries, so it will not see every repeat.
 
@@ -132,6 +132,21 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   entrance starting no earlier than 50 ms after the step.
 - **Never** a bar or a number that keeps moving while a step rests: a value that
   updates live is footage, not part of the diagram.
+
+## Highlight band over code (derived)
+
+- **Band:** appears in 0.3 s (a fade over the first range), then moves to each
+  next range in 0.4–0.6 s on `easeStandard`, the leading edge first and the
+  trailing edge 70 ms behind (split edges), so it stretches in flight when both edges travel the same way and gathers
+  on arrival. Longer jumps take the longer end of the range.
+- **Lines:** a line is at full ink while the band covers it and at 45 % outside
+  it. The change follows the band's own edges, so a line lights as the band
+  reaches it and dims as it leaves; nothing is timed separately.
+- **Timing rule:** the move, trailing edge included (`codeEnd`), is over ≥ 50 ms
+  before the step. One range per step and one step per click.
+- **Never** a band that drifts on its own, follows narration for tens of seconds
+  or loops back to the top: that is continuous motion, which the canon rules out.
+  A walkthrough longer than 12 s is several scenes.
 
 ## Container and text timing
 
@@ -156,7 +171,7 @@ edit.
 | Stagger is non-uniform (`choreograph`: "Uniform stagger is forbidden") | `sequence` enters its nodes on a uniform `k * ENTER_GAP`, siblings 80–150 ms apart in reading order | The gap is the order. An uneven rhythm reads as emphasis the data does not have; a viewer counts nodes by the beat |
 | Fade or scale in from a rest state, feel alive | Nothing moves at a step's `at`; step frames are settled | A step frame is exported as a slide, a still and a poster. It must be the picture, not a frame mid-move |
 | Interrupt-friendly, spring-based motion | Closed-form critically damped springs and fixed timelines; a seek jumps, it does not retarget | Same `t`, same bytes: export, video and the gate depend on it |
-| Keep animating on repeat, or ambient motion for delight | One build, then hold; no loops, no ambient motion | Looping decoration competes with the text beside the diagram |
+| Keep animating on repeat, or ambient motion for delight | One build, then hold; advice against loops and ambient motion | Looping decoration competes with the text beside the diagram |
 | Skip animation on high-frequency surfaces | Every scene animates, but `prefers-reduced-motion` shows the final frame | A diagram is opened to be watched, once; reduced motion keeps the content and drops the travel |
 
 What does carry over: no `transition: all`, animate `transform` and `opacity`
@@ -164,10 +179,24 @@ in the page around a diagram, honour reduced motion, and never overshoot. A
 style's `motion` curves (`styles.md`) are how a diagram takes on the page's own
 curve without changing any of the above.
 
-## Banned in explainers
+## Advice against, in explainers
 
 Bounce and elastic easing · parallax · looping or auto-advancing carousels ·
-ambient motion · `transition: all` · anything whose only purpose is decoration.
+ambient motion · `transition: all` on the surrounding page (inside a scene it is a hard T6 failure) · anything whose only purpose is decoration.
+
+This is advice, not law: the gate does not fail a scene for these, and a scene
+that has a reason to break one says so in its own description. Only these rules can be acknowledged by the machine (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`; `custom-scenes.md`); the rest below are guidance with no `acknowledge` rule, and overshooting style curves still throw (#95).
+The reason each is advised against, and when breaking it is fine:
+
+| Advice against | Why | Fine when |
+|---|---|---|
+| Bounce, elastic, overshoot | Explanatory motion is not playful motion: an overshoot reads as emphasis the data does not have | A consumer's brand style asks for it and the step frames still settle (G6 stays hard) |
+| Looping, or a scene that never rests | Looping decoration competes with the text beside the diagram; a loop has no final frame to hold, step or print | An ambient status display that a page drives itself; the page owns the loop; a scene whose first and last frames are identical acknowledges `nothing-animates`, a finite scene the page replays does not |
+| Ambient motion | Same as looping | The same |
+| Parallax, scroll-scrubbing | The diagram should rest only on settled steps | A page's design language asks for it; that is the page's decision, not the scene's |
+| `transition: all` | It animates what nobody meant to animate | Never in a scene; in the page around it, name the properties |
+| Decoration with no purpose | Every motion answers "what does this help the viewer understand?" | A mark or logo whose motion is its identity |
+| A scene over 12 s (`duration` advice) | A diagram is opened to be watched, once | A narrated visual cued to a voice-over or talk track. Otherwise split at a settled step and sequence the scenes in the video tool |
 
 ## Sound (video only)
 

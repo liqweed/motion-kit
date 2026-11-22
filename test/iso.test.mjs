@@ -416,7 +416,8 @@ describe("the scene gate and labels", () => {
 		assert.match(r.problems.find((p) => p.includes("overlap")) ?? "", /t=0\.000$/);
 	});
 	it("passes a scene whose labels are apart", () => {
-		assert.deepEqual(checkScene(sceneWithLabels([{ x: -4, y: 0 }, { x: 4, y: 0 }])), { ok: true, problems: [], warnings: [] });
+		const r = checkScene(sceneWithLabels([{ x: -4, y: 0 }, { x: 4, y: 0 }]));
+		assert.deepEqual([r.ok, r.problems, r.warnings], [true, [], []]);
 	});
 	it("fails a label outside the picture", () => {
 		const r = checkScene(sceneWithLabels([{ x: -12, y: 0 }]));

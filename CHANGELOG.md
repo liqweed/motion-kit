@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-22
+
+### Added
+
+- A code block for custom scenes, in `kit`: `codeBlock` lays a snippet out in a monospace panel and refuses one that does not fit the format, with an error that names the line and the remedy; lines wrap, clip or are refused, by the `overflow` rule you choose. `drawCode` draws a translucent band with a solid marker over the active line range, with the lines under it at full ink and the rest dimmed, and moves it once per step, from range to range, on the style's movement curve (leading edge first, trailing edge a beat behind). Syntax roles come from you, and each maps to a style token (`CODE_ROLES`), so a tint is never a colour literal; there is no grammar. `codeEnd` gives the time the last move is over, so a scene keeps every step settled, and `codePairs` lists the token pairs the block draws for `scene.contrastPairs`. The code's text is available to the scene's description and each step's detail (`block.text`, `block.rangeText`). Nothing loops: a deck advances the band one range per click. **Consumer action:** none.
+- A generic example, `examples/code-steps.scene.mjs`: a short retry loop whose band lands on one line range per step. It lasts 3.9 s and passes the gate in every format and in English and Dutch; in the phone column it wraps its longest line. The `animated-diagram` skill's custom-scenes, motion-vocabulary and targets references describe the parts, the timing rule and how a deck advances the band. **Consumer action:** none.
+
+### Changed
+
+- `renderSvg` with `standalone: true` now resolves `var(--mk-…)` only in the background and the scene's frame, no longer in the outer `<title>` and `<desc>` or the root `font-family` attribute: a scene whose title or description contains the literal text `var(--mk-accent)` keeps it as written, where it used to be replaced by the token's colour (text naming an unknown token, which the resolver would have refused, is now kept as written too). `resolveTokens` itself is unchanged (its documentation now says it replaces the pattern anywhere in its input). If a title, description or root font family relied on the substitution, spell the colour out. **Consumer action:** none.
+
+## [0.15.0] - 2026-11-22
+
+### Changed
+
+- The motion canon is advice, not a failure. The gate still checks it, but a scene over 12 s, a scene whose first and last frames are identical, a step label the final frame does not draw and an `emphasis` under 3:1 on the `accent` (where a ring or dot touches it) no longer fail `check`, `build`, `export`, `bake`, `video`, `icon` or the vendored `check.mjs`. Each prints advice instead: what was found, why the rule exists, when breaking it is fine and what to do instead. The advisory curve, type-range, shape-style and font-size rules still refuse to build until [#95](https://github.com/liqweed/motion-kit/issues/95) softens them. Hard rules (determinism, markup, settled steps, token-only colours, WCAG contrast of the pairs a scene draws, ids, label boxes) fail as before. The spec's §11.2 classes every rule it lists (the walks' edge limits wait for #95). **Consumer action:** advised at configuration. A script that relied on `check` failing a scene over 12 s, should pass `--strict`; one that matched the message "nothing animates" should match the rule id `nothing-animates` instead (the line now reads `advice [nothing-animates]`, no longer containing the phrase "nothing animates"). `checkScene` also returns `advice` and `unusedAcknowledgements`; `contrastReport` returns `advice`.
+- A scene acknowledges advice it breaks on purpose with `acknowledge: [{ rule, reason }]` (any scene type's spec may carry it too). The rule is one of `duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`; the reason is a required one-line sentence; a hard rule cannot be named. The check reports it as acknowledged with the reason, and the `export` manifest records every piece of advice under `advice`. `stepLabelsInFrame: false` still works and is reported as an acknowledgement with the reason "narrative steps". A narrated visual cued to a voice-over no longer needs to be cut to 12 s. **Consumer action:** none.
+- `--strict` (or `MOTION_KIT_STRICT=1`) fails advice a scene has not acknowledged, on `check`, `build`, `export`, `bake`, `video`, `icon`, the vendored `check.mjs` and `import --out`; `import` to stdout runs no gate. It is off by default; a repository that publishes scenes can turn it on in CI. **Consumer action:** none.
+- The canon text in the skills and the PRD reads as advice with when-to-break, and no longer contradicts itself on loops: a scene plays once and holds by construction, and looping is a page's own decision. **Consumer action:** none.
+- `bake` and `video` refuse a render of more than 20,000 frames, a non-positive or non-finite fps, and (video) a negative lead or hold, whatever the scene acknowledges: the duration advice is taste, the frame limit is a resource bound. `bake` counts `ceil(duration × fps) + 1` frames; `video` counts `round((lead + duration + hold) × fps)`, so at the default 0.25 s lead and 1.5 s hold it refuses a little earlier (a 666 s scene at 30 fps). `icon` bakes at the default 15 fps, so it has no fps remedy: shorten the scene. For `bake` and `video`, lower `--fps`. The gate samples a scene every 0.1 s, spread evenly over the whole duration once that would exceed 1,200 intervals (a 1,200 s scene is sampled every second), and `export` runs the tall layout through the same gate (strict mode included), reports its advice marked "tall layout", and leaves the phone preview out, with the reason, when it fails. **Consumer action:** advised at configuration. Lower the fps of a very long scene that `bake` or `video` now refuses.
+
 ## [0.14.0] - 2026-11-22
 
 ### Added
@@ -182,7 +203,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/liqweed/motion-kit/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/liqweed/motion-kit/compare/v0.14.0...v0.15.0
 [0.14.0]: https://github.com/liqweed/motion-kit/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/liqweed/motion-kit/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/liqweed/motion-kit/compare/v0.11.0...v0.12.0

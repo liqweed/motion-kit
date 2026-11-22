@@ -13,7 +13,7 @@ const CLI = new URL("../cli/motion-kit.mjs", import.meta.url).pathname;
 const EX = new URL("../examples/", import.meta.url).pathname;
 const tmp = mkdtempSync(join(tmpdir(), "mk-test-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
-const run = (...args) => execFileSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
+const run = (...args) => execFileSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
 /** Run a node script; never throws. @returns {{ status: number, out: string }} */
 const node = (...args) => {
 	try {
@@ -131,20 +131,131 @@ describe("cli", () => {
 		assert.notEqual(nl.inputHash, en.inputHash);
 		assert.match(node(CLI, "build", `${EX}order-flow.json`, "-o", join(dir, "x.html"), "--options", "{}").out, /--options apply to custom scene modules/);
 	});
+	it("every command gives the same advice on a scene over 12 s, and acknowledging it records the reason", () => {
+		const dir = join(tmp, "advice");
+		mkdirSync(dir);
+		writeFileSync(join(dir, "labels.json"), JSON.stringify({ labels: { title: "Three steps", steps: ["First", "Second", "Third"] } }));
+		const long = LABELLED.replace(/duration: [^,]+,/, "duration: 16,");
+		const plain = join(dir, "long.scene.mjs");
+		const said = join(dir, "said.scene.mjs");
+		writeFileSync(plain, long);
+		writeFileSync(said, long.replace("title: labels.title,", 'acknowledge: [{ rule: "duration", reason: "Voice-over sets the pace." }], title: labels.title,'));
+		const both = (/** @type {string[]} */ ...args) => {
+			const p = spawnSync(process.execPath, [CLI, ...args, "--options", join(dir, "labels.json")], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
+			return { status: p.status, out: `${p.stdout}${p.stderr}` };
+		};
+		// check: the rule, the value, why, when it is fine, the alternative; exit 0.
+		let r = both("check", plain, "-f", "16:9");
+		assert.equal(r.status, 0, r.out);
+		for (const part of [/advice \[duration\]: duration 16 s exceeds 12 s/, /why: .*watched once/, /fine when: .*voice-over/, /instead: .*Split the scene/, /acknowledge: \[\{ rule: "duration"/]) assert.match(r.out, part);
+		// The other commands print the same text; strict mode fails each before it writes anything.
+		const out = (/** @type {string} */ f) => join(dir, f);
+		const commands = [["build", "-o", out("p.html")], ["export", "-o", out("exp")], ["bake", "-o", out("b.svg")], ["icon", "-o", out("icons"), "--no-png"]];
+		// video: strict rejection comes before any rendering, so it needs no ffmpeg; an ordinary render does.
+		r = both("video", plain, "-f", "1:1", "--strict", "-o", out("v-strict.mp4"));
+		assert.equal(r.status, 1, r.out);
+		assert.match(r.out, /motion-kit: advice \[duration\]: duration 16 s exceeds 12 s/);
+		assert.match(r.out, /scene fails the gate:\n {2}- strict mode: unacknowledged advice \[duration\]/);
+		assert.equal(existsSync(out("v-strict.mp4")), false, "video wrote nothing");
+		if (hasFfmpeg() && hasRaster) {
+			r = both("video", plain, "-f", "1:1", "-o", out("v.mp4"), "--fps", "5", "--scale", "1", "--hold", "0");
+			assert.equal(r.status, 0, r.out);
+			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16 s exceeds 12 s/);
+		}
+		for (const [cmd, ...rest] of commands) {
+			r = both(cmd, plain, "-f", "1:1", ...rest);
+			assert.equal(r.status, 0, `${cmd}: ${r.out}`);
+			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16 s exceeds 12 s/, cmd);
+			assert.match(r.out, /motion-kit: {3}fine when: /, cmd);
+		}
+		assert.equal(JSON.parse(readFileSync(out("exp/manifest.json"), "utf8")).advice[0].acknowledged, false);
+		for (const [cmd, ...rest] of commands) {
+			r = both(cmd, plain, "-f", "1:1", "--strict", ...rest.map((x) => (x.startsWith(dir) ? `${x}-strict` : x)));
+			assert.equal(r.status, 1, cmd);
+			assert.match(r.out, /scene fails the gate:\n {2}- strict mode: unacknowledged advice \[duration\]/, cmd);
+			assert.match(r.out, /motion-kit: {3}why: /, `${cmd} explains the advice before refusing`);
+			assert.equal(existsSync(`${rest[1]}-strict`), false, `${cmd} wrote nothing`);
+		}
+		assert.equal(both("check", plain, "-f", "16:9", "--strict").status, 1);
+		assert.equal(spawnSync(process.execPath, [CLI, "check", plain, "-f", "16:9", "--options", join(dir, "labels.json")], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "1" } }).status, 1);
+		// Acknowledged: reported with the reason, passes strict mode, and the manifest records it.
+		r = both("check", said, "-f", "16:9", "--strict");
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /ℹ .*said\.scene\.mjs: acknowledged \[duration\]: Voice-over sets the pace\. \[16:9 · en\]/);
+		assert.doesNotMatch(r.out, /fine when/);
+		for (const [cmd, ...rest] of commands) assert.equal(both(cmd, said, "-f", "1:1", "--strict", ...rest.map((x) => (x.startsWith(dir) ? `${x}-said` : x))).status, 0, cmd);
+		assert.deepEqual(both("export", said, "-f", "1:1", "-o", out("exp-said")).status, 0);
+		const { advice } = JSON.parse(readFileSync(out("exp-said/manifest.json"), "utf8"));
+		assert.deepEqual(advice.map((/** @type {any} */ a) => [a.rule, a.acknowledged, a.reason]), [["duration", true, "Voice-over sets the pace."]]);
+		// The vendored gate says the same.
+		const vendored = join(dir, "vendor");
+		run("vendor", vendored, "--adapter", "astro");
+		const v = spawnSync(process.execPath, [join(vendored, "check.mjs"), plain, "--format", "16:9", "--options", join(dir, "labels.json"), "--strict"], { encoding: "utf8" });
+		assert.equal(v.status, 1, `${v.stdout}${v.stderr}`);
+		assert.match(`${v.stdout}${v.stderr}`, /advice \[duration\]: duration 16 s exceeds 12 s/);
+	});
+	it("refuses an acknowledgement without a reason, of an unknown rule or of a hard rule, and fails a hard rule whatever is acknowledged", () => {
+		const dir = join(tmp, "refused");
+		mkdirSync(dir);
+		writeFileSync(join(dir, "labels.json"), JSON.stringify({ labels: { title: "Three steps", steps: ["First", "Second", "Third"] } }));
+		const make = (/** @type {string} */ name, /** @type {string} */ ack, /** @type {string} */ body = "") => {
+			const file = join(dir, name);
+			writeFileSync(file, LABELLED.replace(/duration: [^,]+,/, "duration: 16,").replace("title: labels.title,", `acknowledge: ${ack}, title: labels.title,`).replace("\t\t\tconst w =", `\t\t\t${body}\n\t\t\tconst w =`));
+			return file;
+		};
+		const check = (/** @type {string} */ file) => {
+			const p = spawnSync(process.execPath, [CLI, "check", file, "-f", "16:9", "--options", join(dir, "labels.json")], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
+			return { status: p.status, out: `${p.stdout}${p.stderr}` };
+		};
+		let r = check(make("noreason.scene.mjs", '[{ rule: "duration" }]'));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /acknowledge: "duration" needs a reason, one line saying why/);
+		r = check(make("blank.scene.mjs", '[{ rule: "duration", reason: "  " }]'));
+		assert.match(r.out, /needs a reason/);
+		r = check(make("hard.scene.mjs", '[{ rule: "contrast", reason: "we like it" }]'));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /"contrast" is not an advice rule \(known: duration, .*\); a hard rule .* cannot be acknowledged/);
+		// A hard rule fails, acknowledged or not: this frame reads the clock.
+		r = check(make("clock.scene.mjs", '[{ rule: "duration", reason: "Voice-over sets the pace." }]', "const stamp = Date.now();"));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /frame\(\) reads the clock/);
+		// An acknowledgement of a rule the scene does not break is said, not failed.
+		const calm = join(dir, "calm.scene.mjs");
+		writeFileSync(calm, LABELLED.replace("title: labels.title,", 'acknowledge: [{ rule: "duration", reason: "Not needed." }], title: labels.title,'));
+		r = check(calm);
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /acknowledges \[duration\] but never breaks it/);
+		// The other commands say it too, and a control character in a reason is refused.
+		const e = spawnSync(process.execPath, [CLI, "bake", calm, "-o", join(dir, "calm.svg"), "--options", join(dir, "labels.json")], { encoding: "utf8" });
+		assert.equal(e.status, 0, e.stderr);
+		assert.match(e.stderr, /acknowledges \[duration\] but this variant never breaks it/);
+		r = check(make("escape.scene.mjs", '[{ rule: "duration", reason: "\\u001b[2JApproved" }]'));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /one line of plain text/);
+	});
 	it("check passes every example in every format and locale", () => {
 		const out = run("check", `${EX}order-flow.json`, `${EX}smart-home.json`);
 		assert.equal((out.match(/✓/g) ?? []).length, 2 * 6 * 2);
 	});
-	it("check --style fails emphasis on accent, and the pairs a scene declares", () => {
+	it("check --style gives advice on emphasis on accent, and fails the pairs a scene declares", () => {
 		const dir = join(tmp, "contrast");
 		mkdirSync(dir);
 		writeFileSync(join(dir, "blue.json"), JSON.stringify({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" }, dark: { accent: "#2563eb", emphasis: "#fbbf24" } }));
-		let r = node(CLI, "check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
+		const both = (/** @type {string[]} */ ...args) => {
+			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
+			return { status: p.status, out: `${p.stdout}${p.stderr}` };
+		};
+		let r = both("check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
+		// Emphasis on accent is advice, not a WCAG failure: the style's result for the pair is
+		// shown once, with who it is advice for; order-flow (a sequence) draws it, so it is told
+		// there, and it fails only in strict mode.
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /⚠ style: blue light: emphasis on accent is 1\.13:1, needs 3:1 \(advice for: sequence, /);
+		assert.match(r.out, /ℹ .*order-flow\.json: advice \[emphasis-on-accent\]: blue light: emphasis on accent is 1\.13:1, 3:1 recommended/);
+		r = both("check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"), "--strict");
 		assert.equal(r.status, 1);
-		// The style's result for every shared pair is shown once, as a warning with who draws it;
-		// order-flow (a sequence) draws emphasis on accent, so it fails there.
-		assert.match(r.out, /⚠ style: blue light: emphasis on accent is 1\.13:1, needs 3:1 \(held against: sequence, /);
-		assert.match(r.out, /✗ .*order-flow\.json · 16:9 · en\n {2}- contrast: blue light: emphasis on accent is 1\.13:1, needs 3:1/);
+		assert.match(r.out, /✗ .*order-flow\.json · 16:9 · en\n {2}- strict mode: unacknowledged advice \[emphasis-on-accent\]/);
+		assert.equal(r.out.match(/advice \[emphasis-on-accent\]: blue light/g)?.length, 1);
 		// A lighter dark surface passes the shared pairs but not custom-pulse's bar on its track.
 		writeFileSync(join(dir, "raised.json"), JSON.stringify({ name: "raised", dark: { surface: "#2b3242" } }));
 		r = node(CLI, "check", `${EX}order-flow.json`, `${EX}custom-pulse.scene.mjs`, "-f", "16:9", "--style", join(dir, "raised.json"));
@@ -166,7 +277,7 @@ describe("cli", () => {
 		const opts = ["--options", join(dir, "labels.json"), "--style", join(dir, "paper.json")];
 		// Warnings go to stderr, which `node` drops from a run that succeeds.
 		const both = (/** @type {string[]} */ ...args) => {
-			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
+			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
 			return { status: p.status, out: `${p.stdout}${p.stderr}` };
 		};
 		let r = both("check", declared, "-f", "16:9", ...opts);
@@ -253,6 +364,82 @@ describe("cli", () => {
 		assert.match(svg, /viewBox="0 0 360 \d+" width="360"/);
 		assert.match(readFileSync(join(dir, "index.html"), "utf8"), /Phone size \(tall layout, 360 px wide\)<\/h2><div class="grid phone"><figure><img src="qc\/phone\.svg"/);
 	});
+	it("export leaves a tall layout out, with a diagnostic, when it throws mid-timeline", () => {
+		const dir = join(tmp, "exp-tall-throws");
+		mkdirSync(dir, { recursive: true });
+		const mod = join(dir, "flaky.scene.mjs");
+		writeFileSync(mod, `export default function make({ format = "16:9" } = {}) {
+	return {
+		id: "flaky-" + format.replace(":", "x"), width: 200, height: format === "tall" ? 300 : 100, duration: 1, title: "Flaky", description: "Tall throws mid-way.", stepLabelsInFrame: false,
+		steps: [{ at: 1, label: "End" }],
+		frame(t) {
+			if (format === "tall" && t > 0.2 && t < 0.3) throw new Error("tall breaks\\u001b[31m here");
+			return '<rect width="' + Math.round(100 * Math.min(t, 1)) + '" height="20" fill="var(--mk-accent)"/>';
+		},
+	};
+}
+`);
+		const out = join(dir, "out");
+		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
+		const r = both(CLI, "export", mod, "-o", out, "-f", "16:9");
+		assert.equal(r.status, 0, r.out);
+		assert.match(r.out, /tall preview left out: .*tall breaks\\u001b\[31m here/, "one-line, escaped diagnostic");
+		assert.ok(!r.out.includes("\u001b"), "no raw escape reaches the terminal");
+		const m = JSON.parse(readFileSync(join(out, "manifest.json"), "utf8"));
+		assert.ok(!m.files.some((f) => f.kind === "phone"), "no phone entry in the manifest");
+		assert.ok(!existsSync(join(out, "qc/phone.svg")), "no phone SVG on disk");
+		assert.match(readFileSync(join(out, "index.html"), "utf8"), /The tall layout could not be built/);
+		const strict = both(CLI, "export", mod, "-o", join(dir, "out2"), "-f", "16:9", "--strict");
+		assert.equal(strict.status, 0, strict.out);
+		assert.match(strict.out, /tall preview left out/);
+	});
+	it("export's tall preview is left out under --strict for tall-only advice, and the fingerprint tells the outcomes apart", () => {
+		const dir = join(tmp, "exp-tall-advice");
+		mkdirSync(dir, { recursive: true });
+		const mod = join(dir, "tallonly.scene.mjs");
+		writeFileSync(mod, `export default function make({ format = "16:9" } = {}) {
+	return {
+		id: "tallonly-" + format.replace(":", "x"), width: 200, height: format === "tall" ? 300 : 100, duration: format === "tall" ? 13 : 1, title: "T", description: "Tall runs long.", stepLabelsInFrame: false,
+		steps: [{ at: format === "tall" ? 13 : 1, label: "End" }],
+		frame(t) { return '<rect width="' + Math.round(100 * Math.min(t, 1)) + '" height="20" fill="var(--mk-accent)"/>'; },
+	};
+}
+`);
+		const both = (...a) => { const x = spawnSync(process.execPath, a, { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } }); return { status: x.status, out: `${x.stdout}${x.stderr}` }; };
+		const plain = both(CLI, "export", mod, "-o", join(dir, "out"), "-f", "16:9");
+		assert.equal(plain.status, 0, plain.out);
+		const mp = JSON.parse(readFileSync(join(dir, "out", "manifest.json"), "utf8"));
+		assert.ok(mp.files.some((f) => f.kind === "phone"), "advice alone keeps the phone row");
+		const strict = both(CLI, "export", mod, "-o", join(dir, "out2"), "-f", "16:9", "--strict");
+		assert.equal(strict.status, 0, strict.out);
+		assert.match(strict.out, /tall preview left out/);
+		const ms = JSON.parse(readFileSync(join(dir, "out2", "manifest.json"), "utf8"));
+		assert.ok(!ms.files.some((f) => f.kind === "phone"));
+		assert.notEqual(mp.inputHash, ms.inputHash);
+	});
+	it("export's fingerprint follows the tall SVG bytes, even when only the tall layout's outside input changes", () => {
+		const dir = join(tmp, "exp-tall-digest");
+		mkdirSync(dir, { recursive: true });
+		const mod = join(dir, "tallfile.scene.mjs");
+		writeFileSync(join(dir, "tall-title.txt"), "One");
+		writeFileSync(mod, `import { readFileSync } from "node:fs";
+export default function make({ format = "16:9" } = {}) {
+	const title = format === "tall" ? readFileSync(new URL("./tall-title.txt", import.meta.url), "utf8") : "T";
+	return {
+		id: "tallfile-" + format.replace(":", "x"), width: 200, height: format === "tall" ? 300 : 100, duration: 1, title, description: "Same everywhere.", stepLabelsInFrame: false,
+		steps: [{ at: 1, label: "End" }],
+		frame(t) { return '<rect width="' + Math.round(100 * Math.min(t, 1)) + '" height="20" fill="var(--mk-accent)"/>'; },
+	};
+}
+`);
+		const run1 = (o) => spawnSync(process.execPath, [CLI, "export", mod, "-o", join(dir, o), "-f", "16:9"], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
+		assert.equal(run1("a").status, 0);
+		writeFileSync(join(dir, "tall-title.txt"), "Two");
+		assert.equal(run1("b").status, 0);
+		const ha = JSON.parse(readFileSync(join(dir, "a", "manifest.json"), "utf8")).inputHash;
+		const hb = JSON.parse(readFileSync(join(dir, "b", "manifest.json"), "utf8")).inputHash;
+		assert.notEqual(ha, hb);
+	});
 	it("build writes one self-contained HTML file", () => {
 		const f = join(tmp, "p.html");
 		run("build", `${EX}smart-home.json`, "-o", f);
@@ -303,6 +490,21 @@ it("bake and video reject an invalid scene before writing any output", () => {
 		assert.match(result.out, /scene fails the gate/);
 		assert.equal(existsSync(out), false);
 	}
+});
+
+it("the export input hash includes the advice the manifest records", async () => {
+	const { exportSteps } = await import("../lib/export.mjs");
+	const scene = { id: "advised", type: "custom", width: 100, height: 40, duration: 1, title: "T", description: "D", stepLabelsInFrame: false, steps: [{ at: 1, label: "End" }], frame: (/** @type {number} */ t) => `<rect width="${Math.round(t * 10)}" height="10" fill="none"/>` };
+	const row = (/** @type {string} */ reason) => [{ rule: "duration", found: "duration 16 s", acknowledged: true, reason }];
+	/** @param {string} name @param {any[]} advice */
+	const hash = async (name, advice) => {
+		const out = join(tmp, name);
+		await exportSteps(scene, { out, advice, warn: () => {} });
+		return JSON.parse(readFileSync(join(out, "manifest.json"), "utf8")).inputHash;
+	};
+	const a = await hash("advice-hash-a", row("Voice-over sets the pace."));
+	assert.equal(await hash("advice-hash-a2", row("Voice-over sets the pace.")), a);
+	assert.notEqual(await hash("advice-hash-b", row("Cued to a live read.")), a, "a different reason, same source and options");
 });
 
 it("export hashes include the runtime and render settings", () => {
