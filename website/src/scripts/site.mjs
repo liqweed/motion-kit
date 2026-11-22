@@ -260,6 +260,9 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 	place();
 	const ro = typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
 	ro?.observe(callouts);
+	ro?.observe(root); // the controls' own boxes supply the coordinates, so a reflow of the player moves the leaders too
+	// A late web font changes button widths and row wrapping without resizing the strip.
+	document.fonts?.ready.then(() => !off.signal.aborted && place());
 	let timer = 0;
 	let raf = 0;
 	// The leaders belong to the layout that shows them: a hidden one neither arms nor draws them.
@@ -274,7 +277,7 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 	// A shared plate may still carry the armed class from a layout that was torn down, so reduced motion shows the final state outright.
 	// A player restored already settled (a handoff after the scene finished) has nothing left to wait for either.
 	const settled = !controller.playing && !controller.autoplayPending && controller.time >= controller.scene.duration - 0.02;
-	if (!drawn && (reducedMotion() || settled)) draw();
+	if (!drawn && reducedMotion()) draw();
 	if (!drawn && !reducedMotion() && !plate.classList.contains("leaders-draw")) {
 		plate.classList.add("leaders-armed");
 		// The player rests on its final frame until autoplay starts, so only a playback that has begun can end.
@@ -286,7 +289,8 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 			if (started && controller.time >= end) return draw();
 			raf = requestAnimationFrame(watch);
 		};
-		raf = requestAnimationFrame(watch);
+		// A player restored already settled has nothing to wait for: draw on the second frame, so the armed state is painted first and the leaders still animate.
+		raf = requestAnimationFrame(settled ? () => (raf = requestAnimationFrame(draw)) : watch);
 		timer = window.setTimeout(draw, (controller.scene.duration + 4) * 1000); // a paused or hidden player still gets its leaders
 		// Turning reduced motion on later shows the leaders at once rather than leaving them hidden.
 		matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => e.matches && draw(), { signal: off.signal });

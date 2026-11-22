@@ -85,7 +85,9 @@ OS theme.
   near-black it is about 6:1 and may carry text. It marks the active step and
   the focus ring.
 - Text reaches 4.5:1 (3:1 from 24 px), shapes and control edges 3:1, in both
-  themes.
+  themes. One known exception: the amber emphasis stripe on the isometric
+  side list's current step sits at about 2.9:1 on the light alternate plate;
+  the step's text and `aria-current` carry the meaning, the stripe is redundant.
 
 ## Motion
 
