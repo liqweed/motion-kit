@@ -187,25 +187,21 @@ export function usesToken(paint, token) {
 /**
  * Every tag of a frame, opening and closing, read with its quoted attributes
  * whole (a `>` inside a value does not end the tag). Comments are skipped.
- * `inMetadata` is true for the tags inside a `<metadata>` element: they
- * describe the document and paint nothing. This is the one reader of tags;
- * the other readers (`svgTags`, `styleBodies`, `paintSource`) build on it.
+ * Nothing is exempt, `<metadata>` included: its SVG children can be drawn
+ * through `<use>` or a paint server, and the live player may re-parent them.
+ * This is the one reader of tags; the other readers (`svgTags`, `styleBodies`, `paintSource`) build on it.
  * @param {string} markup
- * @returns {{ name: string, attrs: { name: string, raw: string }[], closing: boolean, selfClosing: boolean, inMetadata: boolean, end: number, bare: string }[]}
+ * @returns {{ name: string, attrs: { name: string, raw: string }[], closing: boolean, selfClosing: boolean, end: number, bare: string }[]}
  */
 function scanTags(markup) {
 	const bare = markup.replace(/<!--[\s\S]*?-->/g, "");
 	const tags = [];
-	let metadata = 0;
 	for (const m of bare.matchAll(/<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g)) {
 		const closing = m[1] === "/";
 		const selfClosing = !closing && m[3].endsWith("/");
-		const isMeta = m[2].toLowerCase() === "metadata";
-		if (closing && isMeta) metadata = Math.max(0, metadata - 1);
 		const attrs = [];
 		if (!closing) for (const a of m[3].matchAll(/([\w:.-]+)\s*=\s*(["'])([\s\S]*?)\2/g)) attrs.push({ name: a[1], raw: a[3] });
-		tags.push({ name: m[2], attrs, closing, selfClosing, inMetadata: metadata > 0 || (isMeta && !closing), end: m.index + m[0].length, bare });
-		if (!closing && isMeta && !selfClosing) metadata++;
+		tags.push({ name: m[2], attrs, closing, selfClosing, end: m.index + m[0].length, bare });
 	}
 	return tags;
 }
@@ -214,7 +210,7 @@ function scanTags(markup) {
  * The opening tags of a frame, read with their quoted attributes whole (a `>`
  * inside a value does not end the tag). Comments are skipped.
  * @param {string} markup
- * @returns {{ name: string, attrs: { name: string, raw: string }[], inMetadata: boolean }[]}
+ * @returns {{ name: string, attrs: { name: string, raw: string }[] }[]}
  */
 export function svgTags(markup) {
 	return scanTags(markup).filter((t) => !t.closing);
@@ -223,15 +219,14 @@ export function svgTags(markup) {
 /**
  * The bodies of the frame's `<style>` elements, found with the same tag
  * boundaries as `svgTags` (a quoted `>` in an attribute does not start the
- * body early). Those inside `<metadata>` are left out unless `all` is set.
+ * body early).
  * @param {string} markup
- * @param {boolean} [all]
  * @returns {string[]}
  */
-export function styleBodies(markup, all = false) {
+export function styleBodies(markup) {
 	const out = [];
 	for (const t of scanTags(markup)) {
-		if (t.closing || t.selfClosing || t.name.toLowerCase() !== "style" || (t.inMetadata && !all)) continue;
+		if (t.closing || t.selfClosing || t.name.toLowerCase() !== "style") continue;
 		// Only a CSS stylesheet styles anything: another `type` is plain data.
 		const type = t.attrs.find((a) => a.name === "type");
 		// An empty `type` is the default, CSS.
@@ -283,8 +278,7 @@ const NON_PAINT_ATTR = /^(data-|aria-)|^(id|class|title|xlink:title|href|xlink:h
 /**
  * The part of a frame that can paint: the attributes of its tags that are not
  * metadata (`data-*`, `aria-*`, `id`, `class`) and `<style>` bodies, without
- * comments, CSS strings, text content, `<title>`, `<desc>` or metadata
- * elements (their `<style>` bodies are kept: a stylesheet applies document-wide). A
+ * comments, CSS strings, text content, `<title>` or `<desc>`. A
  * label, a data attribute or a `content:` string that spells
  * `var(--mk-caution)` out is not a use of the token.
  * @param {string} markup
@@ -293,15 +287,14 @@ const NON_PAINT_ATTR = /^(data-|aria-)|^(id|class|title|xlink:title|href|xlink:h
 export function paintSource(markup) {
 	const out = [];
 	for (const tag of scanTags(markup)) {
-		if (tag.closing || tag.inMetadata) continue;
+		if (tag.closing) continue;
 		for (const { name, raw } of tag.attrs) {
 			if (NON_PAINT_ATTR.test(name)) continue;
 			const value = unescapeAttr(raw);
 			out.push(name.toLowerCase() === "style" ? maskCssStrings(stripCssComments(value)) : value);
 		}
 	}
-	// A stylesheet inside <metadata> still styles elements outside it (SVG 1.1, styling scope).
-	for (const css of styleBodies(markup, true)) out.push(maskCssStrings(stripCssComments(css)));
+	for (const css of styleBodies(markup)) out.push(maskCssStrings(stripCssComments(css)));
 	return out.join("\n");
 }
 

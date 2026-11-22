@@ -170,8 +170,8 @@ describe("the gate and the new tokens", () => {
 		assert.equal(findFontLiteral('<style>text{content:"a\\\r\n;font-family:Courier"}</style>', style), null);
 		// Attribute names are read in any case, as the live renderer does.
 		assert.equal(findColourLiteral('<rect FILL="red"/>'), 'fill="red"');
-		// Descriptive attributes inside <metadata> paint nothing; a stylesheet there still counts.
-		assert.equal(findColourLiteral('<metadata><sample FILL="red"/></metadata>'), null);
+		// <metadata> is no exemption: its SVG children can be drawn through <use>.
+		assert.equal(findColourLiteral('<metadata><rect id="s-box" FILL="red"/></metadata><use href="#s-box"/>'), 'fill="red"');
 		assert.match(findColourLiteral('<metadata><style>rect{fill:red}</style></metadata>') ?? "", /red/);
 		// A non-breaking space is no CSS whitespace, and an unknown token is no token.
 		assert.notEqual(findColourLiteral('<rect fill="var(\u00a0--mk-caution)"/>'), null);
@@ -268,10 +268,9 @@ describe("optional token use and warnings", () => {
 			assert.ok(paintSource(m).includes("var(--mk-caution)"));
 			assert.match(findFontLiteral(m, style) ?? "", /Courier/);
 		});
-		it("decodes style attribute entities and skips metadata subtrees", () => {
+		it("decodes style attribute entities", () => {
 			assert.ok(!paintSource(`<text style="content:&quot;var(--mk-caution)&quot;">x</text>`).includes("caution"));
-			assert.ok(!paintSource(`<metadata><info value="var(--mk-caution)"/></metadata>`).includes("caution"));
-			assert.ok(paintSource(`<metadata></metadata><rect fill="var(--mk-caution)"/>`).includes("caution"));
+			assert.ok(paintSource(`<metadata><linearGradient id="g"><stop stop-color="var(--mk-caution)"/></linearGradient></metadata>`).includes("caution"));
 		});
 		it("decodes numeric character references in one pass", () => {
 			assert.match(findFontLiteral(`<text style="&#70;ont-family:Courier">x</text>`, style) ?? "", /Courier/);
@@ -279,7 +278,7 @@ describe("optional token use and warnings", () => {
 			assert.ok(paintSource(`<rect style="fill:var(&#x2d;&#45;mk-caution)"/>`).includes("var(--mk-caution)"));
 			assert.equal(findFontLiteral(`<text style="&amp;#70;ont-family:Courier">x</text>`, style), null);
 		});
-		it("keeps stylesheets inside metadata, which style the whole document", () => {
+		it("keeps stylesheets and graphics inside metadata", () => {
 			assert.ok(paintSource(`<metadata><style>rect{fill:var(--mk-caution)}</style></metadata><rect/>`).includes("var(--mk-caution)"));
 		});
 		it("ignores font properties in conditional-rule preludes", () => {
