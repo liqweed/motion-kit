@@ -194,6 +194,48 @@ Canon: no loops, no ambient motion, no continuous scrubbing, 12 s hard limit
 other, and under reduced motion the player shows that frame. A constantly
 moving hero is a 3D model's job, not motion-kit's.
 
+## Text that sharpens into place, and a highlighter
+
+`kit` carries text helpers (`runtime/svg.mjs`), for a label or a quote that
+should arrive as a beat and not just appear. Template:
+`examples/text-reveal.scene.mjs` (three labels reveal in reading order, then a
+quoted line reveals and is marked).
+
+| Need | Use |
+|---|---|
+| A reveal | `blurReveal(enter, { id, rise, blur }, ...markup)` with `enter = progress(t, start, 0.4, easings(style.motion).easeOut)`. The markup starts soft, transparent and `rise` units low (default 6) and sharpens into place; `blur` is the starting radius (default 4, at most 12). Any markup works, a `<text>`, a group, a card. The default region holds the blur when the element's painted bounds are at least 12 × `blur` units wide (50 units at the default blur) **and** at least 3 × `blur` units tall (it adds only one element height above and below). For a narrower or shallower element, a short label, a thin rule or an icon, a larger `blur`, or any shape whose stroke or markers reach past its geometry by more than that padding (a thick stroke on a small shape, at any size), pass `box: { x, y, width, height }` covering the painted bounds (all four finite; `width` and `height` positive; `x` and `y` may be anything) |
+| Its filter id | `id: idPrefix + "-reveal-" + i`, one per revealed element. The gate reports ids shared across instances at its sampled times (it can miss a short reveal between samples), so keep the prefix, and every slice of a baked SVG has its own prefix |
+| A highlighter | `highlightSweep(p, { x, y, width, height, token, opacity, radius })`: a band in a token (default `emphasis`) at 30 % that grows from `x` to `x + width` as `p` (eased) goes 0 → 1; its `token` is checked once the band is drawn. Draw it **before** the text; size it from `estimateWidth(line, fontSize)` plus padding each side (the estimate is generous; do not shrink it where wide glyphs such as a capital W may appear, since they can run past a shortened band. `examples/text-reveal.scene.mjs` takes 0.9 of it for its fixed lines only, checked by eye in the rendered frames; the gate does not compare glyph widths with the band) |
+
+Rules that keep it inside the canon:
+
+- **Settled means bare.** When `enter` reaches 1, `blurReveal` returns your
+  markup with no group, no filter and no `<defs>`, so every step frame and the
+  final frame are byte-identical to the same text drawn without the reveal, provided the scene finishes the reveal (the gate checks only that those frames are stable).
+  Finish each reveal 50 ms or more before the step it belongs to, as with any
+  beat; the gate's settled-step rule then holds. Do not wrap the call in your
+  own filter or opacity.
+- **Once per element, inside a beat.** A reveal runs 300–600 ms and never
+  repeats. Stagger siblings 80–150 ms in reading order. A blinking cursor or any
+  other loop is ambient motion and stays out; a static cursor is fine.
+- **Reduced motion** shows the final frame, which is the settled text and the
+  full band: no filter, no motion.
+- **Renderers.** The live player (in-place patch), `bake`, PNG export (resvg,
+  Chrome) and video use the same helper and filter parameters; the raster blur can vary with renderer, fonts and scale, and only one resvg frame is checked. A consumer that ignores SVG filters
+  shows the fade and the rise only, and only mid-reveal; step frames carry no
+  filter.
+- **Cost.** A blur is the most expensive thing a frame can ask the browser for.
+  Reveal the handful of elements the viewer must watch arrive, not every
+  element in a dense diagram; for those, `fade()` is enough
+  (`motion-vocabulary.md`, "Blur reveal or plain fade").
+- **Contrast.** Start the band's `opacity` at 0.2–0.4, but the gate checks the
+  text against the canvas, not against the tinted band. With a custom style,
+  composite the band colour at that opacity over the token actually behind it
+  (`bg` for text on the canvas, `surface` for text on a node, `accent` for text
+  on an active node) and check every text colour actually drawn there (`ink`, `muted` for
+  pending labels, or `onAccent` on an accent fill) against the result (4.5:1), or lower the
+  opacity until it holds.
+
 ## Declared locales and narrative steps
 
 Export `const locales = ["en", "nl"]` alongside the default factory so both

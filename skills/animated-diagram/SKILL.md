@@ -58,8 +58,9 @@ from the system's package manager (`brew install ffmpeg`, `apt install ffmpeg`).
    flowchart? `motion-kit import flow.mmd --out flow.json` writes the spec
    (layout computed once). Only write a custom scene module when no type fits
    (`references/custom-scenes.md`): that file also covers an isometric view
-   (camera, solids, depth order, label anchors), several tokens moving at once and
-   dashed connectors with diamond junctions and light pulses.
+   (camera, solids, depth order, label anchors), several tokens moving at once, dashed
+   connectors with diamond junctions and light pulses, and text that sharpens into place
+   with a highlighter sweep (`blurReveal`, `highlightSweep`).
 4. **Gate.** `motion-kit check spec.json` must pass in every format/locale
    shipped: deterministic, settled steps, rounded numbers, token-only colours,
    escaped labels, labels fit, holds the final frame.
