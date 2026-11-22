@@ -27,16 +27,21 @@ const wideFmt = phone ? "tall" : "wide";
  * live player over whichever shows, and the other if the window crosses the
  * breakpoint later.
  * @param {string} base id prefix of the two containers ("hero" for hero-wide and hero-tall)
- * @param {(el: HTMLElement, format: "wide" | "tall") => void} mountOne
+ * @param {(el: HTMLElement, format: "wide" | "tall") => Promise<(() => void) | void>} mountOne resolves to its teardown
  */
 function responsive(base, mountOne) {
-	const mounted = new Set();
+	/** @type {Map<string, Promise<(() => void) | void>>} */
+	const mounted = new Map();
 	const go = () => {
 		for (const format of /** @type {const} */ (["wide", "tall"])) {
 			const el = document.getElementById(`${base}-${format}`);
 			if (el && el.offsetParent !== null && !mounted.has(format)) {
-				mounted.add(format);
-				mountOne(el, format);
+				// Only one format shows: release the hidden one's player and listeners first.
+				for (const [other, pending] of mounted) {
+					mounted.delete(other);
+					pending.then((stop) => stop?.());
+				}
+				mounted.set(format, mountOne(el, format));
 			}
 		}
 	};
@@ -53,6 +58,8 @@ const heroPlate = $("#hero-fig .plate");
 /* The frames of "where it runs" follow the hero player's step. */
 /** @type {{ shots: any[][], shown: number, steps: number } | null} */
 let heroFrames = null;
+/** The hero controller's latest step, which can arrive before the preview scenes load. */
+let heroStep = -2;
 (async () => {
 	try {
 		const [slide, readme, reel] = await Promise.all([
@@ -61,7 +68,7 @@ let heroFrames = null;
 			loadScene(heroEntry, { format: "9:16" }),
 		]);
 		heroFrames = { shots: [[$("#shot-slide"), slide], [$("#shot-readme"), readme], [$("#shot-reel"), reel]], shown: -2, steps: slide.steps.length };
-		paintFrames(heroFrames.steps - 1);
+		paintFrames(heroStep === -2 ? heroFrames.steps - 1 : heroStep);
 	} catch (err) {
 		failNote($("#shot-slide"), err);
 	}
@@ -80,13 +87,19 @@ responsive("hero", async (el, format) => {
 	try {
 		const sc = await loadScene(heroEntry, { format: format === "wide" ? "16:9" : "tall" });
 		const { controller } = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: "visible" });
-		onStep(controller, (i) => {
+		const unsub = onStep(controller, (i) => {
+			heroStep = i;
 			paintProgress($("[data-progress]", heroPlate), i, sc.steps.length);
 			paintFrames(i);
 			const readout = $("#readout");
 			if (readout) readout.textContent = `frame(t) at step ${Math.max(i, 0) + 1} of ${sc.steps.length} · one scene, four targets`;
 		});
-		keyControls(el, controller, { legend: $("#hero-legend"), callouts: $("#hero-callouts"), plate: heroPlate });
+		const stopKeys = keyControls(el, controller, { legend: $("#hero-legend"), callouts: $("#hero-callouts"), plate: heroPlate });
+		return () => {
+			unsub?.();
+			stopKeys();
+			controller.destroy();
+		};
 	} catch (err) {
 		failNote(el, err);
 	}
@@ -215,10 +228,14 @@ showStyle("tidewater");
 		try {
 			const sc = await loadScene(isoEntry, { format: format === "wide" ? "16:9" : "tall" });
 			const { controller } = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "visible" });
-			onStep(controller, (i) => {
+			const unsub = onStep(controller, (i) => {
 				paintProgress($("[data-progress]", plate), i, sc.steps.length);
 				items.forEach((li, j) => (j === i ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current")));
 			});
+			return () => {
+				unsub?.();
+				controller.destroy();
+			};
 		} catch (err) {
 			failNote(el, err);
 		}

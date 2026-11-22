@@ -279,12 +279,14 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 	const draw = () => {
 		if (drawn) return;
 		drawn = true;
+		cancelAnimationFrame(raf);
 		plate.classList.add("leaders-draw");
 	};
 	if (!reducedMotion()) {
 		plate.classList.add("leaders-armed");
 		const t0 = performance.now();
 		const watch = () => {
+			if (drawn) return;
 			if (controller.time >= controller.scene.duration - 0.02 && performance.now() - t0 > 300) return draw();
 			raf = requestAnimationFrame(watch);
 		};

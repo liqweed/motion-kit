@@ -93,8 +93,8 @@ The canon holds on the site as it does in the diagrams: no loops, no ambient or
 decorative motion, no continuous scrubbing or parallax. A diagram plays once,
 holds its final frame, and moves between settled steps. At most 12 s per scene,
 8 s as the target. Reduced motion shows the final frame. Interface transitions
-use the easing curve above. The design's one motion moment,
-not yet built, is the hero's callout leaders drawing to the diagram, one at a
+use the easing curve above. The design's one motion moment
+is the hero's callout leaders drawing to the diagram, one at a
 time, after the scene has settled.
 
 ## Decided in the build (#61, first pull request)

@@ -68,7 +68,11 @@ describe("site catalog", () => {
 describe("site build", () => {
 	it("prerenders a page for every catalog entry and the shell pages", () => {
 		const dist = join(ROOT, "website", "dist");
-		if (!existsSync(dist)) return; // `npm run site` builds it; the gate runs it after the tests
+		// `npm run site` builds it. Skipped on a clean checkout (the gate builds the site after the tests); set SITE_DIST_REQUIRED=1 to fail instead.
+		if (!existsSync(dist)) {
+			assert.ok(!process.env.SITE_DIST_REQUIRED, "website/dist is missing; run `npm run site` first");
+			return;
+		}
 		for (const f of ["index.html", "gallery/index.html", "docs/index.html", "404.html", "_headers"]) assert.ok(existsSync(join(dist, f)), f);
 		for (const e of [...LIVE, ...PLANNED]) assert.ok(existsSync(join(dist, "examples", e.id, "index.html")), `examples/${e.id}`);
 		const home = readFileSync(join(dist, "index.html"), "utf8");
