@@ -131,6 +131,15 @@ const ZERO_WIDTH = /\p{M}|\p{Cf}|[\u200B-\u200F\u2060-\u2064]/u;
 /** Code points no Unicode release has assigned: they have no glyph, so the cell is not known. */
 const UNASSIGNED = /\p{Cn}/u;
 
+/**
+ * What `font` may be: a comma-separated list of family names, each a quoted
+ * string (any text but `<>{};` and a backslash) or an unquoted run of letters,
+ * digits, `_`, `.`, `-` and spaces. Nothing else is read as a family list, so a
+ * function call (`var()`), a comment or any other CSS syntax outside quotes is
+ * refused, and the browser and resvg cannot read the value differently.
+ */
+const FONT_NAME = `(?:"[^"<>{};\\\\]*"|'[^'<>{};\\\\]*'|[A-Za-z0-9_.][A-Za-z0-9_. -]*)`;
+const FONT_LIST = new RegExp(`^\\s*${FONT_NAME}(?:\\s*,\\s*${FONT_NAME})*\\s*$`);
 /** Characters XML 1.0 forbids, lone surrogates included: they would make the SVG invalid. */
 const NOT_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
@@ -266,7 +275,7 @@ export function codeBlock(opts) {
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
 	if (!["error", "wrap", "clip"].includes(overflow)) throw new Error(`codeBlock: \`overflow\` must be "error", "wrap" or "clip", got ${JSON.stringify(overflow)}`);
-	if (typeof font !== "string" || /[<>{};\\]/.test(font) || NOT_XML.test(font) || /var\(\s*--mk-/i.test(font) || /(^|[^\w-])var\s*\(/i.test(font.replace(/"[^"]*"|'[^']*'/g, ""))) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
+	if (typeof font !== "string" || !FONT_LIST.test(font) || NOT_XML.test(font) || /var\(\s*--mk-/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
 	/** @type {Record<string, CodeRole>} */
 	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
 	for (const [name, role] of Object.entries(given)) {

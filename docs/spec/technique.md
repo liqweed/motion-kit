@@ -426,7 +426,9 @@ functions; a colour is a token name (G4 applies).
   no grammar. Tabs expand to `tabSize` columns and trailing spaces are dropped.
   A column is 0.6 em (the advance of the common monospace faces) and each run
   is set at its own column, so a fallback face does not shift the lines against
-  one another. `font` defaults to `CODE_FONT`, a monospace stack; a style's own
+  one another. `font` defaults to `CODE_FONT`, a monospace stack, and is read as a plain
+  comma-separated family list (unquoted names of letters, digits, `_`, `.`, `-` and spaces,
+  or quoted names); any other CSS outside quotes is refused. A style's own
   monospace face, when it names one, is passed here. It must be a monospace face
   whose advance is 0.6 em: the columns are fixed, so a proportional face, or a
   fixed-pitch one with another advance (Iosevka's is 0.5 em), can overflow the

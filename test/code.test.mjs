@@ -391,6 +391,10 @@ describe("codeBlock input hardening", () => {
 		assert.throws(() => block({ font: "var(--mk-accent)" }), /font/);
 		assert.throws(() => block({ font: "var(--code-font, DejaVu Sans Mono)" }), /font/);
 	});
+	it("reads a font as a plain family list: no comments, calls or other CSS outside quotes", () => {
+		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b"]) assert.throws(() => block({ font }), /font-family/, font);
+		for (const font of [CODE_FONT, "DejaVu Sans Mono, monospace", 'Fira Code,"Mono(Regular)", monospace', "'SF Mono', monospace"]) assert.doesNotThrow(() => block({ font }), font);
+	});
 
 	it("keeps the band's marker off the code", () => {
 		assert.throws(() => block({ padding: 0 }), /padding.*at least 10/);
