@@ -492,6 +492,21 @@ it("bake and video reject an invalid scene before writing any output", () => {
 	}
 });
 
+it("the export input hash includes the advice the manifest records", async () => {
+	const { exportSteps } = await import("../lib/export.mjs");
+	const scene = { id: "advised", type: "custom", width: 100, height: 40, duration: 1, title: "T", description: "D", stepLabelsInFrame: false, steps: [{ at: 1, label: "End" }], frame: (/** @type {number} */ t) => `<rect width="${Math.round(t * 10)}" height="10" fill="none"/>` };
+	const row = (/** @type {string} */ reason) => [{ rule: "duration", found: "duration 16 s", acknowledged: true, reason }];
+	/** @param {string} name @param {any[]} advice */
+	const hash = async (name, advice) => {
+		const out = join(tmp, name);
+		await exportSteps(scene, { out, advice, warn: () => {} });
+		return JSON.parse(readFileSync(join(out, "manifest.json"), "utf8")).inputHash;
+	};
+	const a = await hash("advice-hash-a", row("Voice-over sets the pace."));
+	assert.equal(await hash("advice-hash-a2", row("Voice-over sets the pace.")), a);
+	assert.notEqual(await hash("advice-hash-b", row("Cued to a live read.")), a, "a different reason, same source and options");
+});
+
 it("export hashes include the runtime and render settings", () => {
 	const out = join(tmp, "hash-settings");
 	run("export", join(EX, "order-flow.json"), "-o", out);
