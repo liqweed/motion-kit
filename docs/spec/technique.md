@@ -488,8 +488,7 @@ functions; a colour is a token name (G4 applies).
   A column is 0.6 em (the advance of the common monospace faces) and each run
   is set at its own column, so a fallback face does not shift the lines against
   one another. `font` defaults to `CODE_FONT`, a monospace stack, and is read as a plain
-  comma-separated family list (unquoted names of letters, digits, `_`, `.`, `-` and spaces,
-  or quoted names); any other CSS outside quotes is refused. A style's own
+  comma-separated family list (unquoted names are CSS identifiers, letters, digits, `_` and `-`, not starting with a digit, joined by spaces; a name that is not one, such as `Hawaii 5-0`, is quoted; CSS-wide keywords are refused; quoted names are any text but `<>{};` and a backslash); any other CSS outside quotes is refused. For PNG and video resvg splits the list at every comma (so a quoted name with a comma never matches), removes quotes and then trims, so write the opening quote right after the comma and the closing quote right before the next comma or the end (`skills/animated-diagram/references/custom-scenes.md`) A style's own
   monospace face, when it names one, is passed here. It must be a monospace face
   whose advance is 0.6 em: the columns are fixed, so a proportional face, or a
   fixed-pitch one with another advance (Iosevka's is 0.5 em), can overflow the
@@ -510,7 +509,7 @@ functions; a colour is a token name (G4 applies).
   `ế`, `ἄ` and `ԁ` pass); any other, such as CJK, emoji, combining marks,
   unassigned code points or invisible letters, is refused with the line number
   and the code point (an embedded CR or LF is refused first, naming the line only; U+2028 and U+2029 are refused here as unsupported characters) (a panel under eight columns is refused first, naming no line): the block
-  is a grid of one-column cells. The text of every line, wrapped or clipped
+  is a grid of one-column cells. The scene gate scans the whole frame, code text included: the words `NaN`, `undefined` and `Infinity` and a number with five or more decimals (`3.14159`) in a snippet fail `motion-kit check`, so choose another snippet or split such a token across runs only if the gate's reading allows it; the gate does not yet scope those checks to SVG numbers. The text of every line, wrapped or clipped
   or not, stays in `block.text` and `block.rangeText(from, to)`, for the
   scene's `description` and its step `detail`s.
 - **Roles.** `CODE_ROLES` maps `code`, `keyword`, `string` and `comment` to a
@@ -528,7 +527,7 @@ functions; a colour is a token name (G4 applies).
   (`easings(style.motion).easeStandard`): the leading edge moves first and the
   trailing edge follows `CODE_BAND_LAG` (0.07 s) later on the same curve (split
   edges, §4.5), so when both edges travel the same way the band stretches in flight and gathers on arrival; an edge the two ranges share stays put while the other moves.
-  Moves must not overlap. The band is `accent` at 18 % with a solid 3 px marker
+  Moves must not overlap, and their starts must strictly increase (a move that starts with the one before it is refused). The band is `accent` at 18 % with a solid 3 px marker
   on its left edge. A line's brightness is `dim` (default 0.45) plus the rest,
   in proportion to how much of the line the band covers, so lines light as the
   band reaches them and dim as it leaves; before the first move every line is

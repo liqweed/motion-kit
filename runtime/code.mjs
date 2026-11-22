@@ -133,13 +133,34 @@ const UNASSIGNED = /\p{Cn}/u;
 
 /**
  * What `font` may be: a comma-separated list of family names, each a quoted
- * string (any text but `<>{};` and a backslash) or an unquoted run of letters,
- * digits, `_`, `.`, `-` and spaces. Nothing else is read as a family list, so a
- * function call (`var()`), a comment or any other CSS syntax outside quotes is
- * refused, and the browser and resvg cannot read the value differently.
+ * string (any text but `<>{};` and a backslash) or an unquoted run of CSS
+ * identifiers (letters, digits, `_` and `-`, not starting with a digit) joined
+ * by spaces. A name that is not an identifier sequence (`Hawaii 5-0`,
+ * `Mono.Name`) must be quoted, and a CSS-wide keyword is no family name.
+ * Nothing else is read as a family list, so a function call (`var()`), a
+ * comment or any other CSS outside quotes is refused, and the browser and
+ * resvg cannot read the value differently. A name is `ident( ident)*`, so a
+ * space inside it is always followed by an identifier and the trailing spaces
+ * belong to the separator alone: the matcher cannot split a run of spaces two ways.
  */
-const FONT_NAME = `(?:"[^"<>{};\\\\]*"|'[^'<>{};\\\\]*'|[A-Za-z0-9_.][A-Za-z0-9_. -]*)`;
-const FONT_LIST = new RegExp(`^\\s*${FONT_NAME}(?:\\s*,\\s*${FONT_NAME})*\\s*$`);
+const FONT_ITEM = /\s*(?:"[^"<>{};\\]*"|'[^'<>{};\\]*'|-?[A-Za-z_][A-Za-z0-9_-]*(?: +-?[A-Za-z_][A-Za-z0-9_-]*)*)\s*(,|$)/y;
+const CSS_WIDE = /^(?:inherit|initial|unset|revert|revert-layer|default)$/i;
+
+/**
+ * Whether `font` is a plain family list (one pass, linear in its length).
+ * @param {string} font
+ * @returns {boolean}
+ */
+function isFontList(font) {
+	FONT_ITEM.lastIndex = 0;
+	for (;;) {
+		const m = FONT_ITEM.exec(font);
+		if (!m) return false;
+		const name = m[0].replace(/,$/, "").trim();
+		if (CSS_WIDE.test(name)) return false;
+		if (m[1] === "") return FONT_ITEM.lastIndex === font.length;
+	}
+}
 /** Characters XML 1.0 forbids, lone surrogates included: they would make the SVG invalid. */
 const NOT_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
 
@@ -275,7 +296,7 @@ export function codeBlock(opts) {
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
 	if (!["error", "wrap", "clip"].includes(overflow)) throw new Error(`codeBlock: \`overflow\` must be "error", "wrap" or "clip", got ${JSON.stringify(overflow)}`);
-	if (typeof font !== "string" || !FONT_LIST.test(font) || NOT_XML.test(font) || /var\(\s*--mk-/i.test(font) || /^\s*(?:inherit|initial|unset|revert|revert-layer)\s*$/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
+	if (typeof font !== "string" || !isFontList(font) || NOT_XML.test(font) || /var\(\s*--mk-/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
 	/** @type {Record<string, CodeRole>} */
 	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
 	for (const [name, role] of Object.entries(given)) {
@@ -360,6 +381,7 @@ function normalize(block, moves) {
 	if (!Array.isArray(moves) || !moves.length) throw new Error("code moves: need at least one move, { lines, start }");
 	/** @type {NormalizedMove[]} */ const out = [];
 	let free = -Infinity;
+	let prevStart = -Infinity;
 	for (const [i, m] of moves.entries()) {
 		if (Array.isArray(m?.lines) && m.lines.length !== 2) throw new RangeError(`code move ${i + 1}: lines must be a line number or a [from, to] pair, got ${JSON.stringify(m.lines)}`);
 		const [from, to] = Array.isArray(m?.lines) ? m.lines : [m?.lines, m?.lines];
@@ -367,6 +389,8 @@ function normalize(block, moves) {
 		const duration = m.duration ?? (i === 0 ? 0.3 : 0.5);
 		if (!finite(m.start) || m.start < 0 || !finite(duration) || duration <= 0) throw new Error(`code move ${i + 1}: needs a start of 0 or more and a duration above 0`);
 		if (m.start < free - 1e-9) throw new Error(`code move ${i + 1} starts at ${m.start}s, before the move before it is over (at ${num(free, 3)}s, its trailing edge included); start it later or shorten that one`);
+		if (m.start <= prevStart) throw new Error(`code move ${i + 1} starts at ${m.start}s, not after the move before it (${prevStart}s); the starts must increase`);
+		prevStart = m.start;
 		out.push({ from, to, start: m.start, duration });
 		free = m.start + duration + (i === 0 ? 0 : CODE_BAND_LAG);
 	}

@@ -114,6 +114,9 @@ describe("codeBlock", () => {
 		assert.equal(b.source[0], "a b𝒳y");
 		// One run: an astral character does not start a new one.
 		assert.deepEqual(b.rows[0].runs.map((r) => [r.text, r.col]), [["a b𝒳y", 0]]);
+		// An astral character is one column: the run after it starts one column on.
+		const c = codeBlock({ lines: [[{ text: "𝒳\tb", role: "code" }, { text: "z", role: "keyword" }]], x: 0, y: 0, width: 400, tabSize: 4 });
+		assert.deepEqual(c.rows[0].runs.map((r) => [r.text, r.col]), [["𝒳   b", 0], ["z", 5]]);
 	});
 
 	it("refuses undefined roles, non-token roles and line breaks inside a run", () => {
@@ -152,6 +155,7 @@ describe("moves", () => {
 		assert.throws(() => codeEnd(b, [{ lines: [3, 2], start: 0 }]), /code move 1/);
 		assert.throws(() => codeEnd(b, [{ lines: [1, 2, 3], start: 0 }]), /\[from, to\] pair/);
 		assert.throws(() => codeEnd(b, [{ lines: 1, start: -1 }]), /start of 0 or more/);
+		assert.throws(() => codeEnd(b, [{ lines: 1, start: 0, duration: 1e-10 }, { lines: 2, start: 0 }]), /must increase/);
 		assert.throws(() => codeEnd(b, []), /at least one move/);
 		assert.throws(() => b.rowSpan(0, 1), RangeError);
 	});
@@ -289,6 +293,16 @@ describe("the code-steps example", () => {
 			assert.equal(rows.length, 11);
 			rows.forEach((full, n) => assert.equal(full, n + 1 >= from && n + 1 <= to, `step ${i + 1}, line ${n + 1}`));
 		}
+		// The band itself rests on each range: the marker's top and height follow the rows (one row is the height of the last step's).
+		const marker = scene.steps.map((s) => {
+			const m = renderSvg(scene, s.at, { style: "neutral" }).match(/<rect x="[\d.]+" y="([\d.]+)" width="3" height="([\d.]+)"/);
+			assert.ok(m, "the marker is drawn");
+			return { y: Number(m[1]), h: Number(m[2]) };
+		});
+		const row = marker[2].h;
+		assert.ok(Math.abs(marker[0].h - 3 * row) < 0.05 && Math.abs(marker[1].h - 3 * row) < 0.05, "ranges of three lines");
+		assert.ok(Math.abs(marker[1].y - marker[0].y - 3 * row) < 0.05, "step 2 starts three lines below step 1");
+		assert.ok(Math.abs(marker[2].y - marker[1].y - 4 * row) < 0.05, "step 3 starts four lines below step 2");
 	});
 
 	it("holds one range per step and plays once within the limit", async () => {
@@ -391,8 +405,14 @@ describe("codeBlock input hardening", () => {
 		assert.throws(() => block({ font: "var(--mk-accent)" }), /font/);
 		assert.throws(() => block({ font: "var(--code-font, DejaVu Sans Mono)" }), /font/);
 	});
+	it("rejects a font list in linear time", () => {
+		const t = Date.now();
+		assert.throws(() => block({ font: `a${" ".repeat(200000)}1` }), /font-family/);
+		assert.throws(() => block({ font: `${"a ".repeat(50000)}, 1` }), /font-family/);
+		assert.ok(Date.now() - t < 1000);
+	});
 	it("reads a font as a plain family list: no comments, calls or other CSS outside quotes", () => {
-		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial "]) assert.throws(() => block({ font }), /font-family/, font);
+		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial ", "Hawaii 5-0, monospace", "Mono.Name, monospace", "Mono, initial", "a, default"]) assert.throws(() => block({ font }), /font-family/, font);
 		for (const font of [CODE_FONT, "DejaVu Sans Mono, monospace", 'Fira Code,"Mono(Regular)", monospace', "'SF Mono', monospace", '"Var(Regular)", monospace']) assert.doesNotThrow(() => block({ font }), font);
 	});
 
