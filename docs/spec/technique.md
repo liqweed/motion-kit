@@ -464,7 +464,7 @@ functions; a colour is a token name (G4 applies).
   carries the units, decimals and locale; it must return a string, which is
   escaped. It throws for a `format` that is not a function or returns another
   type, and for a non-finite number. A scene passes `family: style.mono` (from
-  `frame(t, { style })`; `style` is optional in the signature, so a frame called directly may fall back to a neutral stack such as `style?.mono ?? "monospace"`) so the style's monospace stack applies. The digits stay put only when the renderer resolves that stack to a face with equal-width digits; resvg can fall back to a proportional system font.
+  `frame(t, { style })`; `style` is optional in the signature, so a frame called directly may fall back to a neutral stack such as `style?.mono ?? NEUTRAL.mono` (`kit.NEUTRAL.mono`), the stack normal rendering uses) so the style's monospace stack applies. Anchored at the end, the trailing edge stays fixed; the whole value stays put only for equal-length output (a `format` that adds a separator, as `999` to `1,000`, moves the leading edge) and only when the renderer resolves that stack to a face with equal-width digits; resvg can fall back to a proportional system font.
 - **Canon.** A bar grows once, in a step's beat, and rests (§4.8): every bar of
   the beat has settled (`barEnd`) at least 50 ms before the step's `at`, and from
   then its value is exactly `format(to)`, so the step frame is the settled
