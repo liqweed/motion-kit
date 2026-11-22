@@ -75,6 +75,7 @@ describe("drawTrack", () => {
 	it("takes a radius, never more than half a side, and a fill or none", () => {
 		assert.match(drawTrack({ x: 0, y: 0, width: 100, height: 20, radius: 4, hatch }), /rx="4"/);
 		assert.match(drawTrack({ x: 0, y: 0, width: 100, height: 20, radius: 99, hatch }), /rx="10"/);
+		assert.match(drawTrack({ x: 0, y: 0, width: 100, height: 20, radius: 1e307, hatch }), /rx="10"/);
 		assert.equal((drawTrack({ x: 0, y: 0, width: 100, height: 20, hatch, fill: null }).match(/<rect/g) ?? []).length, 1);
 		assert.equal((drawTrack({ x: 0, y: 0, width: 100, height: 20 }).match(/<rect/g) ?? []).length, 1);
 	});
@@ -206,6 +207,10 @@ describe("drawValue", () => {
 	it("refuses a format that does not return a string", () => {
 		assert.throws(() => value(1, { format: (/** @type {number} */ v) => v }), /string/);
 		assert.throws(() => value(1, { format: "x" }), /function/);
+	});
+	it("refuses geometry that cannot survive SVG rounding", () => {
+		assert.throws(() => value(1, { x: 1e307 }), /after SVG rounding/);
+		assert.throws(() => value(1, { fontSize: 0.004 }), /positive after SVG rounding/);
 	});
 	it("is the same bytes for the same input", () => {
 		assert.equal(value(0.37), value(0.37));
@@ -358,7 +363,7 @@ describe("bars: review edge cases", () => {
 		const accessor = Object.freeze({ get id() { return hatch.id; }, fill: hatch.fill, markup: hatch.markup });
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: accessor }), /hatchPattern/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: "<defs/>" }) }), /hatchPattern/);
-		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: `<!-- <pattern id="${hatch.id}"><path/></pattern> -->` }) }), /hatchPattern/);
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: `<!-- ${hatch.markup} -->` }) }), /hatchPattern/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 1e307, height: 4 }), /after SVG rounding/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 0.004, height: 4 }), /positive after SVG rounding/);
 		assert.throws(() => barEnd({ start: 1e308, duration: 1e308 }), /end must be finite/);

@@ -43,7 +43,7 @@ const hatchParts = (hatch) => {
 	const [idField, fillField, markupField] = /** @type {[PropertyDescriptor, PropertyDescriptor, PropertyDescriptor]} */ (fields);
 	const [id, fill, markup] = [idField.value, fillField.value, markupField.value];
 	if (typeof id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(id) || fill !== `url(#${id})` || typeof markup !== "string") return null;
-	if (!new RegExp(`<pattern id="${id}"[^>]*><path [^>]+/></pattern>`).test(markup)) return null;
+	if (!new RegExp(`^<defs><pattern id="${id}"[^>]*><path [^>]+/></pattern></defs>$`).test(markup)) return null;
 	return { id, fill, markup };
 };
 
@@ -93,7 +93,7 @@ function checkRect(who, { x, y, width, height }, allowEmpty = false) {
 /** The corner radius for a rect `w` × `h`: `radius`, never more than half of either side. */
 const corner = (/** @type {number | undefined} */ radius, /** @type {number} */ w, /** @type {number} */ h) => {
 	const r = radius ?? h / 2;
-	if (!renderedFinite(r) || r < 0) throw new Error(`radius must be a finite number of 0 or more after SVG rounding, got ${radius}`);
+	if (!finite(r) || r < 0) throw new Error(`radius must be a finite number of 0 or more, got ${radius}`);
 	return Math.min(r, w / 2, h / 2);
 };
 
@@ -215,7 +215,7 @@ export function rollingValue(from, to, p) {
  * @returns {string}
  */
 export function drawValue({ x, y, to, from = 0, p, format = (v) => num(v, 0), fontSize = 16, anchor = "start", fill = "ink", weight = 600, family, opacity = 1, id }) {
-	if (![x, y, fontSize].every(finite) || fontSize <= 0) throw new Error("drawValue: x, y and fontSize must be finite numbers, the size above 0");
+	if (![x, y, fontSize].every(renderedFinite) || fontSize <= 0 || Number(num(fontSize)) <= 0) throw new Error("drawValue: x, y and fontSize must remain finite and the size positive after SVG rounding");
 	if (typeof format !== "function") throw new Error("drawValue: format must be a function (number) => string");
 	const shown = format(rollingValue(from, to, p));
 	if (typeof shown !== "string") throw new Error(`drawValue: format must return a string, got ${typeof shown}`);
