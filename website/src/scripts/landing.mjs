@@ -162,7 +162,7 @@ async function showStyle(name) {
 		return h("tr", null, h("td", null, label), h("td", { class: "n v" }, `${min}:1`), cell("light"), cell("dark"));
 	});
 	const problems = contrastProblems(rs);
-	$("#contrast-rows").replaceChildren(...rows, h("tr", null, h("td", { colspan: "4", class: "v", style: "font-size:13px" }, problems.length ? problems.join(" · ") : "checkContrast(): no problems, light and dark")));
+	$("#contrast-rows").replaceChildren(...rows, h("tr", null, h("td", { colspan: "4", class: "v" }, problems.length ? problems.join(" · ") : "checkContrast(): no problems, light and dark")));
 	try {
 		const sc = await loadScene(find("smart-home"), { format: phone ? "tall" : "16:9" });
 		if (token !== styleToken) return;

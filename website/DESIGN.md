@@ -118,7 +118,8 @@ The build settled the rest, in `website/src/styles/site.css`:
   `examples/isometric-swivel.scene.mjs` beside its step list.
 - **The motion moment**: after the hero scene has settled, the callout leaders
   draw once, one at a time (160 ms each, the easing curve). Under reduced motion
-  and without JavaScript there is no drawing; the legend is the only key.
+  the leaders are simply there. Without JavaScript the callouts and the legend
+  are not built; the controls carry their own labels.
 - **Dark theme**: page chrome uses the site-dark tokens above. The diagrams keep
   the neutral dark tokens (accent `#2563eb`), because accent `#1d36a8` is 1.9:1
   on near-black, under the 3:1 that reached nodes and connectors need.

@@ -29,6 +29,7 @@ const main = app;
 	// The page renders the figure's first state twice (wide, tall); keep the one that shows and mount over it.
 	const stage = /** @type {HTMLElement} */ (document.getElementById(phone ? "ex-tall" : "ex-wide"));
 	document.getElementById(phone ? "ex-wide" : "ex-tall")?.remove();
+	stage.classList.remove("only-wide", "only-tall"); // the chosen format stays, whatever the window does later
 	const stageBox = /** @type {HTMLElement} */ (document.getElementById("ex-stagebox"));
 	const figure = /** @type {HTMLElement} */ (stageBox.querySelector(".plate"));
 	const sync = () => {
@@ -107,7 +108,7 @@ const main = app;
 		const src = await fetchText(e.file);
 		return [
 			h("p", null, e.kind === "spec" ? "The spec: data, not animation code. This is the file in the repository." : "A custom scene: a plain module whose frame(t) is a pure function of time. This is the file in the repository."),
-			h("pre", { class: "codecard", style: "padding:16px;font-size:13px;line-height:1.6;overflow-x:auto", tabindex: "0" }, h("code", null, src)),
+			h("pre", { class: "codecard", style: "padding:16px;overflow-x:auto", tabindex: "0" }, h("code", null, src)),
 		];
 	}
 	async function exportTab(e) {
