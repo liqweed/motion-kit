@@ -469,7 +469,8 @@ describe("the gate and the code's own text", () => {
 	});
 
 	it("does not read a font-family value as geometry, but still reads its other attributes", async () => {
-		assert.ok((await gate('<g font-family="Mono 3.14159, Infinity Mono"></g>')).ok);
+		// Its value is no geometry; the font gate (G4) is another rule, so only the numeric problems are asked about.
+		assert.ok(!(await gate('<g font-family="Mono 3.14159, Infinity Mono"></g>')).problems.some((p) => /unrounded number|NaN\/undefined/.test(p)));
 		assert.ok((await gate('<g font-family="Mono" x="1.234567"></g>')).problems.some((p) => /unrounded number/.test(p)));
 	});
 
@@ -492,7 +493,8 @@ describe("the gate and the code's own text", () => {
 	});
 
 	it("passes a quoted font name that looks like a colour or a colour function", async () => {
-		assert.ok((await gate('<g font-family="Mono #123, RGB(x), monospace"></g>')).ok);
+		// A font name is no colour literal (the font gate, which asks for style.mono, is another rule).
+		assert.ok(!(await gate('<g font-family="Mono #123, RGB(x), monospace"></g>')).problems.some((p) => /colour literal/.test(p)));
 	});
 
 	it("passes the code block's own markup, drawn by drawCode, through the full gate", async () => {

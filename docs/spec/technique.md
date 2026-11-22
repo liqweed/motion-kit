@@ -38,10 +38,10 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `title` | string | MUST | Accessible name (`<title>`) [throws if empty]. |
 | `description` | string | MUST | Accessible description (`<desc>`) [throws if empty]. |
 | `steps` | `{at, label, detail?, id?}[]` | MUST | ≥ 1 step; `at` strictly increasing; `at ≤ duration` (+1e-9); every `label` non-empty; an `id`, if present, is a non-empty string unique within the scene [throws] (`validateScene`). The last step is the finished diagram. Page scripts address steps by `id` (§10.2); scene types copy a spec node's, hub's or spoke's `id`. |
-| `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
+| `frame(t, ctx)` | `(number, {idPrefix, style?}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.style` is the normalized style `renderSvg` supplies (§6); read fonts and tokens from it (`style.font`, `style.mono`). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn. It is the older form of acknowledging the advice rule G10 (`step-labels-in-frame`) with the reason "narrative steps": the gate reports it as acknowledged (`lib/check.mjs`; used by `examples/custom-pulse.scene.mjs`, `brand/logo.scene.mjs`). An explicit `acknowledge` entry for the rule takes its place. |
 | `acknowledge` | `{rule, reason}[]` | MAY | The advice the scene breaks on purpose (§11.2). Each `rule` MUST be an advice rule (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`) and appear once; each `reason` MUST be a non-empty single line of at most 240 characters. A hard rule MUST NOT be named: no acknowledgement turns a hard failure into a pass [throws] (`validateScene`, `runtime/advice.mjs`). A scene spec of any type MAY carry `acknowledge`; `createScene` copies it to the scene. The gate reports the acknowledged advice with its reason and the export manifest records it (§10.5). |
-| `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known and `min` in [1, 21]. |
+| `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair but the optional tokens' (`caution`, `alert`, and their `on…` colours) [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known, a pair MUST NOT name one token twice (it shows no contrast), and `min` in [1, 21]. |
 | `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` and `labelPill(...)` return `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with `id` a string and the rest finite numbers, `width` and `height` not negative, `opacity`, when given, finite, and `stem`, when given, `{x1, y1, x2, y2}` with four finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
@@ -372,8 +372,10 @@ functions; a colour is a token name (G4 applies).
 - **Settled means bare.** Once `enter` reaches 1, as `fade` rounds it (0.9995
   and above), `blurReveal` MUST return the children unchanged: no group, no
   filter, no `<defs>`, so a settled frame is byte-identical to the same markup
-  drawn without the reveal, and every step frame, the final frame, a baked
-  last slice and a reduced-motion frame carry no filter. Between 0 and 1 the
+  drawn without the reveal, and a step frame, the final frame, a baked
+  last slice and a reduced-motion frame carry no filter once the scene has
+  finished the reveal (the gate checks the bytes around the step, not that the
+  scene completed it: an unfinished reveal is the author's to finish). Between 0 and 1 the
   `transform` and the `filter` are left off once they round to nothing
   (a rise or a blur under 0.005 units), so a frame never carries
   a `stdDeviation="0"`, which renderers read differently.
@@ -391,7 +393,7 @@ functions; a colour is a token name (G4 applies).
   the group when the reveal ends), `renderSvg` and `bake` use the same helper and filter parameters; their SVG bytes differ (`bake` renames filter ids per slice and wraps frames in groups; `renderSvg` resolves token references only in standalone mode), so do not compare or reuse them interchangeably. PNG export and video rasterize with resvg or Chrome, and raster appearance can vary with renderer, fonts and scale (`test/reveal.test.mjs`,
   `test/player.test.mjs`). A consumer that ignores SVG filters (some slide
   applications) shows the fade and the rise without the blur, and only in a
-  frame taken mid-reveal: step frames carry no filter.
+  frame taken mid-reveal: step frames carry no filter when the reveal finished in time (below).
 - **Timing.** The reveal is one entrance, 300 to 600 ms (§4.2), on the style's
   entrance curve (`easings(style.motion).easeOut`), finished 50 ms or more
   before the step it belongs to. That is the scene's obligation: G6 only checks that frames around a step are stable, so a scene that holds `enter` at, say, 0.5 through a step or the end keeps a filter in those frames and passes. The no-filter guarantee holds only for a reveal completed in time. It happens once per element and holds.
@@ -464,8 +466,8 @@ functions; a colour is a token name (G4 applies).
   token `ink`, `dominant-baseline` central on `y`). `format` is the caller's and
   carries the units, decimals and locale; it must return a string, which is
   escaped. It throws for a `format` that is not a function or returns another
-  type, and for a non-finite number. Until the monospace face of the style
-  lands, a scene sets its own `family` to keep the digits from jittering.
+  type, and for a non-finite number. A scene passes `family: style.mono` (from
+  `frame(t, { style })`; `style` is optional in the signature, so a frame called directly may fall back to a neutral stack such as `style?.mono ?? NEUTRAL.mono` (`kit.NEUTRAL.mono`), the stack normal rendering uses) so the style's monospace stack applies. Anchored at the end, the trailing edge stays fixed; the whole value stays put only for equal-length output (a `format` that adds a separator, as `999` to `1,000`, moves the leading edge) and only when the renderer resolves that stack to a face with equal-width digits; resvg can fall back to a proportional system font.
 - **Canon.** A bar grows once, in a step's beat, and rests (§4.8): every bar of
   the beat has settled (`barEnd`) at least 50 ms before the step's `at`, and from
   then its value is exactly `format(to)`, so the step frame is the settled
@@ -570,7 +572,7 @@ functions; a colour is a token name (G4 applies).
 
 - Scenes MUST NOT contain colour literals [gate] G4. Colours MUST be
   `tok(name)` → `var(--mk-<name>)`; an unknown name throws
-  (`runtime/style.mjs:52-55`). Besides tokens, a colour attribute (`fill`,
+  (`tok` in `runtime/style.mjs`). Besides tokens, a colour attribute (`fill`,
   `stroke`, `stop-color`, `color`, `flood-color`, `lighting-color`) or colour
   property (in `style="…"` or a `<style>` element: those, `background` and
   any `*-color`) MAY hold only `url(#…)` references and the keywords `none`,
@@ -581,19 +583,29 @@ functions; a colour is a token name (G4 applies).
   (`red`), hex, colour functions and other custom properties (`var(--brand)`,
   `var(--mk-accent, red)`) are literals. Text content is not checked: a label
   may say "#1".
-- Tokens (`runtime/style.mjs:14-23`): `bg`, `surface`, `ink`, `muted`, `line`,
-  `accent`, `onAccent`, `emphasis`. Roles: see
+- Tokens (`TOKENS` in `runtime/style.mjs`): `bg`, `surface`, `ink`, `muted`,
+  `line`, `accent`, `onAccent`, `emphasis`, and the optional `caution`,
+  `onCaution`, `alert`, `onAlert` (`OPTIONAL_TOKENS`). Roles: see
   [`styles.md`](../../skills/animated-diagram/references/styles.md). Exactly one
-  element at a time SHOULD carry `emphasis`.
-- A style is data: `{name, font, radius, stroke, motion, light: {token: #rrggbb}, dark: {…}}`.
+  element at a time SHOULD carry `emphasis`; `caution` and `alert` mark a state
+  of what is shown and any number of elements may carry them. A live SVG's
+  inline `style` names an optional token only when the frame uses it, so a
+  scene that draws none renders byte for byte as before they existed; a host
+  page or player declares every token.
+- A style is data: `{name, font, mono, radius, stroke, motion, light: {token: #rrggbb}, dark: {…}}`.
+  `mono` is a CSS font-family list for metrics and code (default: neutral's);
+  a scene reaches it as `style.mono` and MUST NOT write a family of its own:
+  [gate] `findFontLiteral` fails a `font-family` that is neither `style.font`,
+  `style.mono` nor `inherit`, in an attribute, a `style` attribute or a `<style>`
+  element, and any `font` shorthand.
   `normalizeStyle` fills missing fields from `NEUTRAL`
-  (`runtime/style.mjs:25-50,58-77`) and MUST throw on an unknown token or a
-  non-`#rrggbb` value (`runtime/style.mjs:70-73`). If `dark` is absent, dark
-  takes the `light` overrides on top of neutral dark (`runtime/style.mjs:66`).
+  (`normalizeStyle` in `runtime/style.mjs`) and MUST throw on an unknown token or a
+  non-`#rrggbb` value (`normalizeStyle`). If `dark` is absent, dark
+  takes the `light` overrides on top of neutral dark (`normalizeStyle`).
 - **Live** output MUST carry tokens as CSS custom properties on the container
-  (`runtime/player.mjs:52`, `lib/build.mjs:39-40`) so light/dark can switch
+  (`cssVars`; the player and `lib/build.mjs` set them) so light/dark can switch
   without re-rendering. **Standalone** output MUST resolve every token to a
-  literal (`runtime/scene.mjs:84`, `runtime/style.mjs:86-93`), because slide
+  literal (`renderSvg` in `runtime/scene.mjs`, `resolveTokens` in `runtime/style.mjs`), because slide
   apps, rasterizers and image viewers ignore CSS variables; an unresolvable
   token throws.
 - **Contrast** (`runtime/style.mjs`, `checkContrast`, `contrastReport`, WCAG
@@ -610,11 +622,11 @@ functions; a colour is a token name (G4 applies).
   records which of them it draws (`contrastPairs` on its scenes,
   `SCENE_TYPE_PAIRS` in `runtime/types/index.mjs`): a `hub-spoke` draws no text
   on the canvas, a `sequence` draws no `ink` on `surface`.
-  A custom scene states what it draws in `contrastPairs` (§1; an empty list counts as none; `sharedPairs`
+  A custom scene states what it draws in `contrastPairs` (§1; an empty list counts as none, exactly like an omitted one: every non-optional shared pair applies; `sharedPairs`
   picks shared ones by name, others are written out). The pairs it declares
   are the gate's problems; the shared pairs it leaves out are only warnings,
   named with their ratio and threshold in both themes. A scene that declares
-  nothing is held to every shared pair, so no scene loses a check by saying
+  nothing is held to every shared pair but the optional tokens', so no scene loses a check by saying
   nothing. `CONTRAST_EXEMPT` lists, with a reason each, the pairs no scene
   type draws or draws only in motion: `line` on `surface` (an outline is told
   from the canvas outside it), `accent` on `surface` and `emphasis` on
@@ -624,6 +636,12 @@ functions; a colour is a token name (G4 applies).
   (`lib/check.mjs`) and MUST report, once per run, every shared pair the style
   misses with the scene types that draw it (`lib/gate.mjs`), without failing
   on it. `neutral` MUST pass every shared pair (`test/runtime.test.mjs`).
+  The pairs of the optional tokens (`caution`/`bg` and `alert`/`bg` at 3:1,
+  `onCaution`/`caution` and `onAlert`/`alert` at 4.5:1) are shared pairs no
+  scene type draws: a scene that declares nothing is not held to them, a scene
+  that uses one of the optional tokens MUST declare a pair that names it
+  ([gate] `lib/check.mjs`), and the run reports one as a warning only when the
+  style sets that token itself.
 - motion-kit ships only `neutral` (`styles/neutral.json`); brand styles MUST
   live in the consumer repo.
 
@@ -915,8 +933,8 @@ media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`
 | G8 | hard | The raw `frame(duration + 5)` equals `frame(duration)`: the gate calls the scene directly, because `renderSvg` clamps `t` to the duration before calling it (T3 requires a frame to hold past the end even though callers clamp). | `:65` | Holds the final frame. |
 | G9 | advice | `duration`: `duration ≤ 12` s. | `lib/check.mjs` (rule 4) | The canon's limit, authoring target ≤ 8 s; a narrated scene cued to a voice-over acknowledges it. |
 | G10 | advice | `step-labels-in-frame`: every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text; `stepLabelsInFrame: false` acknowledges it. | `lib/check.mjs` (rule 5) | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
-| G11 | hard | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
-| G12 | hard · advice | The style passes WCAG contrast in both themes for each pair the scene draws, except the shared `emphasis` on `accent` threshold, which is advice (`emphasis-on-accent`; a scene that declares a stricter minimum for that pair keeps it hard, and a scene's own `advice` field is ignored): its `contrastPairs`, which the scene types set to the shared pairs they draw, else every pair in `CONTRAST_PAIRS`. Shared pairs it does not draw are warnings, never failures; the run reports every shared pair the style misses once. | `lib/check.mjs`, `lib/gate.mjs` (`styleWarnings`), `runtime/style.mjs` (`contrastReport`) | Legibility in light and dark, for the pairs actually drawn (WCAG 1.4.3 and 1.4.11 judge rendered content, §6). |
+| G11 | hard | Every sampled frame and every step's exact frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
+| G12 | hard · advice | The style passes WCAG contrast in both themes for each pair the scene draws, except the shared `emphasis` on `accent` threshold, which is advice (`emphasis-on-accent`; a scene that declares a stricter minimum for that pair keeps it hard, and a scene's own `advice` field is ignored): its `contrastPairs`, which the scene types set to the shared pairs they draw, else every pair in `CONTRAST_PAIRS` except the optional tokens'. Shared pairs it does not draw are warnings, never failures; the run reports every shared pair the style misses once, except a pair with an optional token the style leaves at neutral's (only a style that sets that token is told, §6). | `lib/check.mjs`, `lib/gate.mjs` (`styleWarnings`), `runtime/style.mjs` (`contrastReport`) | Legibility in light and dark, for the pairs actually drawn (WCAG 1.4.3 and 1.4.11 judge rendered content, §6). |
 | G13 | hard | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
 | G14 | hard | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
 | G15 | hard | If the scene defines `labelBoxes`, at each sampled time and each step time: no two boxes with `opacity` > 0 are closer than 4 px, no stem crosses another box and every box lies inside the picture (`0, 0, width, height`). `labelBoxes` MUST return an array and not throw. Each problem is reported once, at its first time. | `lib/check.mjs` (rule 9), `runtime/iso.mjs` (`labelProblems`) | Labels placed in a projected view move with the camera; nothing else checks them against one another. Opacity 0 is not drawn, so a scene hides labels while the camera moves. |
@@ -941,7 +959,7 @@ Recorded 2026-11-18 for [#12](https://github.com/liqweed/motion-kit/issues/12):
 | Motion tokens | A style MAY set `motion.enter` (entrances) and `motion.move` (movement between visible states) as four numbers, a CSS `cubic-bezier(x1, y1, x2, y2)`, each from 0 to 1: no curve overshoots. Defaults: `(0, 0, .2, 1)` and `(.4, 0, .2, 1)`. Built-in scene types read them through `easings(style.motion)`; durations, delays and step times stay fixed, so a curve changes how a move travels and never when a step settles. A curve that is still moving near its end (a linear one) would leave a step frame unsettled, so `easings` finishes it in the first 95 % of each move and holds it at 1 for the last 5 %; a curve that ends flat (both defaults) is the exact CSS curve. Custom scenes MAY do the same. |
 | Vendored parity | CLI and vendored checks MUST call the same `lib/gate.mjs` and `lib/check.mjs`, including contrast, locales and caller options. |
 | Neutral contrast | Keep emphasis-on-accent at 3:1, the darker light accent and lighter dark emphasis. The site chrome follows the corresponding neutral tokens. |
-| Drawn pairs only | Recorded 2026-11-21 for [#72](https://github.com/liqweed/motion-kit/issues/72), after [#45](https://github.com/liqweed/motion-kit/issues/45) made every shared pair a failure for every scene. WCAG 1.4.3 and 1.4.11 judge what a scene draws against the colours next to it, so a pair that never meets in a scene is not a requirement for it: the gate fails the pairs a scene draws and warns about the other shared ones. Built-in types record the pairs they draw; a custom scene that declares `contrastPairs` is held to those, one that declares nothing to all shared pairs (no check is lost by saying nothing). `emphasis` on `accent` was kept a failure for the types whose ring or dot touches the reached colour (`sequence`, `flowchart`, and the dots of `hub-spoke`, `stack` and the walks), though it rests on WCAG 1.4.1 and the shape already meets it, because it was the library's own call; [#91](https://github.com/liqweed/motion-kit/issues/91) made it advice (`emphasis-on-accent`). Thresholds and `neutral` are unchanged; detecting drawn pairs from the rendered SVG is left open. [#65](https://github.com/liqweed/motion-kit/issues/65) (logos) reuses the mechanism. |
+| Drawn pairs only | Recorded 2026-11-21 for [#72](https://github.com/liqweed/motion-kit/issues/72), after [#45](https://github.com/liqweed/motion-kit/issues/45) made every shared pair a failure for every scene. WCAG 1.4.3 and 1.4.11 judge what a scene draws against the colours next to it, so a pair that never meets in a scene is not a requirement for it: the gate fails the pairs a scene draws and warns about the other shared ones. Built-in types record the pairs they draw; a custom scene that declares `contrastPairs` is held to those, one that declares nothing to all shared pairs except the optional tokens' (an optional token is held only once the scene draws it, G12). `emphasis` on `accent` was kept a failure for the types whose ring or dot touches the reached colour (`sequence`, `flowchart`, and the dots of `hub-spoke`, `stack` and the walks), though it rests on WCAG 1.4.1 and the shape already meets it, because it was the library's own call; [#91](https://github.com/liqweed/motion-kit/issues/91) made it advice (`emphasis-on-accent`). Thresholds and `neutral` are unchanged; detecting drawn pairs from the rendered SVG is left open. [#65](https://github.com/liqweed/motion-kit/issues/65) (logos) reuses the mechanism. |
 | Advice, not law | Recorded 2026-11-22 for [#91](https://github.com/liqweed/motion-kit/issues/91), on [Ophir's answers](https://github.com/liqweed/motion-kit/issues/91#issuecomment-7068388785) of 2026-11-21, reopening part of the motion canon (D6 of the visual-design program) for scenes. (1) **Two classes.** A *hard* rule protects correctness, a build or accessibility at WCAG AA; a scene that breaks one fails, and nothing acknowledges it away. An *advisory* rule is the library's taste (the motion canon, house style, authoring ranges): the gate still checks it, and a finding says what was found, why the rule exists, when breaking it is fine and what to do instead; it does not fail the scene. The 14 px font floor and the 44 px control size are advisory (44 px is WCAG AAA, 2.5.5; AA's 2.5.8 asks 24 px; the floor is a house preference); only WCAG AA and correctness stay hard. §11.2 classes every rule it lists; the walks' edge limits stay unclassed until #95. (2) **Acknowledgement.** A scene may acknowledge advice per rule, naming the rule and giving a one-line reason (`acknowledge: [{ rule, reason }]`); the check reports it as acknowledged with that reason, and the export manifest records it. A reason is required, a hard rule cannot be named, and no switch silences a rule for every scene. `stepLabelsInFrame: false` stays as the older acknowledgement of one rule, with the reason "narrative steps". (3) **CI.** Unacknowledged advice fails only in **strict mode**, which is off by default: `--strict` on `check`, `build`, `export`, `bake`, `video`, `icon` and the vendored `check.mjs`, or `MOTION_KIT_STRICT=1` for all of them. A consumer repository (docomply.eu, for its published scenes) turns it on; this repository's own `npm run check` does too. Every command runs the same `checkScene`, so they print the same advice (vendored parity). (4) **Loops.** The canon contradicted itself (`SKILL.md`: loops "only for ambient status displays"; `custom-scenes.md`: "no loops"; `interactivity.md`: "never loop an explainer"). The whole timeline plays once and holds: G8 fails a scene that keeps changing after `duration`, and no player, exporter or video replays it. A repetition authored inside the timeline (a token that runs twice before the final step) is not caught by G8; it is advice against (A5). Looping an explainer is advice against (A5); an ambient display is a page's own decision, driving `frame(t)` itself; only a scene whose first and last frames are identical acknowledges `nothing-animates`. The page around a diagram, on docomply.eu or elsewhere, is governed by that site's design language, not by this table. [#89](https://github.com/liqweed/motion-kit/issues/89) (narration over 12 s) and [#88](https://github.com/liqweed/motion-kit/issues/88) (a Canvas path) are decided under this classification; whether cue-derived timing or a Canvas renderer belongs in motion-kit stays theirs. [#72](https://github.com/liqweed/motion-kit/issues/72) (drawn pairs only) was the first instance; this generalises it. Thresholds of the hard rules and the WCAG level are unchanged. |
 
 The controller also exposes `onStep(callback) → unsubscribe`, with an immediate

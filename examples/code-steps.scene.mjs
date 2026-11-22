@@ -131,7 +131,8 @@ export default function make({ format = "16:9", locale = "en", font } = {}) {
 		steps: ends.map((end, i) => ({ at: end + SETTLE, label: localize(COPY.steps[i].label, locale), detail: detail[i] })),
 		frame(t, { style }) {
 			const { easeStandard, easeOut } = easings(style?.motion);
-			return fade(progress(t, 0, ENTER, easeOut), {}, drawCode(block, t, MOVES, { ease: easeStandard }));
+			// The style's monospace face, as the gate asks of every scene: the block was laid out at the 0.6 em advance, whatever face draws it.
+			return fade(progress(t, 0, ENTER, easeOut), {}, drawCode({ ...block, font: style?.mono ?? block.font }, t, MOVES, { ease: easeStandard }));
 		},
 	};
 }

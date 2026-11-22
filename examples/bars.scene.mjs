@@ -14,7 +14,7 @@
 import { barEnd, barProgress, drawBar, drawTrack, drawValue, hatchPattern } from "../runtime/bars.mjs";
 import { easings, progress } from "../runtime/motion.mjs";
 import { FORMATS, localize } from "../runtime/scene.mjs";
-import { sharedPairs, tok } from "../runtime/style.mjs";
+import { NEUTRAL, sharedPairs, tok } from "../runtime/style.mjs";
 import { fade, text } from "../runtime/svg.mjs";
 import { wrapLabel } from "../runtime/wrap.mjs";
 
@@ -43,7 +43,6 @@ const ENTER = 0.4;
 const GROW = { delay: 0.25, duration: 0.7 };
 const SETTLE = 0.1;
 const SCALE = 8; // the track's full length is this many seconds
-const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 
 /** @param {number} i */
 const rowStart = (i) => START + i * PERIOD;
@@ -86,7 +85,7 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 				fade(enter, {}, text({ x: pad, y: y + (fs * 1.25) / 2, "dominant-baseline": "central", "font-size": fs, "font-weight": 600, fill: tok("ink") }, labels[i])),
 				drawTrack({ x: trackX, y: ty, width: trackW, height: barH, hatch, opacity: enter, id: `row-${i}` }),
 				drawBar({ x: trackX, y: ty, width: trackW * (row.value / SCALE), trackWidth: trackW, height: barH, p, idPrefix, id: `row_${i}` }),
-				drawValue({ x: valueX, y: ty + barH / 2, to: row.value, p, format: format1, fontSize: 20, anchor: "end", family: MONO, opacity: enter, id: `row-${i}` }),
+				drawValue({ x: valueX, y: ty + barH / 2, to: row.value, p, format: format1, fontSize: 20, anchor: "end", family: (style ?? NEUTRAL).mono, opacity: enter, id: `row-${i}` }),
 			);
 		});
 		return out.join("");
