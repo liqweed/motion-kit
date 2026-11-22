@@ -349,7 +349,7 @@ describe("bars: review edge cases", () => {
 		const fake = { id: "x", fill: "red", markup: "" };
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: fake }), /hatchPattern/);
 	});
-	it("accepts an immutable, self-consistent hatch from another runtime copy", () => {
+	it("accepts a frozen hatch with a url(#id) fill from another runtime copy", () => {
 		const own = hatchPattern({ idPrefix: "copy" });
 		const otherCopy = Object.freeze({ ...own });
 		assert.match(drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: otherCopy }), /url\(#copy-hatch-hatch\)/);
@@ -358,12 +358,12 @@ describe("bars: review edge cases", () => {
 		for (const name of ["title", "desc"]) assert.throws(() => hatchPattern({ idPrefix: "p", name }), /reserved/);
 		for (const id of ["title", "desc"]) assert.throws(() => drawBar({ x: 0, y: 0, width: 5, height: 4, p: 1, trackWidth: 10, idPrefix: "p", id }), /non-reserved/);
 	});
-	it("rejects descriptor accessors, missing patterns, and geometry that serializes invalidly", () => {
+	it("rejects descriptor accessors, non-url paints, and geometry that serializes invalidly", () => {
 		const hatch = hatchPattern({ idPrefix: "safe" });
-		const accessor = Object.freeze({ get id() { return hatch.id; }, fill: hatch.fill, markup: hatch.markup });
+		const accessor = Object.freeze({ id: hatch.id, get fill() { return hatch.fill; }, markup: hatch.markup });
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: accessor }), /hatchPattern/);
-		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: "<defs/>" }) }), /hatchPattern/);
-		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: Object.freeze({ ...hatch, markup: `<!-- ${hatch.markup} -->` }) }), /hatchPattern/);
+		for (const fill of ["red", "url(#a)\" onload=\"x", "url(https://example.test/a.svg#p)", 7]) assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: /** @type {*} */ (Object.freeze({ ...hatch, fill })) }), /hatchPattern/);
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: { ...hatch } }), /hatchPattern/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 1e307, height: 4 }), /after SVG rounding/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 0.004, height: 4 }), /positive after SVG rounding/);
 		assert.throws(() => barEnd({ start: 1e308, duration: 1e308 }), /end must be finite/);

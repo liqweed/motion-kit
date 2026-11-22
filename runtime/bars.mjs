@@ -35,16 +35,19 @@ const ID_PART = /^[A-Za-z0-9_]+$/;
 const RESERVED_NAMES = new Set(["title", "desc"]);
 /** @param {unknown} value */
 const renderedFinite = (value) => typeof value === "number" && finite(value) && finite(Number(num(value)));
-/** Capture only stable, portable hatch data from another vendored runtime copy. */
-const hatchParts = (hatch) => {
+/**
+ * The paint `drawTrack` emits for a hatch: `fill`, read once as a data property of a frozen
+ * object (so a getter or a later write cannot change it) and shaped `url(#id)`. It is the only
+ * hatch value `drawTrack` emits; `markup` is the `<defs>` the scene puts in its own frame, so
+ * it is not checked here (a hatch must come from `hatchPattern`, from any vendored copy).
+ * @param {unknown} hatch
+ * @returns {string | null}
+ */
+const hatchFill = (hatch) => {
 	if (!hatch || typeof hatch !== "object" || !Object.isFrozen(hatch)) return null;
-	const fields = ["id", "fill", "markup"].map((key) => Object.getOwnPropertyDescriptor(hatch, key));
-	if (fields.some((field) => !field || !("value" in field))) return null;
-	const [idField, fillField, markupField] = /** @type {[PropertyDescriptor, PropertyDescriptor, PropertyDescriptor]} */ (fields);
-	const [id, fill, markup] = [idField.value, fillField.value, markupField.value];
-	if (typeof id !== "string" || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(id) || fill !== `url(#${id})` || typeof markup !== "string") return null;
-	if (!new RegExp(`^<defs><pattern id="${id}"[^>]*><path [^>]+/></pattern></defs>$`).test(markup)) return null;
-	return { id, fill, markup };
+	const field = Object.getOwnPropertyDescriptor(hatch, "fill");
+	if (!field || !("value" in field)) return null;
+	return typeof field.value === "string" && /^url\(#[A-Za-z][A-Za-z0-9_-]*\)$/.test(field.value) ? field.value : null;
 };
 
 /**
@@ -107,12 +110,12 @@ const corner = (/** @type {number | undefined} */ radius, /** @type {number} */ 
  */
 export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius, opacity = 1, id }) {
 	checkRect("drawTrack", { x, y, width, height });
-	const issuedHatch = hatch === undefined ? null : hatchParts(hatch);
-	if (hatch !== undefined && !issuedHatch) throw new Error("drawTrack: hatch must be an immutable, self-consistent hatchPattern result");
-	if (!issuedHatch && fill === null) throw new Error("drawTrack: a track needs a fill or a hatch");
+	const hatchPaint = hatch === undefined ? null : hatchFill(hatch);
+	if (hatch !== undefined && !hatchPaint) throw new Error("drawTrack: hatch must be a frozen hatchPattern result with a url(#id) fill");
+	if (!hatchPaint && fill === null) throw new Error("drawTrack: a track needs a fill or a hatch");
 	const rx = corner(radius, width, height);
 	const rect = (/** @type {string} */ paint) => el("rect", { x, y, width, height, rx, fill: paint });
-	return fade(opacity, id ? { "data-track": id } : {}, fill === null ? "" : rect(tok(fill)), issuedHatch ? rect(issuedHatch.fill) : "");
+	return fade(opacity, id ? { "data-track": id } : {}, fill === null ? "" : rect(tok(fill)), hatchPaint ? rect(hatchPaint) : "");
 }
 
 /**

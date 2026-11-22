@@ -429,12 +429,12 @@ functions; a colour is a token name (G4 applies).
   tracks that share it show one continuous hatch, and in the player, in `bake`
   and in a PNG or video export it draws the same. It makes the `idPrefix` a safe id token as `renderSvg` does; it throws for an
   empty `idPrefix`, a `name` that is not a safe id token or is reserved, a `spacing` of 0 or less, and a `width` of
-  0 or less or not below the spacing after SVG number rounding. An immutable, self-consistent hatch may be passed between separately vendored runtime copies.
+  0 or less or not below the spacing after SVG number rounding. A hatch must come from `hatchPattern`; a hatch from another vendored runtime copy works too.
 - **Track.** `drawTrack({x, y, width, height, hatch, fill, radius, opacity, id})`
   is an empty bar: a rounded rect filled with the token `fill` (default
   `surface`, `null` for none) and the `hatch` over it. It needs one of the two.
   `radius` defaults to half the height and is never more than half a side. It
-  throws for a size of 0 or less (including after SVG number rounding) and for a mutable or inconsistent hatch.
+  throws for a size of 0 or less (including after SVG number rounding) and for a hatch that is not frozen or whose `fill` is not `url(#id)`. It emits only the hatch's `fill`; putting its `markup` in the frame is the scene's job, and a hatch whose `<defs>` is missing paints nothing.
 - **Bar.** `drawBar({x, y, width, height, p, fill, radius, trackRadius, opacity, idPrefix, id, trackWidth})` draws a
   bar from `x` that is `width * p` long (`width` is its length when done, a share
   of the track's, `p` the eased
@@ -442,7 +442,7 @@ functions; a colour is a token name (G4 applies).
   a pill. Nothing for `p ≤ 0`; `p ≥ 1` is the bar it rests as. `fill` is a token
   (default `accent`). Give `trackWidth`, the frame's `idPrefix`, and a local safe
   `id` (letters, digits and `_`, except `title` and `desc`) to clip a short bar to its rounded track; clip IDs use a separate `-clip-` namespace. Use
-  `trackRadius` when that silhouette differs from the bar's own radius.
+  `trackRadius` whenever the track sets a `radius` explicitly (the clip otherwise defaults to half the track height, whatever the bar's own `radius`).
 - **Growth.** `barProgress(t, {start, duration}, style)` is the bar's `p`: 0
   before `start` and exactly 1 from `barEnd(run)` = `start + duration` on, on the
   style's movement curve (`style.motion.move`, through `easings`, so it settles
@@ -464,7 +464,9 @@ functions; a colour is a token name (G4 applies).
 - **Canon.** A bar grows once, in a step's beat, and rests (§4.8): every bar of
   the beat has settled (`barEnd`) at least 50 ms before the step's `at`, and from
   then its value is exactly `format(to)`, so the step frame is the settled
-  frame (G6). Nothing repeats. A value that updates live beside footage is not
+  frame (G6). G6 compares the whole frame up to 45 ms after `at`, so the track's
+  own entrance also finishes 50 ms or more before `at`, and the next motion
+  starts no earlier than 50 ms after it. Nothing repeats. A value that updates live beside footage is not
   this part. A scene that draws the bar's accent on the track's colour declares
   the pairs in `contrastPairs` (G12), for example `accent` on `surface` at 3 and
   `line` on `surface` at 2.5 for decorative hatch texture. Informative hatching
