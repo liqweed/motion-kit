@@ -547,6 +547,19 @@ it("nested seeks that return to the original step still supersede the outer disp
 	assert.deepEqual(seen, [2, 1, 0]);
 });
 
+it("a step subscriber that calls play() during a tick leaves exactly one pending frame", () => {
+	const env = setup();
+	env.player.play();
+	let armed = false;
+	env.player.onStep(() => { if (armed) { armed = false; env.player.play(); } });
+	armed = true;
+	env.advance(scene.steps[1].at * 1000 + 50);
+	assert.equal(env.player.playing, true);
+	assert.equal(env.frames.size, 1, "one callback, so pause and destroy can cancel it");
+	env.player.pause();
+	assert.equal(env.frames.size, 0);
+});
+
 it("a destroyed controller reports no pending autoplay", () => {
 	const env = setup({ autoplay: "visible" });
 	assert.equal(env.player.autoplayPending, true);

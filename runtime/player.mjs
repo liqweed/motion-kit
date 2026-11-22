@@ -343,7 +343,11 @@ export function mountPlayer(container, scene, options = {}) {
 		t = Math.min(tStart + (now - wallStart) / 1000, stopAt);
 		if (t >= stopAt) playing = false;
 		draw();
-		if (playing) raf = requestAnimationFrame(tick);
+		if (playing) {
+			// A subscriber may have restarted the clock during draw(): keep one pending callback.
+			cancelAnimationFrame(raf);
+			raf = requestAnimationFrame(tick);
+		}
 	}
 	/** Run the clock from the current time (or wait, while out of view). */
 	function run() {
