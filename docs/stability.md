@@ -35,13 +35,13 @@ Two kinds of change are not breaking, even though output differs:
 - **Gate rules.** The gate may grow stricter in a minor release, when a new
   rule catches a defect (for example the rule that a scene's ids come from
   the instance prefix). The change note names the rule and how to comply.
-- **Advice.** The canon rules (spec §11.2) are advice: the set of advice rules
-  and their wording may change in any release, and advice never fails a scene
+- **Advice.** The canon rules (spec §11.2) are advice: advice wording and new advice
+  rules may change in any release (a new rule is advice only, and an unacknowledged one never fails a scene outside strict mode), and advice never fails a scene
   unless `--strict` (or `MOTION_KIT_STRICT=1`) is on. A rule moving from hard to
   advice is not breaking; one moving from advice to hard is a gate rule growing
   stricter, as above. The `acknowledge` field and the rule ids it names
   (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`)
-  are public; the `advice` list in `manifest.json` is too.
+  are public; the `advice` list in `manifest.json` is too. Retiring or renaming an id a scene may name makes that scene fail validation, so it is a breaking change.
 
 ## What is public
 

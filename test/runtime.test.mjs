@@ -182,6 +182,14 @@ describe("styles", () => {
 		assert.deepEqual(contrastReport({ name: "low", light: { muted: "#9a9a9a" } }, sharedPairs("muted/bg")).problems, ["low light: muted on bg is 2.81:1, needs 4.5:1"]);
 		// A declaration cannot weaken a shared threshold, and the shared entries cannot be edited.
 		assert.deepEqual(contrastReport({ name: "w", light: { ink: "#ffffff" } }, [{ fg: "ink", bg: "bg", min: 1 }]).problems.length, 1);
+		// A declaration cannot classify its own pair: a hard pair stays hard whatever `advice` it carries,
+		// and a stricter minimum on the advisory pair is a drawn requirement.
+		const white = { name: "w", light: { ink: "#ffffff" } };
+		const forged = contrastReport(white, [{ fg: "ink", bg: "bg", min: 4.5, advice: "duration" }]);
+		assert.equal(forged.problems.length, 1);
+		assert.deepEqual(forged.advice, []);
+		assert.equal(contrastReport(blue, [{ fg: "emphasis", bg: "accent", min: 4.5 }]).problems.length > 0, true);
+		assert.equal(contrastReport(blue, [{ fg: "emphasis", bg: "accent", min: 3 }]).problems.length, 0);
 		// The same adjacency written the other way round meets the same floor.
 		const reversed = contrastReport({ name: "r", light: { emphasis: "#2563eb", accent: "#2563eb" } }, [{ fg: "accent", bg: "emphasis", min: 1 }]);
 		assert.equal(reversed.problems.length, 0);

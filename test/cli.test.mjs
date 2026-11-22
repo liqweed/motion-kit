@@ -13,7 +13,7 @@ const CLI = new URL("../cli/motion-kit.mjs", import.meta.url).pathname;
 const EX = new URL("../examples/", import.meta.url).pathname;
 const tmp = mkdtempSync(join(tmpdir(), "mk-test-"));
 after(() => rmSync(tmp, { recursive: true, force: true }));
-const run = (...args) => execFileSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
+const run = (...args) => execFileSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
 /** Run a node script; never throws. @returns {{ status: number, out: string }} */
 const node = (...args) => {
 	try {
@@ -141,7 +141,7 @@ describe("cli", () => {
 		writeFileSync(plain, long);
 		writeFileSync(said, long.replace("title: labels.title,", 'acknowledge: [{ rule: "duration", reason: "Voice-over sets the pace." }], title: labels.title,'));
 		const both = (/** @type {string[]} */ ...args) => {
-			const p = spawnSync(process.execPath, [CLI, ...args, "--options", join(dir, "labels.json")], { encoding: "utf8" });
+			const p = spawnSync(process.execPath, [CLI, ...args, "--options", join(dir, "labels.json")], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
 			return { status: p.status, out: `${p.stdout}${p.stderr}` };
 		};
 		// check: the rule, the value, why, when it is fine, the alternative; exit 0.
@@ -151,6 +151,17 @@ describe("cli", () => {
 		// The other commands print the same text; strict mode fails each before it writes anything.
 		const out = (/** @type {string} */ f) => join(dir, f);
 		const commands = [["build", "-o", out("p.html")], ["export", "-o", out("exp")], ["bake", "-o", out("b.svg")], ["icon", "-o", out("icons"), "--no-png"]];
+		// video: strict rejection comes before any rendering, so it needs no ffmpeg; an ordinary render does.
+		r = both("video", plain, "-f", "1:1", "--strict", "-o", out("v-strict.mp4"));
+		assert.equal(r.status, 1, r.out);
+		assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/);
+		assert.match(r.out, /scene fails the gate:\n {2}- advice \[duration\]/);
+		assert.equal(existsSync(out("v-strict.mp4")), false, "video wrote nothing");
+		if (hasFfmpeg()) {
+			r = both("video", plain, "-f", "1:1", "-o", out("v.mp4"), "--fps", "5", "--scale", "1", "--hold", "0");
+			assert.equal(r.status, 0, r.out);
+			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/);
+		}
 		for (const [cmd, ...rest] of commands) {
 			r = both(cmd, plain, "-f", "1:1", ...rest);
 			assert.equal(r.status, 0, `${cmd}: ${r.out}`);
@@ -162,6 +173,7 @@ describe("cli", () => {
 			r = both(cmd, plain, "-f", "1:1", "--strict", ...rest.map((x) => (x.startsWith(dir) ? `${x}-strict` : x)));
 			assert.equal(r.status, 1, cmd);
 			assert.match(r.out, /scene fails the gate:\n {2}- advice \[duration\]: duration 16\.0 s exceeds 12 s .*strict mode/, cmd);
+			assert.match(r.out, /motion-kit: {3}why: /, `${cmd} explains the advice before refusing`);
 			assert.equal(existsSync(`${rest[1]}-strict`), false, `${cmd} wrote nothing`);
 		}
 		assert.equal(both("check", plain, "-f", "16:9", "--strict").status, 1);
@@ -192,7 +204,7 @@ describe("cli", () => {
 			return file;
 		};
 		const check = (/** @type {string} */ file) => {
-			const p = spawnSync(process.execPath, [CLI, "check", file, "-f", "16:9", "--options", join(dir, "labels.json")], { encoding: "utf8" });
+			const p = spawnSync(process.execPath, [CLI, "check", file, "-f", "16:9", "--options", join(dir, "labels.json")], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
 			return { status: p.status, out: `${p.stdout}${p.stderr}` };
 		};
 		let r = check(make("noreason.scene.mjs", '[{ rule: "duration" }]'));
@@ -213,6 +225,13 @@ describe("cli", () => {
 		r = check(calm);
 		assert.equal(r.status, 0, r.out);
 		assert.match(r.out, /acknowledges \[duration\] but never breaks it/);
+		// The other commands say it too, and a control character in a reason is refused.
+		const e = spawnSync(process.execPath, [CLI, "bake", calm, "-o", join(dir, "calm.svg"), "--options", join(dir, "labels.json")], { encoding: "utf8" });
+		assert.equal(e.status, 0, e.stderr);
+		assert.match(e.stderr, /acknowledges \[duration\] but never breaks it/);
+		r = check(make("escape.scene.mjs", '[{ rule: "duration", reason: "\\u001b[2JApproved" }]'));
+		assert.equal(r.status, 1);
+		assert.match(r.out, /one line of plain text/);
 	});
 	it("check passes every example in every format and locale", () => {
 		const out = run("check", `${EX}order-flow.json`, `${EX}smart-home.json`);

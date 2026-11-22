@@ -294,9 +294,13 @@ export function contrastReport(style, drawn) {
 	/** @param {ContrastPair} p @param {ContrastPair} d */
 	const same = (p, d) => (p.fg === d.fg && p.bg === d.bg) || (p.fg === d.bg && p.bg === d.fg);
 	drawn = drawn.map((d) => {
+		// A scene never classifies a pair itself: `advice` comes only from the shared registry,
+		// and only while the scene asks no more than the shared threshold. A stricter declared
+		// minimum is a drawn requirement, so it stays a hard failure.
+		const { advice: _declared, ...own } = d;
 		const shared = CONTRAST_PAIRS.find((p) => same(p, d));
-		if (!shared) return d;
-		return { ...d, min: Math.max(d.min, shared.min), ...(shared.advice ? { advice: shared.advice } : {}) };
+		if (!shared) return own;
+		return { ...own, min: Math.max(d.min, shared.min), ...(shared.advice && d.min <= shared.min ? { advice: shared.advice } : {}) };
 	});
 	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => same(p, d)));
 	const warnings = misses(s, undrawn).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`);

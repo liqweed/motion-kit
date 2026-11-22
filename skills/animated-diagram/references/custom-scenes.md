@@ -188,7 +188,7 @@ Canon, as advice: no loops, no ambient motion, no continuous scrubbing, 12 s
 (8 s target). An isometric scene plays once and holds its last frame, like any
 other, and under reduced motion the player shows that frame. A constantly
 moving hero is a 3D model's job, not motion-kit's; a page that wants one anyway
-drives `frame(t)` itself and acknowledges `nothing-animates`.
+repeats the scene's time range itself (a finite scene that holds after `duration`, replayed by the page); only a scene whose first and last frames are identical acknowledges `nothing-animates`, and a scene that keeps changing after `duration` fails G8.
 
 ## Advice and acknowledgements
 

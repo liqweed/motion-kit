@@ -95,7 +95,7 @@ export function validateAcknowledgements(sceneId, acknowledge) {
 			throw new Error(`${where}: ${JSON.stringify(rule)} is not an advice rule (known: ${Object.keys(ADVICE_RULES).join(", ")}); a hard rule (determinism, WCAG contrast of a drawn pair, settled steps, well-formed markup) cannot be acknowledged`);
 		}
 		if (typeof reason !== "string" || !reason.trim()) throw new Error(`${where}: "${rule}" needs a reason, one line saying why this scene breaks the rule`);
-		if (/[\r\n]/.test(reason)) throw new Error(`${where}: the reason for "${rule}" must be one line`);
+		if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(reason)) throw new Error(`${where}: the reason for "${rule}" must be one line of plain text, without control characters`);
 		if (reason.length > REASON_MAX) throw new Error(`${where}: the reason for "${rule}" is ${reason.length} characters; keep it to ${REASON_MAX}`);
 		if (seen.has(rule)) throw new Error(`${where}: "${rule}" is acknowledged twice`);
 		seen.add(rule);

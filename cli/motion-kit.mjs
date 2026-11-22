@@ -134,8 +134,8 @@ async function main() {
 			const sopts = await sceneOpts(file);
 			const loaded = await loadScene(file, sopts);
 			const r = checkScene(loaded.scene, { style, strict });
-			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			reportGate(r);
+			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			// The page also paints the player: button text and borders, the selected step,
 			// captions, the focus outline, and (unless --no-heading) the heading on the canvas.
 			const player = checkContrast(style, sharedPairs(...(a["no-heading"] ? [] : ["ink/bg"]), "ink/surface", "onAccent/accent", "muted/bg", "emphasis/bg", "line/bg", "accent/bg"));
@@ -153,8 +153,8 @@ async function main() {
 			const sopts = await sceneOpts(file);
 			const { scene } = await loadScene(file, sopts);
 			const r = checkScene(scene, { style, strict });
-			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			reportGate(r);
+			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			if (a.png && !(await rasterizer())) fail("--png needs @resvg/resvg-js or Chrome");
 			// The contact sheet's phone row shows the tall layout, as a phone does.
 			/** @type {{ scene?: any, error?: string }} */
@@ -175,8 +175,8 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file));
 			const gate = checkScene(scene, { style, strict });
-			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
 			reportGate(gate);
+			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
 			const svg = bake(scene, { fps: Number(a.fps ?? 15), style, theme: a.theme, background: a.background });
 			const out = need(a.out, "--out");
 			writeFileSync(out, svg);
@@ -188,8 +188,8 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file));
 			const gate = checkScene(scene, { style, strict });
-			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
 			reportGate(gate);
+			if (!gate.ok) fail(`scene fails the gate:\n  - ${gate.problems.join("\n  - ")}`);
 			const out = need(a.out, "--out");
 			const r = await renderVideo(scene, {
 				out,
@@ -210,8 +210,8 @@ async function main() {
 			const file = need(args[0], "<scene>");
 			const { scene } = await loadScene(file, await sceneOpts(file, { ...where, format: format ?? "1:1" }));
 			const r = checkScene(scene, { style, strict });
-			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			reportGate(r);
+			if (!r.ok) fail(`scene fails the gate:\n  - ${r.problems.join("\n  - ")}`);
 			const png = !a["no-png"];
 			if (png && !(await rasterizer())) fail("icon PNG needs @resvg/resvg-js or Chrome (or pass --no-png)");
 			const root = resolve(need(a.out, "--out"));

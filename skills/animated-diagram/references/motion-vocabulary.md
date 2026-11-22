@@ -133,7 +133,7 @@ Bounce and elastic easing · parallax · looping or auto-advancing carousels ·
 ambient motion · `transition: all` · anything whose only purpose is decoration.
 
 This is advice, not law: the gate does not fail a scene for these, and a scene
-that has a reason to break one says so (`acknowledge`, in `custom-scenes.md`).
+that has a reason to break one says so in its own description. Only four rules can be acknowledged by the machine (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`; `custom-scenes.md`); the rest below are guidance with no `acknowledge` rule, and overshooting style curves still throw (#95).
 The reason each is advised against, and when breaking it is fine:
 
 | Advice against | Why | Fine when |
