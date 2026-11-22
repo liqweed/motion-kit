@@ -258,6 +258,10 @@ describe("optional token use and warnings", () => {
 			assert.ok(!paintSource(`<metadata><info value="var(--mk-caution)"/></metadata>`).includes("caution"));
 			assert.ok(paintSource(`<metadata></metadata><rect fill="var(--mk-caution)"/>`).includes("caution"));
 		});
+		it("trims configured families before comparing", () => {
+			const s = normalizeStyle({ ...NEUTRAL, name: "t", mono: " monospace " });
+			assert.equal(findFontLiteral(`<text font-family="monospace">1</text>`, s), null);
+		});
 		it("does not lose an escaped quote's string boundary", () => {
 			assert.match(findFontLiteral(`<style>text{content:"\\"";font-family:Courier} text::after{content:"x"}</style>`, style) ?? "", /Courier/);
 		});
