@@ -66,24 +66,48 @@ describe("site catalog", () => {
 });
 
 describe("site build", () => {
-	it("prerenders a page for every catalog entry and the shell pages", () => {
-		const dist = join(ROOT, "website", "dist");
-		// `npm run site` builds it. Skipped on a clean checkout (the gate builds the site after the tests); set SITE_DIST_REQUIRED=1 to fail instead.
-		if (!existsSync(dist)) {
-			assert.ok(!process.env.SITE_DIST_REQUIRED, "website/dist is missing; run `npm run site` first");
-			return;
-		}
-		for (const f of ["index.html", "gallery/index.html", "docs/index.html", "404.html", "_headers"]) assert.ok(existsSync(join(dist, f)), f);
+	// `npm run site` builds website/dist; the gate runs this suite afterwards with SITE_DIST_REQUIRED=1.
+	// Ordinary `npm test` skips it, so a stale dist from an earlier build never fails the run.
+	const required = !!process.env.SITE_DIST_REQUIRED;
+	const dist = join(ROOT, "website", "dist");
+	/**
+	 * The prerendered player with this id: its final-frame SVG, step buttons and step list.
+	 * @param {string} html
+	 * @param {string} id
+	 */
+	const figure = (html, id) => {
+		const start = html.indexOf(`<div id="${id}"`);
+		assert.ok(start >= 0, `${id} is server-rendered`);
+		const end = html.indexOf("</ol>", start);
+		assert.ok(end > start, `${id} has its step list`);
+		return html.slice(start, end);
+	};
+	it("prerenders a page for every catalog entry and the shell pages", { skip: !required && "set SITE_DIST_REQUIRED=1 after `npm run site`" }, () => {
+		assert.ok(existsSync(dist), "website/dist is missing; run `npm run site` first");
+		for (const f of ["index.html", "gallery/index.html", "docs/index.html", "playground/index.html", "404.html", "_headers"]) assert.ok(existsSync(join(dist, f)), f);
 		for (const e of [...LIVE, ...PLANNED]) assert.ok(existsSync(join(dist, "examples", e.id, "index.html")), `examples/${e.id}`);
 		const home = readFileSync(join(dist, "index.html"), "utf8");
 		assert.ok(home.includes("Give your agent the skills") && home.includes("<svg"), "landing is server-rendered, logo included");
-		// Without JavaScript the hero and the isometric showcase still show their final frame and step list.
-		assert.ok(home.includes('id="hero-wide"') && home.includes("How an order reaches the customer"), "hero figure is server-rendered");
-		assert.ok(home.includes('id="iso-wide"') && home.includes("Turned isometric"), "isometric showcase is server-rendered");
+		// Without JavaScript the hero and the isometric showcase still show their final frame and step list, wide and tall.
+		const iso = LIVE.find((e) => e.id === ISO_SHOWCASE.example);
+		const hero = LIVE.find((e) => e.id === "order-flow");
+		for (const { base, entry } of [{ base: "hero", entry: hero }, { base: "iso", entry: iso }]) {
+			for (const fmt of ["wide", "tall"]) {
+				const fig = figure(home, `${base}-${fmt}`);
+				assert.ok(fig.includes("<svg") && fig.includes("</svg>"), `${base}-${fmt} carries its SVG`);
+				const buttons = fig.match(/<button type="button" class="mk-btn"[ >]/g) ?? [];
+				assert.equal(buttons.length, entry?.steps, `${base}-${fmt} has one button per step`);
+				assert.equal((fig.match(/<li>/g) ?? []).length, entry?.steps, `${base}-${fmt} lists every step`);
+			}
+		}
 		const dir = join(dist, "_astro");
-		const css = readdirSync(dir).filter((f) => f.endsWith(".css")).map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
-		assert.ok(css.includes("Instrument Sans") && css.includes("DM Mono"), "the site sets the Module typefaces");
+		const files = readdirSync(dir);
+		const css = files.filter((f) => f.endsWith(".css")).map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
+		// The families must be the ones the site applies, not only declared.
+		assert.match(css, /--sans:\s*["']?Instrument Sans/, "body text is set in Instrument Sans");
+		assert.match(css, /--mono:\s*["']?DM Mono/, "labels and code are set in DM Mono");
+		assert.ok(/@font-face\{[^}]*Instrument Sans/.test(css) && /@font-face\{[^}]*DM Mono/.test(css), "both faces are declared");
 		assert.ok(!/Space Grotesk|Inter Variable|["']Inter["']/.test(css), "no Space Grotesk or Inter");
-		assert.ok(readdirSync(dir).some((f) => /instrument-sans.*\.woff2$/.test(f)) && readdirSync(dir).some((f) => /dm-mono.*\.woff2$/.test(f)), "both typefaces are self-hosted");
+		assert.ok(files.some((f) => /instrument-sans.*\.woff2$/.test(f)) && files.some((f) => /dm-mono.*\.woff2$/.test(f)), "both typefaces are self-hosted");
 	});
 });

@@ -95,7 +95,9 @@ holds its final frame, and moves between settled steps. At most 12 s per scene,
 8 s as the target. Reduced motion shows the final frame. Interface transitions
 use the easing curve above. The design's one motion moment
 is the hero's callout leaders drawing to the diagram, one at a
-time, after the scene has settled.
+time, once the scene has settled or the reader first presses a control (or
+waits out the scene's length plus four seconds with playback held back); only
+in the layout that shows the callouts.
 
 ## Decided in the build (#61, first pull request)
 
@@ -116,8 +118,9 @@ The build settled the rest, in `website/src/styles/site.css`:
   hatched storyboard in place of the player, and a "needs: type" badge.
 - **The isometric showcase** is Fig. 6 on the home page, playing
   `examples/isometric-swivel.scene.mjs` beside its step list.
-- **The motion moment**: after the hero scene has settled, the callout leaders
-  draw once, one at a time (160 ms each, the easing curve). Under reduced motion
+- **The motion moment**: after the hero scene has settled (or earlier, when the
+  reader presses a control, or after the scene's length plus 4 s when playback
+  is paused or the hero stays out of view), the callout leaders draw once, one at a time (160 ms each, the easing curve). Under reduced motion
   the leaders are simply there. Without JavaScript the callouts and the legend
   are not built; the controls carry their own labels.
 - **Dark theme**: page chrome uses the site-dark tokens above. The diagrams keep

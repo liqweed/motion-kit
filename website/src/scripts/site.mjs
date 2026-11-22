@@ -275,14 +275,16 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 	ro?.observe(callouts);
 	let timer = 0;
 	let raf = 0;
-	let drawn = false;
+	// The leaders belong to the layout that shows them: a hidden one neither arms nor draws them.
+	let drawn = !visible(callouts);
 	const draw = () => {
 		if (drawn) return;
 		drawn = true;
 		cancelAnimationFrame(raf);
 		plate.classList.add("leaders-draw");
 	};
-	if (!reducedMotion()) {
+	const off = new AbortController();
+	if (!drawn && !reducedMotion() && !plate.classList.contains("leaders-draw")) {
 		plate.classList.add("leaders-armed");
 		const t0 = performance.now();
 		const watch = () => {
@@ -292,10 +294,11 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 		};
 		raf = requestAnimationFrame(watch);
 		timer = window.setTimeout(draw, (controller.scene.duration + 4) * 1000); // a paused or hidden player still gets its leaders
-		root.addEventListener("pointerdown", draw, { once: true });
-		root.addEventListener("keydown", draw, { once: true });
+		root.addEventListener("pointerdown", draw, { once: true, signal: off.signal });
+		root.addEventListener("keydown", draw, { once: true, signal: off.signal });
 	}
 	return () => {
+		off.abort();
 		ro?.disconnect();
 		cancelAnimationFrame(raf);
 		clearTimeout(timer);

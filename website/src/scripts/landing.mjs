@@ -23,25 +23,41 @@ const phone = matchMedia("(max-width: 720px)").matches;
 const wideFmt = phone ? "tall" : "wide";
 
 /**
+ * What a mount is told about the window it lives in.
+ * @typedef {{ live: () => boolean, resumeAt: number | null }} MountContext
+ *   `live` turns false once the window crosses the breakpoint (check it after any await, before mounting or publishing);
+ *   `resumeAt` is the outgoing player's time when this mount replaces one, else null.
+ */
+
+/**
  * A figure is server-rendered twice, wide and tall; CSS shows one. Mount the
  * live player over whichever shows, and the other if the window crosses the
- * breakpoint later.
+ * breakpoint later, carrying the outgoing player's time across so a reader's
+ * place (and an autoplay already spent) survives.
  * @param {string} base id prefix of the two containers ("hero" for hero-wide and hero-tall)
- * @param {(el: HTMLElement, format: "wide" | "tall") => Promise<(() => void) | void>} mountOne resolves to its teardown
+ * @param {(el: HTMLElement, format: "wide" | "tall", ctx: MountContext) => Promise<(() => number | void) | void>} mountOne resolves to its teardown, which may return the player's time
  */
 function responsive(base, mountOne) {
-	/** @type {Map<string, Promise<(() => void) | void>>} */
+	/** @type {Map<string, { pending: Promise<(() => number | void) | void>, cancel: () => void }>} */
 	const mounted = new Map();
+	/** @type {number | null} */
+	let resumeAt = null;
 	const go = () => {
 		for (const format of /** @type {const} */ (["wide", "tall"])) {
 			const el = document.getElementById(`${base}-${format}`);
 			if (el && el.offsetParent !== null && !mounted.has(format)) {
 				// Only one format shows: release the hidden one's player and listeners first.
-				for (const [other, pending] of mounted) {
+				for (const [other, m] of mounted) {
 					mounted.delete(other);
-					pending.then((stop) => stop?.());
+					m.cancel();
+					m.pending.then((stop) => {
+						const t = stop?.();
+						if (typeof t === "number") resumeAt = t;
+					});
 				}
-				mounted.set(format, mountOne(el, format));
+				let alive = true;
+				const ctx = { live: () => alive, resumeAt };
+				mounted.set(format, { pending: mountOne(el, format, ctx), cancel: () => (alive = false) });
 			}
 		}
 	};
@@ -83,10 +99,12 @@ function paintFrames(i, force = false) {
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => paintFrames(heroFrames?.shown ?? 0, true));
 
-responsive("hero", async (el, format) => {
+responsive("hero", async (el, format, ctx) => {
 	try {
 		const sc = await loadScene(heroEntry, { format: format === "wide" ? "16:9" : "tall" });
-		const { controller } = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: "visible" });
+		if (!ctx.live()) return;
+		const { controller } = mount(el, sc, { style: heroStyle, theme: themeOpt(), autoplay: ctx.resumeAt == null ? "visible" : "none" });
+		if (ctx.resumeAt != null) controller.seek(Math.min(ctx.resumeAt, sc.duration));
 		const unsub = onStep(controller, (i) => {
 			heroStep = i;
 			paintProgress($("[data-progress]", heroPlate), i, sc.steps.length);
@@ -98,7 +116,9 @@ responsive("hero", async (el, format) => {
 		return () => {
 			unsub?.();
 			stopKeys();
+			const t = controller.time;
 			controller.destroy();
+			return t;
 		};
 	} catch (err) {
 		failNote(el, err);
@@ -224,17 +244,21 @@ showStyle("tidewater");
 	const isoEntry = find(ISO_SHOWCASE.example);
 	const plate = $("#isometric .plate");
 	const items = [...document.querySelectorAll("#iso-steps li")];
-	responsive("iso", async (el, format) => {
+	responsive("iso", async (el, format, ctx) => {
 		try {
 			const sc = await loadScene(isoEntry, { format: format === "wide" ? "16:9" : "tall" });
-			const { controller } = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: "visible" });
+			if (!ctx.live()) return;
+			const { controller } = mount(el, sc, { style: styleFor("studio"), theme: themeOpt(), autoplay: ctx.resumeAt == null ? "visible" : "none" });
+			if (ctx.resumeAt != null) controller.seek(Math.min(ctx.resumeAt, sc.duration));
 			const unsub = onStep(controller, (i) => {
 				paintProgress($("[data-progress]", plate), i, sc.steps.length);
 				items.forEach((li, j) => (j === i ? li.setAttribute("aria-current", "step") : li.removeAttribute("aria-current")));
 			});
 			return () => {
 				unsub?.();
+				const t = controller.time;
 				controller.destroy();
+				return t;
 			};
 		} catch (err) {
 			failNote(el, err);
