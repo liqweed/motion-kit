@@ -267,7 +267,8 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   most 8 layers, and does not grow with `segments`; an arc within one sample of
   tangent to the view may add or lose its layer as `segments` changes). `prism` takes the same `groups` (in the
   winding of its `points`) and `smooth`; without `smooth` a group is a face
-  outlined by itself, without `groups` every edge is.
+  outlined by itself, without `groups` (and without `smooth`) every edge is;
+  a `smooth` solid draws its visible sides as one wall with or without `groups`.
 - **Content on a plane.** `planeMatrix(cam, {x, y, z = 0, w, d, view})` is the
   SVG `matrix` that takes 2D content to the horizontal plane at height `z`,
   the rectangle `w` (east) by `d` (north) centred on (`x`, `y`). The content is
