@@ -905,7 +905,7 @@ function segmentHits(s, r) {
  * @returns {string[]}
  */
 export function labelProblems(boxes, { width, height, gap = 4, limit = Infinity, ignore }) {
-	if (!(limit === Infinity || (Number.isInteger(limit) && limit >= 0))) throw new RangeError(`labelProblems: limit must be a whole number from 0, or Infinity, got ${typeof limit === "symbol" ? "a symbol" : String(limit)}`);
+	if (!(limit === Infinity || (Number.isInteger(limit) && limit >= 0))) throw new RangeError(`labelProblems: limit must be a whole number from 0, or Infinity, got a value of type ${typeof limit}`);
 	if (limit === 0) return [];
 	const eps = 1e-9; // rounded box edges that meet exactly must not fail on float noise
 	// Drawn unless it fades out: `fade` drops an element whose opacity rounds to 0.
