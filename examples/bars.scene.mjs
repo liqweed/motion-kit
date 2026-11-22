@@ -107,7 +107,7 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 		description: localize(COPY.description, locale),
 		// The pairs this scene draws: the labels and values on the canvas, and the
 		// bar's accent fill on its track.
-		contrastPairs: [...sharedPairs("ink/bg"), { fg: "accent", bg: "surface", min: 3, use: "the bar's fill on its track" }],
+		contrastPairs: [...sharedPairs("ink/bg"), { fg: "accent", bg: "surface", min: 3, use: "the bar's fill on its track" }, { fg: "line", bg: "surface", min: 2.5, use: "the hatching on the track: texture that marks the empty track, not data" }],
 		steps,
 		frame,
 	};

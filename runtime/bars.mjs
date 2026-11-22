@@ -31,6 +31,10 @@ import { el, fade, num, text } from "./svg.mjs";
 const finite = (n) => typeof n === "number" && Number.isFinite(n);
 /** What may stand in an id: the characters `safeId` leaves. */
 const ID_PART = /^[A-Za-z0-9_-]+$/;
+/** Names `renderSvg` already uses for ids (`${id}-title`, `${id}-desc`). */
+const RESERVED_NAMES = new Set(["title", "desc"]);
+/** Every hatch `hatchPattern` has made: a hand-built look-alike is not one. */
+const ISSUED = new WeakSet();
 
 /**
  * @typedef {{ id: string, fill: string, markup: string }} Hatch
@@ -52,18 +56,22 @@ const ID_PART = /^[A-Za-z0-9_-]+$/;
 export function hatchPattern({ idPrefix, name = "hatch", stroke = "line", spacing = 7, width = 1.5 }) {
 	if (typeof idPrefix !== "string" || idPrefix === "") throw new Error(`hatchPattern: idPrefix must be the frame's idPrefix, a non-empty string, got ${JSON.stringify(idPrefix)}`);
 	if (typeof name !== "string" || !ID_PART.test(name)) throw new Error(`hatchPattern: name must use letters, digits, "_" and "-", got ${JSON.stringify(name)}`);
+	if (RESERVED_NAMES.has(name)) throw new Error(`hatchPattern: name "${name}" is reserved for the picture's own ids`);
 	if (!finite(spacing) || spacing <= 0) throw new Error(`hatchPattern: spacing must be a positive number, got ${spacing}`);
 	if (!finite(width) || width <= 0 || width >= spacing) throw new Error(`hatchPattern: width must be more than 0 and less than the spacing (${spacing}), got ${width}`);
 	const id = `${safeId(idPrefix)}-${name}`; // the frame's prefix is a safe id already; the gate's own call passes the raw scene id
 	// One vertical line in the middle of a square tile, turned 45° by the pattern.
 	const line = el("path", { d: `M${num(spacing / 2)} 0 V${num(spacing)}`, fill: "none", stroke: tok(stroke), "stroke-width": width });
 	const pattern = el("pattern", { id, width: spacing, height: spacing, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, line);
-	return { id, fill: `url(#${id})`, markup: el("defs", {}, pattern) };
+	const hatch = { id, fill: `url(#${id})`, markup: el("defs", {}, pattern) };
+	ISSUED.add(hatch);
+	return hatch;
 }
 
 /** @param {string} who @param {{ x: number, y: number, width: number, height: number }} r */
-function checkRect(who, { x, y, width, height }) {
+function checkRect(who, { x, y, width, height }, allowEmpty = false) {
 	if (![x, y, width, height].every(finite)) throw new Error(`${who}: x, y, width and height must be finite numbers`);
+	if (allowEmpty && width === 0 && height > 0) return;
 	if (width <= 0 || height <= 0) throw new Error(`${who}: width and height must be positive, got ${width} × ${height}`);
 }
 
@@ -84,7 +92,7 @@ const corner = (/** @type {number | undefined} */ radius, /** @type {number} */ 
  */
 export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius, opacity = 1, id }) {
 	checkRect("drawTrack", { x, y, width, height });
-	if (hatch !== undefined && (!hatch || typeof hatch.fill !== "string")) throw new Error("drawTrack: hatch must come from hatchPattern()");
+	if (hatch !== undefined && (!hatch || !ISSUED.has(hatch))) throw new Error("drawTrack: hatch must come from hatchPattern()");
 	if (!hatch && fill === null) throw new Error("drawTrack: a track needs a fill or a hatch");
 	const rx = corner(radius, width, height);
 	const rect = (/** @type {string} */ paint) => el("rect", { x, y, width, height, rx, fill: paint });
@@ -92,7 +100,7 @@ export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius
 }
 
 /**
- * A bar `width` long when it is done (its end value's share of the track), drawn
+ * A bar `width` long when it is done (its end value's share of the track, 0 for a zero value), drawn
  * up to fraction `p` of it from its start at (`x`, `y`): `p` is the eased progress of its
  * growth (`barProgress`), and the bar is rounded at both ends all the way, so
  * it grows as a pill. Nothing for `p` ≤ 0; `p` ≥ 1 is the full bar it rests as.
@@ -100,11 +108,12 @@ export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius
  * @returns {string}
  */
 export function drawBar({ x, y, width, height, p, fill = "accent", radius, opacity = 1, id }) {
-	checkRect("drawBar", { x, y, width, height });
+	checkRect("drawBar", { x, y, width, height }, true); // a zero value is a zero-width bar: nothing to draw
 	if (!finite(p)) throw new Error(`drawBar: p must be a finite number, got ${p}`);
 	const share = clamp01(p);
 	if (share <= 0) return "";
 	const w = width * share;
+	if (w <= 0) return "";
 	return fade(opacity, id ? { "data-bar": id } : {}, el("rect", { x, y, width: w, height, rx: corner(radius, w, height), fill: tok(fill) }));
 }
 
@@ -153,7 +162,8 @@ export function rollingValue(from, to, p) {
 	if (!finite(from) || !finite(to) || !finite(p)) throw new Error(`rollingValue: from, to and p must be finite numbers, got ${from}, ${to}, ${p}`);
 	if (p >= 1) return to;
 	if (p <= 0) return from;
-	return lerp(from, to, p);
+	const v = lerp(from, to, p);
+	return finite(v) ? v : from * (1 - p) + to * p; // to - from overflowed: weigh each end instead
 }
 
 /**

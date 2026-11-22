@@ -258,7 +258,10 @@ describe("examples/bars.scene.mjs", () => {
 		const svg = renderSvg(scene, scene.duration, { idPrefix: "p", style });
 		const defined = new Set(idsOf(svg));
 		const used = [...svg.matchAll(/url\(#([^)]*)\)/g)].map((m) => m[1]);
-		assert.ok(used.length >= 3, "each track uses the hatch");
+		for (const row of [0, 1, 2]) {
+			const group = svg.match(new RegExp(`<g[^>]*data-track="row-${row}"[^>]*>.*?</g>`, "s"));
+			assert.ok(group && /url\(#[^)]+\)/.test(group[0]), `track row-${row} uses the hatch`);
+		}
 		for (const id of used) assert.ok(defined.has(id), `url(#${id}) has no definition`);
 	});
 	it("is the same bytes whatever it was drawn after", async () => {
@@ -296,5 +299,25 @@ describe("the hatch in a PNG export", { skip: !Resvg && "@resvg/resvg-js is not 
 		assert.notDeepEqual(lower, mid, "the hatch lines are not vertical");
 		const shift = (/** @type {number[]} */ a, /** @type {number[]} */ b, /** @type {number} */ by) => a.slice(by).every((v, k) => Math.abs(v - b[k]) < 12);
 		assert.ok(shift(mid, lower, 3) || shift(lower, mid, 3), "the lines on the lower scan line are the upper ones moved by 3 px");
+	});
+});
+
+describe("bars: review edge cases", () => {
+	it("draws a zero-width bar as nothing", () => {
+		assert.equal(drawBar({ x: 0, y: 0, width: 0, height: 24, p: 0 }), "");
+		assert.equal(drawBar({ x: 0, y: 0, width: 0, height: 24, p: 1 }), "");
+		assert.throws(() => drawBar({ x: 0, y: 0, width: -1, height: 24, p: 1 }));
+		assert.throws(() => drawBar({ x: 0, y: 0, width: 0, height: 0, p: 1 }));
+	});
+	it("rejects a hatch not made by hatchPattern", () => {
+		const fake = { id: "x", fill: "red", markup: "" };
+		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: fake }), /hatchPattern/);
+	});
+	it("reserves the picture's own id names", () => {
+		for (const name of ["title", "desc"]) assert.throws(() => hatchPattern({ idPrefix: "p", name }), /reserved/);
+	});
+	it("rolls between far-apart endpoints without overflow", () => {
+		assert.equal(rollingValue(-1e308, 1e308, 0.5), 0);
+		assert.ok(Number.isFinite(rollingValue(-1e308, 1e308, 0.25)));
 	});
 });
