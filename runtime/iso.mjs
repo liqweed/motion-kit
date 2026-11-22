@@ -52,7 +52,7 @@ export const ISO_ELEVATION = (Math.atan(Math.SQRT1_2) * 180) / Math.PI;
 function sincos(deg) {
 	const r = ((deg % 360) + 360) % 360;
 	if (r % 90 === 0) return /** @type {[number, number]} */ ([[0, 1], [1, 0], [0, -1], [-1, 0]][r / 90]);
-	const rad = (deg * Math.PI) / 180;
+	const rad = (r * Math.PI) / 180; // the reduced angle: deg itself may overflow the product
 	return [Math.sin(rad), Math.cos(rad)];
 }
 
@@ -220,7 +220,7 @@ export function path3(points) {
 /**
  * Where an oriented solid's own frame lies in the world: a world point is
  * `m` (row-major, a rotation) times the solid's point, plus `t`.
- * @typedef {Readonly<{ m: readonly number[], t: Readonly<{ x: number, y: number, z: number }> }>} Pose
+ * @typedef {Readonly<{ m: readonly [number, number, number, number, number, number, number, number, number], t: Readonly<{ x: number, y: number, z: number }> }>} Pose
  */
 
 /**
@@ -449,9 +449,9 @@ function turn(s, x, y, z) {
  * toward east. `axis` is `"x"`, `"y"`, `"z"` or a direction `{ x, y, z }`. The
  * result is an oriented solid drawn, shaded and depth ordered like any other;
  * turn it again to compose (each turn is about a world axis), and `0` returns
- * the same solid. To put a tilted solid somewhere, build it where it should
+ * the same solid (a solid with `top` throws at `0` too). To put a tilted solid somewhere, build it where it should
  * pivot and turn it about that point. Sines and cosines are exact at multiples of 90°. A solid with
- * `top` cannot be turned: content on a plane is horizontal.
+ * `top` cannot be turned: tilted top content is unsupported (content on a plane is horizontal).
  * @param {Solid} solid
  * @param {{ axis: "x" | "y" | "z" | { x: number, y: number, z: number }, deg: number, about?: Point3 }} o
  * @returns {Solid}
@@ -466,11 +466,14 @@ export function rotateSolid(solid, { axis, deg, about = { x: 0, y: 0, z: 0 } }) 
 		k = unit[/** @type {"x" | "y" | "z"} */ (axis)];
 	} else {
 		if (!axis || !finite(axis.x) || !finite(axis.y) || !finite(axis.z)) throw new Error("rotateSolid: axis must be a finite direction { x, y, z }");
-		const len = Math.hypot(axis.x, axis.y, axis.z);
-		if (len < EPS) throw new Error("rotateSolid: the axis has no direction");
-		k = { x: axis.x / len, y: axis.y / len, z: axis.z / len };
+		// Scale by the largest component first: a tiny or a huge direction is still a direction.
+		const big = Math.max(Math.abs(axis.x), Math.abs(axis.y), Math.abs(axis.z));
+		if (big === 0) throw new Error("rotateSolid: the axis has no direction");
+		const [ux, uy, uz] = [axis.x / big, axis.y / big, axis.z / big];
+		const len = Math.hypot(ux, uy, uz);
+		k = { x: ux / len, y: uy / len, z: uz / len };
 	}
-	if (solid.top) throw new Error("rotateSolid: a solid with `top` content cannot be turned; draw the content with drawOnPlane");
+	if (solid.top) throw new Error("rotateSolid: tilted top content is unsupported");
 	if (deg === 0) return solid;
 	const [s, c] = sincos(deg);
 	const r = 1 - c;
@@ -481,7 +484,8 @@ export function rotateSolid(solid, { axis, deg, about = { x: 0, y: 0, z: 0 } }) 
 	const o = { x: about.x, y: about.y, z: about.z ?? 0 };
 	const d = { x: pose.t.x - o.x, y: pose.t.y - o.y, z: pose.t.z - o.z };
 	const t = { x: R[0] * d.x + R[1] * d.y + R[2] * d.z + o.x, y: R[3] * d.x + R[4] * d.y + R[5] * d.z + o.y, z: R[6] * d.x + R[7] * d.y + R[8] * d.z + o.z };
-	return Object.freeze({ ...solid, pose: Object.freeze({ m: Object.freeze(m), t: Object.freeze(t) }) });
+	if (![...m, t.x, t.y, t.z].every(finite)) throw new Error("rotateSolid: the turn overflows (the pivot or the solid's position is too far from the origin)");
+	return Object.freeze({ ...solid, pose: Object.freeze({ m: /** @type {Pose["m"]} */ (Object.freeze(m)), t: Object.freeze(t) }) });
 }
 
 /**
@@ -692,10 +696,10 @@ function behindOriented(a, b, toCam) {
 	/** @param {{ x: number, y: number, z: number }} v a direction, not necessarily a unit one */
 	const axis = (v) => {
 		const len = Math.hypot(v.x, v.y, v.z);
-		if (len < 1e-6) return; // two parallel edges
+		if (len < 1e-12) return; // two parallel edges (a smaller cross product is still a direction)
 		const [x, y, z] = [v.x / len, v.y / len, v.z / len];
 		const flip = x < -1e-9 || (Math.abs(x) <= 1e-9 && (y < -1e-9 || (Math.abs(y) <= 1e-9 && z < 0))) ? -1 : 1;
-		const key = [x, y, z].map((c) => Math.round(c * flip * 1e6) + 0).join(",");
+		const key = [x, y, z].map((c) => Math.round(c * flip * 1e12) + 0).join(","); // only axes equal to rounding noise are one
 		if (tried.has(key)) return;
 		tried.add(key);
 		const facing = (x * toCam.x + y * toCam.y + z * toCam.z) * flip;
@@ -708,8 +712,8 @@ function behindOriented(a, b, toCam) {
 		const [b0, b1] = range(b.corners);
 		/** @type {-1 | 1 | 0} */
 		let v2 = 0;
-		if (a1 <= b0 + EPS) v2 = facing > 0 ? -1 : 1; // b is on the positive side
-		else if (b1 <= a0 + EPS) v2 = facing > 0 ? 1 : -1;
+		if (a1 <= b0) v2 = facing > 0 ? -1 : 1; // b is on the positive side (no allowance: a false separator must not veto a real one)
+		else if (b1 <= a0) v2 = facing > 0 ? 1 : -1;
 		if (v2 === 0) return;
 		if (vote !== 0 && vote !== v2) conflict = true;
 		vote = v2;

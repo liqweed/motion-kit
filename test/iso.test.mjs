@@ -226,9 +226,9 @@ describe("depth order", () => {
 	});
 });
 
-/** The polygons drawn for a solid, as screen points, in drawing order (the shade layers left out). */
+/** The polygons drawn for a solid, as screen points, in drawing order (the shade layers left out: they carry no stroke, the faces do). */
 const polygons = (/** @type {import("../runtime/iso.mjs").Solid} */ solid, /** @type {import("../runtime/iso.mjs").Camera} */ cam) =>
-	[...drawSolid(solid, cam).matchAll(/<path d="([^"]+)" fill="var\(--mk-(?!ink)[a-z]+\)"/g)].map((m) => [...m[1].matchAll(/[ML]([-\d.]+) ([-\d.]+)/g)].map((q) => [Number(q[1]), Number(q[2])]));
+	[...drawSolid(solid, cam).matchAll(/<path d="([^"]+)" fill="var\(--mk-[a-z]+\)" stroke=/g)].map((m) => [...m[1].matchAll(/[ML]([-\d.]+) ([-\d.]+)/g)].map((q) => [Number(q[1]), Number(q[2])]));
 
 /** Whether two solids cover a common area of the screen: some point of a half-pixel grid lies inside a drawn face of each. */
 function coverCommonArea(/** @type {import("../runtime/iso.mjs").Solid} */ a, /** @type {import("../runtime/iso.mjs").Solid} */ b, /** @type {import("../runtime/iso.mjs").Camera} */ cam) {
@@ -320,6 +320,19 @@ describe("oriented solids", () => {
 		const half = /** @type {NonNullable<import("../runtime/iso.mjs").Solid["pose"]>} */ (rotateSolid(rotateSolid(b, { axis: "z", deg: 90 }), { axis: "z", deg: 90 }).pose);
 		assert.deepEqual(half.m.map((v) => v + 0), [-1, 0, 0, 0, -1, 0, 0, 0, 1]);
 	});
+	it("reads a direction as an axis whatever its length, and composes turns about different axes and pivots", () => {
+		const b = box({ x: 1, y: 0, w: 1, d: 1, h: 1 });
+		const m = (/** @type {any} */ s) => [...s.pose.m].map((v) => v + 0);
+		assert.deepEqual(m(rotateSolid(b, { axis: { x: 0, y: 3, z: 0 }, deg: 90 })), m(rotateSolid(b, { axis: "y", deg: 90 })));
+		assert.deepEqual(m(rotateSolid(b, { axis: { x: 1e-12, y: 0, z: 0 }, deg: 90 })), m(rotateSolid(b, { axis: "x", deg: 90 })));
+		near(m(rotateSolid(b, { axis: { x: 1.5e308, y: 1.5e308, z: 0 }, deg: 180 }))[1], 1);
+		// A quarter turn about x through the origin, then one about y through (1, 0, 0): world = Ry·Rx.
+		const both = /** @type {any} */ (rotateSolid(rotateSolid(b, { axis: "x", deg: 90 }), { axis: "y", deg: 90, about: { x: 1, y: 0, z: 0 } }));
+		assert.deepEqual(m(both), [0, 1, 0, 0, 0, -1, -1, 0, 0]);
+		assert.deepEqual([both.pose.t.x, both.pose.t.y, both.pose.t.z], [1, 0, 1]);
+		assert.doesNotThrow(() => drawSolid(rotateSolid(b, { axis: "z", deg: 1e308 }), CAMERA_ISOMETRIC));
+		assert.throws(() => rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 1 }), { axis: "z", deg: 180, about: { x: 1e308, y: 0 } }), /overflow/);
+	});
 	it("refuses a bad axis, angle or point, and a solid with content on its top", () => {
 		const b = box({ x: 0, y: 0, w: 1, d: 1, h: 1 });
 		assert.throws(() => rotateSolid(b, { axis: /** @type {any} */ ("w"), deg: 10 }), /axis/);
@@ -359,6 +372,7 @@ describe("depth order of oriented solids", () => {
 			assert.deepEqual(orderSolids([behind, front], cam).map((s) => s.id), [first.id, last.id], label);
 			assert.deepEqual(orderSolids([front, behind], cam).map((s) => s.id), [first.id, last.id], `${label}, input reversed`);
 		}
+		assert.ok(checked > 0, `${what}: no camera orders this pair, so nothing was checked`);
 	};
 	const X = { x: 1, y: 0, z: 0 };
 	const Z = { x: 0, y: 0, z: 1 };
@@ -368,8 +382,8 @@ describe("depth order of oriented solids", () => {
 		const link = (/** @type {number} */ x, /** @type {number} */ deg, /** @type {string} */ id) => rotateSolid(box({ x, y: 0, w: 0.6, d: 0.6, h: 3, id }), { axis: "y", deg, about: { x, y: 0, z: 0 } });
 		// The box is at x ≤ −1, the link leans east from x = 2: the plane x = 0 separates them.
 		expectFront(upright, link(2, 30, "link"), X, "link against box");
-		// One link leans west from −2, the other east from 2.
-		expectFront(link(-2, -30, "west"), link(2, 30, "east"), X, "two links");
+		// The two lean toward each other, from −1.5 and 1.5, and stay on their own sides of x = 0.
+		expectFront(link(-1.5, 15, "west"), link(1.5, -15, "east"), X, "two links");
 	});
 	it("orders links that meet at a pivot, at every angle of the joint, with nothing to flicker", () => {
 		// A post up to z = 2, and a lever turned about the edge of its base that rests on the post's top: they touch along that edge.
@@ -387,7 +401,7 @@ describe("depth order of oriented solids", () => {
 	});
 	it("orders an oriented solid against the slab it stands over, and puts unrelated solids by how near their centres are", () => {
 		const floor = slab({ x: 0, y: 0, w: 10, d: 10, id: "floor" });
-		const arm = rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 3, z: 0.25, id: "arm" }), { axis: "x", deg: 45, about: { x: 0, y: 0, z: 0.25 } });
+		const arm = rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 3, z: 0.25, id: "arm" }), { axis: "x", deg: 45, about: { x: 0, y: -0.5, z: 0.25 } });
 		expectFront(floor, arm, Z, "arm over floor");
 		const far = box({ x: 20, y: 20, w: 1, d: 1, h: 1, id: "far" });
 		const ids = (/** @type {{ id?: string }[]} */ list) => list.map((x) => x.id);

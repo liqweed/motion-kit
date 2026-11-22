@@ -261,8 +261,9 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   turned `deg` degrees about `axis` (`"x"`, `"y"`, `"z"` or a direction
   `{x, y, z}`; right-handed, in the world's frame) through the point `about`
   (default the origin); turning an oriented solid again composes (`deg` 0
-  returns the solid itself). `deg` MUST be finite, `axis` a non-zero direction
-  and `about` a finite point, and a solid with `top` cannot be turned [throws].
+  returns the solid itself, after the same checks as any turn: a solid with
+  `top` throws at 0° too). `deg` MUST be finite, `axis` a non-zero direction
+  and `about` a finite point, and a solid with `top` cannot be turned [throws]; `about` and the solid's position MUST be small enough that the turned position is finite [throws].
   An oriented solid takes the same `fill`, `sides`, `shade` and `stroke` and the
   same faces as a `prism`, drawn when their outward normal faces the camera: the
   top cap (its own +z) is `fill`, every other face, the bottom cap included, is
