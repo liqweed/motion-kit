@@ -228,7 +228,8 @@ function wrapRows(flat, columns) {
  *
  * `width` is the panel's width; its height is the code's (rows × `fontSize` ×
  * `lineHeight`, plus the padding), and `maxHeight`, when given, is the most the
- * picture can spare for it.
+ * picture can spare for it. `font` must be a monospace face: columns are a fixed
+ * 0.6 em, so a proportional face can overflow the panel or overlap runs.
  * @param {{
  *   lines: CodeLine[], x: number, y: number, width: number, maxHeight?: number,
  *   fontSize?: number, lineHeight?: number, padding?: number, radius?: number,

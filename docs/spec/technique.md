@@ -325,7 +325,9 @@ functions; a colour is a token name (G4 applies).
   A column is 0.6 em (the advance of the common monospace faces) and each run
   is set at its own column, so a fallback face does not shift the lines against
   one another. `font` defaults to `CODE_FONT`, a monospace stack; a style's own
-  monospace face, when it names one, is passed here. The panel is as tall as
+  monospace face, when it names one, is passed here. It must be monospace: the
+  columns are fixed, so a proportional face can overflow the panel or overlap
+  runs, and the gate cannot tell. The panel is as tall as
   its code; `maxHeight` is what the picture can spare.
 - **Fit.** `fontSize` is at least 14 px (§7). A line wider than the block's
   columns is refused (`overflow: "error"`, the default), wrapped at the last
@@ -370,7 +372,9 @@ functions; a colour is a token name (G4 applies).
 - **Canon.** The band moves once per step and rests there. `codeEnd(block,
   moves)` is the time the last move is over (it also checks the moves, so call it
   when the scene is built): put each step's `at` at least 50 ms after the end of
-  the move that leads to it, and the settled-frame rule (G6) holds. Nothing
+  the move that leads to it, and the next move's `start` at least 50 ms after
+  that `at` (`moves[i + 1].start >= steps[i].at + 0.05`), and the settled-frame
+  rule (G6) holds. Nothing
   loops, and the scene is at most 12 s, so a snippet that does not fit one scene
   is several scenes. A deck advances it one range per click (one step per click
   in Slidev; one slide per step in Marp).
