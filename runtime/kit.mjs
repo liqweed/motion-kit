@@ -27,11 +27,12 @@ import { CONTRAST_EXEMPT, CONTRAST_PAIRS, NEUTRAL, TOKENS, checkContrast, contra
 import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab } from "./iso.mjs";
 import { attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment } from "./svg.mjs";
 import { PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead } from "./connectors.mjs";
+import { CODE_BAND_LAG, CODE_FONT, CODE_ROLES, codeBlock, codeEnd, codeFocus, codePairs, drawCode } from "./code.mjs";
 import { estimateWidth, wrapLabel } from "./wrap.mjs";
 
 /**
  * The runtime, flat, handed to custom scene modules as `opts.kit`: the exports
- * of motion, scene, style, svg, iso, connectors and wrap (not the scene types or the player).
+ * of motion, scene, style, svg, iso, connectors, code and wrap (not the scene types or the player).
  * Named imports, because lib/bundle.mjs inlines only that form; a new export
  * in one of those modules is added here (test/runtime.test.mjs checks).
  */
@@ -42,6 +43,7 @@ export const KIT = Object.freeze({
 	...{ attrString, cubic, dist, drawOn, el, esc, fade, num, pointOnLine, polyline, scaleAbout, text, tokenPoints, tokensAlong, translate, trimSegment },
 	...{ CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawSolid, drawSolids, fitCamera, labelAnchor, labelProblems, lerpCamera, orderSolids, path3, prism, project, projector, regularPolygon, slab },
 	...{ PULSE_LAG, connectorPath, drawConnector, drawJunction, drawPulse, pulseEnd, pulseHead },
+	...{ CODE_BAND_LAG, CODE_FONT, CODE_ROLES, codeBlock, codeEnd, codeFocus, codePairs, drawCode },
 	...{ estimateWidth, wrapLabel },
 });
 

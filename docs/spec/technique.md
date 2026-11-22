@@ -48,7 +48,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
   serializable scene options, passed unchanged; option names `format`,
-  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
+  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `code` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
@@ -311,6 +311,64 @@ functions; a colour is a token name (G4 applies).
   pulse of the beat is over (`pulseEnd`) at least 50 ms before the step's `at`,
   its target has filled, and nothing repeats while a step rests, so the
   settled-frame rule (G6) holds. Several pulses may run in one beat.
+
+### 4.11 Code blocks (`runtime/code.mjs`)
+
+For custom scenes that walk through a snippet; handed to them in `kit`. Pure
+functions; a colour is a token name (G4 applies).
+
+- **Block.** `codeBlock({lines, x, y, width, maxHeight?, fontSize, lineHeight,
+  padding, radius, overflow, lineNumbers, tabSize, dim, font, roles})` lays
+  the lines out once, when the scene is built. A line is a string, or an array
+  of strings and `{text, role}` runs: the caller supplies the roles; there is
+  no grammar. Tabs expand to `tabSize` columns and trailing spaces are dropped.
+  A column is 0.6 em (the advance of the common monospace faces) and each run
+  is set at its own column, so a fallback face does not shift the lines against
+  one another. `font` defaults to `CODE_FONT`, a monospace stack; a style's own
+  monospace face, when it names one, is passed here. The panel is as tall as
+  its code; `maxHeight` is what the picture can spare.
+- **Fit.** `fontSize` is at least 14 px (§7). A line wider than the block's
+  columns is refused (`overflow: "error"`, the default), wrapped at the last
+  space that fits with the continuation indented two columns (`"wrap"`), or cut
+  with `…` in the last column (`"clip"`). Code taller than `maxHeight` is
+  refused. Each error names the line and the remedies: shorten it, choose
+  `wrap` or `clip`, give the block more width or height (another format), or show
+  fewer lines (one scene per snippet; a longer walkthrough is several scenes or
+  a deck with one click per range). The text of every line, wrapped or clipped
+  or not, stays in `block.text` and `block.rangeText(from, to)`, for the
+  scene's `description` and its step `detail`s.
+- **Roles.** `CODE_ROLES` maps `code`, `keyword`, `string` and `comment` to a
+  token with an optional weight and slant; `roles` adds or replaces roles. A
+  token that is not one of `TOKENS` throws. The defaults are `ink` and `muted`,
+  the tokens that read as text on `surface` in both themes of the neutral style,
+  told apart by weight and slant too. A role set in `accent` or `emphasis` is
+  held to 4.5:1 on `surface` by `codePairs`, and a style that misses it fails G12.
+- **Band.** `drawCode(block, t, moves, {ease})` draws the panel (`surface`,
+  outlined in `line`), the band and the lines. A move is `{lines, start,
+  duration?}`: `lines` is a line or a `[from, to]` range (1-based, inclusive).
+  The first move is where the band appears, fading in over its `duration`
+  (default 0.3 s); each later one moves the band from the range before it
+  (default 0.5 s) on `ease`, the style's movement curve
+  (`easings(style.motion).easeStandard`): the leading edge moves first and the
+  trailing edge follows `CODE_BAND_LAG` (0.07 s) later on the same curve (split
+  edges, §4.5), so the band stretches in flight and gathers on arrival.
+  Moves must not overlap. The band is `accent` at 18 % with a solid 3 px marker
+  on its left edge. A line's brightness is `dim` (default 0.45) plus the rest,
+  in proportion to how much of the line the band covers, so lines light as the
+  band reaches them and dim as it leaves; before the first move every line is
+  dimmed. `codeFocus` returns the band's rows and strength at `t`.
+- **Contrast.** `codePairs(block)` is the pairs the block draws, for
+  `scene.contrastPairs`: each token a role in use (and the line numbers) sets text
+  in, against `surface`, at 4.5; `accent` on `surface` (the marker) and `line` on
+  `bg` (the outline), at 3. The dimmed lines are the same pairs at lower opacity:
+  what a step frame says is in the band.
+- **Canon.** The band moves once per step and rests there. `codeEnd(block,
+  moves)` is the time the last move is over (it also checks the moves, so call it
+  when the scene is built): put each step's `at` at least 50 ms after the end of
+  the move that leads to it, and the settled-frame rule (G6) holds. Nothing
+  loops, and the scene is at most 12 s, so a snippet that does not fit one scene
+  is several scenes. A deck advances it one range per click (one step per click
+  in Slidev; one slide per step in Marp).
 
 ## 5. Markup
 
