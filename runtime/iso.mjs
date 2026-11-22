@@ -897,7 +897,7 @@ function segmentHits(s, r) {
  * the picture. Boxes with `opacity` 0 are not drawn and are skipped. Each
  * problem is one sentence, and a repeated sentence is reported once; none for
  * a clean set. It stops at `limit` problems (default: all; 0 returns none; a
- * negative or NaN `limit` throws), so a scene with thousands of colliding
+ * `limit` that is not a whole number from 0 or Infinity throws), so a scene with thousands of colliding
  * labels costs no more than the first few. Sentences in `ignore` are skipped
  * and do not count towards the limit.
  * @param {LabelBox[]} boxes
@@ -905,7 +905,7 @@ function segmentHits(s, r) {
  * @returns {string[]}
  */
 export function labelProblems(boxes, { width, height, gap = 4, limit = Infinity, ignore }) {
-	if (Number.isNaN(limit) || limit < 0) throw new RangeError(`labelProblems: limit must be 0 or more, got ${limit}`);
+	if (!(limit === Infinity || (Number.isInteger(limit) && limit >= 0))) throw new RangeError(`labelProblems: limit must be a whole number from 0, or Infinity, got ${limit}`);
 	if (limit === 0) return [];
 	const eps = 1e-9; // rounded box edges that meet exactly must not fail on float noise
 	// Drawn unless it fades out: `fade` drops an element whose opacity rounds to 0.

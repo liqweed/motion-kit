@@ -319,6 +319,7 @@ describe("label anchors", () => {
 			assert.deepEqual(labelProblems(outside, { ...view, limit: 0 }), []);
 			assert.throws(() => labelProblems(outside, { ...view, limit: -1 }), RangeError);
 			assert.throws(() => labelProblems(outside, { ...view, limit: NaN }), RangeError);
+			assert.throws(() => labelProblems(outside, { ...view, limit: 0.5 }), RangeError);
 		});
 		it("reports a repeated sentence once and skips ignored ones without counting them", () => {
 			const dup = Array.from({ length: 20 }, () => ({ id: "a", x: 10, y: 10, width: 50, height: 20 }));
