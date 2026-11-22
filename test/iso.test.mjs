@@ -6,6 +6,7 @@ import { loadScene } from "../lib/load.mjs";
 import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawGrid, drawOnPlane, drawSolid, drawSolids, fitCamera, labelAnchor, labelPill, labelProblems, lerpCamera, orderSolids, path3, planeMatrix, prism, project, projector, regularPolygon, roundedBox, roundedSlab, slab } from "../runtime/iso.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
 import { FORMATS, validateScene } from "../runtime/scene.mjs";
+import { estimateWidth } from "../runtime/wrap.mjs";
 import { cubic, polyline, tokenPoints, tokensAlong } from "../runtime/svg.mjs";
 
 const near = (/** @type {number} */ a, /** @type {number} */ b, eps = 1e-9) => assert.ok(Math.abs(a - b) <= eps, `${a} is not ${b}`);
@@ -164,6 +165,10 @@ describe("solids", () => {
 		// a self-intersecting star passes the consecutive-turn check
 		assert.throws(() => prism({ points: [{ x: 0, y: 3 }, { x: 2, y: -3 }, { x: -3, y: 1 }, { x: 3, y: 1 }, { x: -2, y: -3 }], h: 1 }), /convex/);
 		assert.throws(() => prism({ points: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }], h: 1 }), /repeated point/);
+		// The unit square traversed twice: positive area, every turn and half-plane right.
+		const square = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+		assert.throws(() => prism({ points: [...square, ...square], h: 1 }), /repeated point/);
+		assert.throws(() => prism({ points: [...square, ...square].reverse(), h: 1, fill: "surface" }), /repeated point/);
 		assert.throws(() => box({ x: 0, y: 0, w: 0, d: 1, h: 1 }), /positive/);
 		assert.throws(() => box({ x: 0, y: 0, w: 1, d: 1, h: -1 }), /height/);
 		assert.throws(() => regularPolygon(0, 0, 1, 2), /3 sides/);
@@ -261,6 +266,24 @@ describe("label anchors", () => {
 
 	describe("the overlap check", () => {
 		const view = { width: 400, height: 400 };
+		it("does not pay for thousands of identical boxes", () => {
+			const one = anchor("a", 0, 0).box;
+			const many = Array.from({ length: 20000 }, () => ({ ...one }));
+			assert.deepEqual(labelProblems(many, view).filter((p) => !p.includes("stem")), ['labels "a" and "a" overlap']);
+		});
+		it("matches copies on stem coordinates only, ignoring extra properties on the stem", () => {
+			const one = anchor("a", 0, 0).box;
+			/** @type {any} */
+			const circular = { ...one.stem };
+			circular.self = circular;
+			const boxes = /** @type {any[]} */ ([
+				{ ...one, stem: circular },
+				{ ...one, stem: { ...one.stem, extra: 1n } },
+				{ ...one, stem: { ...one.stem, extra: 2n } },
+			]);
+			// Serializing the whole stem would throw on the cycle and the BigInts.
+			assert.deepEqual(labelProblems(boxes, view).filter((p) => !p.includes("stem")), ['labels "a" and "a" overlap']);
+		});
 		it("passes labels that are apart", () => {
 			assert.deepEqual(labelProblems([anchor("a", -4, 0).box, anchor("b", 4, 0).box], view), []);
 		});
@@ -285,6 +308,41 @@ describe("label anchors", () => {
 			const faint = anchor("b", 0, 0, { opacity: 0.0004 });
 			assert.equal(faint.markup, "");
 			assert.deepEqual(labelProblems([anchor("a").box, faint.box], view), []);
+		});
+		it("stops at the limit", () => {
+			const same = Array.from({ length: 1000 }, (_, i) => ({ id: `l${i}`, x: 10, y: 10, width: 50, height: 20 }));
+			assert.equal(labelProblems(same, { ...view, limit: 5 }).length, 5);
+			assert.equal(labelProblems(same.slice(0, 4), view).length, 6);
+		});
+		it("returns nothing at limit 0 and refuses a negative or NaN limit", () => {
+			const outside = [anchor("a", -20, 0).box];
+			assert.deepEqual(labelProblems(outside, { ...view, limit: 0 }), []);
+			assert.throws(() => labelProblems(outside, { ...view, limit: -1 }), RangeError);
+			assert.throws(() => labelProblems(outside, { ...view, limit: NaN }), RangeError);
+			assert.throws(() => labelProblems(outside, { ...view, limit: 0.5 }), RangeError);
+			assert.throws(() => labelProblems(outside, { ...view, limit: /** @type {any} */ (Symbol("x")) }), RangeError);
+		});
+		it("reports a repeated sentence once and skips ignored ones without counting them", () => {
+			const dup = Array.from({ length: 20 }, () => ({ id: "a", x: 10, y: 10, width: 50, height: 20 }));
+			const out = { id: "o", x: -50, y: 0, width: 10, height: 10 };
+			assert.deepEqual(labelProblems([...dup, out], { ...view, limit: 5 }), ['labels "a" and "a" overlap', 'label "o" is outside the picture']);
+			assert.deepEqual(labelProblems([...dup, out], { ...view, limit: 1, ignore: new Set(['labels "a" and "a" overlap']) }), ['label "o" is outside the picture']);
+		});
+		it("checks the box the SVG draws, rounded to two decimals", () => {
+			// A raw left edge of -0.004 is drawn at x="0": inside the picture.
+			const edge = labelAnchor(cam, { id: "e", at: { x: -200.004 / 20, y: 0 }, lines: ["Label"], side: "right" });
+			assert.match(edge.markup, /<rect x="0" /);
+			assert.equal(edge.box.x, 0);
+			assert.deepEqual(labelProblems([edge.box], view), []);
+			// A raw gap of 3.999 is drawn as the required 4 px.
+			const a = anchor("a", 0, 0, { side: "right" });
+			const rawWidth = estimateWidth("Label", 14 * 1.08) + 16;
+			assert.notEqual(rawWidth, a.box.width, "the box width is rounded, so the raw gap differs");
+			const b = labelAnchor(cam, { id: "b", at: { x: (rawWidth + 3.999) / 20, y: 0 }, lines: ["Label"], side: "right" });
+			assert.ok(rawWidth + 3.999 - rawWidth < 4 && b.box.x - a.box.x - rawWidth > 4 - 0.01, "raw gap 3.999 is below 4, its drawn gap is not");
+			assert.match(b.markup, new RegExp(`<rect x="${b.box.x}" `));
+			near(b.box.x - (a.box.x + a.box.width), 4);
+			assert.deepEqual(labelProblems([a.box, b.box].map((x) => ({ ...x, stem: undefined })), view), []);
 		});
 		it("ignores labels that are not drawn", () => {
 			assert.deepEqual(labelProblems([anchor("a").box, anchor("b", 0, 0, { opacity: 0 }).box], view), []);
@@ -373,6 +431,35 @@ describe("the scene gate and labels", () => {
 			const r = checkScene(sceneWithLabels([], { labelBoxes: () => [bad] }));
 			assert.ok(r.problems.some((p) => /labelBoxes\(\) entry 0 must be/.test(p)), JSON.stringify(bad));
 		}
+	});
+	it("fails a label box with a negative width or height", () => {
+		for (const bad of [{ id: "a", x: 10, y: 10, width: -20, height: 10 }, { id: "a", x: 10, y: 10, width: 20, height: -10 }]) {
+			const r = checkScene(sceneWithLabels([], { labelBoxes: () => [bad] }));
+			assert.ok(r.problems.some((p) => /labelBoxes\(\) entry 0 must be/.test(p)), JSON.stringify(bad));
+		}
+	});
+	it("bounds the work and the messages for a scene of many colliding labels", () => {
+		const same = Array.from({ length: 1000 }, (_, i) => ({ id: `l${i}`, x: 10, y: 10, width: 50, height: 20 }));
+		const r = checkScene(sceneWithLabels([], { labelBoxes: () => same }));
+		assert.ok(r.problems.length > 0 && r.problems.length <= 13, `${r.problems.length} problems`);
+	});
+	it("does not ask labelBoxes() once the problem cap is spent, and caps fixed ids", () => {
+		let calls = 0;
+		const many = sceneWithLabels([], { labelBoxes: () => { calls++; return []; } });
+		const frame = /** @type {(t: number, o?: any) => string} */ (many.frame);
+		many.frame = /** @type {any} */ ((/** @type {number} */ t, /** @type {any} */ o) => frame(t, o) + Array.from({ length: 30 }, (_, i) => `<g id="fixed${i}"/>`).join(""));
+		const r = checkScene(many);
+		assert.ok(r.problems.length <= 13, `${r.problems.length} problems`);
+		assert.equal(calls, 0, "labelBoxes() must not be called after the cap");
+	});
+	it("does a linear amount of work for thousands of identical label boxes", () => {
+		let reads = 0;
+		const make = () => ({ id: "same", get x() { reads++; return 10; }, y: 10, width: 50, height: 20 });
+		const boxes = Array.from({ length: 20000 }, make);
+		const problems = labelProblems(boxes, { width: 400, height: 400, limit: 13 });
+		assert.ok(problems.length > 0 && problems.length <= 13);
+		// Collapsing copies keeps this near one read per box; a quadratic scan would read ~10^8 times.
+		assert.ok(reads < boxes.length * 10, `${reads} reads of x`);
 	});
 	it("checks a label that is on screen only at one moment", () => {
 		const cam = camera({ azimuth: 0, elevation: 90, zoom: 20, pan: { x: 200, y: 200 } });
