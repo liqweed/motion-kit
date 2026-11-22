@@ -21,22 +21,22 @@ describe("hatchPattern", () => {
 		assert.ok(Object.isFrozen(h));
 		// @ts-expect-error Hatch fields are immutable to callers too.
 		assert.throws(() => { "use strict"; h.fill = "red"; }, TypeError);
-		assert.equal(h.fill, "url(#p-hatch)");
+		assert.equal(h.fill, "url(#p-hatch-hatch)");
 	});
 	it("is a 45° pattern in a token colour, anchored to the picture", () => {
 		const h = hatchPattern({ idPrefix: "mk-a" });
-		assert.equal(h.id, "mk-a-hatch");
-		assert.equal(h.fill, "url(#mk-a-hatch)");
-		assert.match(h.markup, /^<defs><pattern id="mk-a-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate\(45\)">/);
+		assert.equal(h.id, "mk-a-hatch-hatch");
+		assert.equal(h.fill, "url(#mk-a-hatch-hatch)");
+		assert.match(h.markup, /^<defs><pattern id="mk-a-hatch-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate\(45\)">/);
 		assert.match(h.markup, /stroke="var\(--mk-line\)"/);
 		assert.match(h.markup, /stroke-width="1\.5"/);
 	});
 	it("builds its id from the prefix and a name, so two prefixes share none", () => {
 		const a = hatchPattern({ idPrefix: "mk-a", name: "track" });
 		const b = hatchPattern({ idPrefix: "mk-b", name: "track" });
-		assert.equal(a.id, "mk-a-track");
-		assert.deepEqual(idsOf(a.markup), ["mk-a-track"]);
-		assert.deepEqual(idsOf(b.markup), ["mk-b-track"]);
+		assert.equal(a.id, "mk-a-hatch-track");
+		assert.deepEqual(idsOf(a.markup), ["mk-a-hatch-track"]);
+		assert.deepEqual(idsOf(b.markup), ["mk-b-hatch-track"]);
 		assert.notEqual(a.id, b.id);
 	});
 	it("takes its colour, spacing and width from the caller", () => {
@@ -46,8 +46,8 @@ describe("hatchPattern", () => {
 		assert.match(h.markup, /M5 0 V10/);
 	});
 	it("makes the prefix a safe id, as renderSvg does, so the gate's raw scene id works", () => {
-		assert.equal(hatchPattern({ idPrefix: "bars.16:9" }).id, "bars-16-9-hatch");
-		assert.equal(hatchPattern({ idPrefix: "9x" }).id, "mk-9x-hatch");
+		assert.equal(hatchPattern({ idPrefix: "bars.16:9" }).id, "bars-16-9-hatch-hatch");
+		assert.equal(hatchPattern({ idPrefix: "9x" }).id, "mk-9x-hatch-hatch");
 	});
 	it("refuses what it cannot draw", () => {
 		assert.throws(() => hatchPattern({ idPrefix: "" }), /idPrefix/);
@@ -59,6 +59,7 @@ describe("hatchPattern", () => {
 		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 0 }), /spacing/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 4, width: 4 }), /width/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 0.004, width: 0.002 }), /SVG rounding/);
+		assert.throws(() => hatchPattern({ idPrefix: "x", spacing: 1e307 }), /SVG rounding/);
 		assert.throws(() => hatchPattern({ idPrefix: "x", stroke: "nope" }), /nope/);
 	});
 });
@@ -69,7 +70,7 @@ describe("drawTrack", () => {
 		const out = drawTrack({ x: 10, y: 20, width: 200, height: 24, hatch });
 		assert.equal((out.match(/<rect/g) ?? []).length, 2);
 		assert.match(out, /<rect x="10" y="20" width="200" height="24" rx="12" fill="var\(--mk-surface\)"\/>/);
-		assert.match(out, /rx="12" fill="url\(#x-hatch\)"/);
+		assert.match(out, /rx="12" fill="url\(#x-hatch-hatch\)"/);
 	});
 	it("takes a radius, never more than half a side, and a fill or none", () => {
 		assert.match(drawTrack({ x: 0, y: 0, width: 100, height: 20, radius: 4, hatch }), /rx="4"/);
@@ -109,9 +110,17 @@ describe("drawBar", () => {
 	});
 	it("can clip a short bar to its track silhouette", () => {
 		const out = drawBar({ x: 0, y: 0, width: 19.2, trackWidth: 100, height: 26, p: 1, idPrefix: "scene", id: "row" });
-		assert.match(out, /clip-path="url\(#scene-bar-row-clip\)"/);
-		assert.match(out, /<clipPath id="scene-bar-row-clip"><rect x="0" y="0" width="100" height="26" rx="13"/);
+		assert.match(out, /clip-path="url\(#scene-clip-row\)"/);
+		assert.match(out, /<clipPath id="scene-clip-row"><rect x="0" y="0" width="100" height="26" rx="13"/);
 		assert.throws(() => drawBar({ x: 0, y: 0, width: 10, trackWidth: 20, height: 10, p: 1 }), /needs the frame idPrefix/);
+		assert.equal(drawBar({ x: 0, y: 0, width: 0.004, height: 10, p: 1 }), "");
+	});
+	it("keeps clip and hatch identifiers in disjoint namespaces", () => {
+		const hatch = hatchPattern({ idPrefix: "chart-bar-row", name: "clip" });
+		const bar = drawBar({ x: 0, y: 0, width: 10, trackWidth: 20, height: 10, p: 1, idPrefix: "chart", id: "bar_row" });
+		assert.match(hatch.markup, /id="chart-bar-row-hatch-clip"/);
+		assert.match(bar, /id="chart-clip-bar_row"/);
+		assert.doesNotMatch(bar, /chart-bar-row-hatch-clip/);
 	});
 	it("refuses a p that is not a number", () => {
 		assert.throws(() => bar(NaN), /finite/);
@@ -334,6 +343,11 @@ describe("bars: review edge cases", () => {
 	it("rejects a hatch not made by hatchPattern", () => {
 		const fake = { id: "x", fill: "red", markup: "" };
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: fake }), /hatchPattern/);
+	});
+	it("accepts an immutable, self-consistent hatch from another runtime copy", () => {
+		const own = hatchPattern({ idPrefix: "copy" });
+		const otherCopy = Object.freeze({ ...own });
+		assert.match(drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: otherCopy }), /url\(#copy-hatch-hatch\)/);
 	});
 	it("reserves the picture's own id names", () => {
 		for (const name of ["title", "desc"]) assert.throws(() => hatchPattern({ idPrefix: "p", name }), /reserved/);

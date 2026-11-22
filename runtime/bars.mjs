@@ -33,8 +33,14 @@ const finite = (n) => typeof n === "number" && Number.isFinite(n);
 const ID_PART = /^[A-Za-z0-9_]+$/;
 /** Names `renderSvg` already uses for ids (`${id}-title`, `${id}-desc`). */
 const RESERVED_NAMES = new Set(["title", "desc"]);
-/** Every hatch this module instance has made. This capability stays private. */
-const ISSUED = new WeakSet();
+/** A hatch is safe across separately-vendored runtime copies when its immutable paint is self-consistent. */
+const isHatch = (hatch) => Boolean(hatch
+	&& typeof hatch === "object"
+	&& Object.isFrozen(hatch)
+	&& typeof hatch.id === "string"
+	&& /^[A-Za-z][A-Za-z0-9_-]*$/.test(hatch.id)
+	&& hatch.fill === `url(#${hatch.id})`
+	&& typeof hatch.markup === "string");
 
 /**
  * @typedef {{ readonly id: string, readonly fill: string, readonly markup: string }} Hatch
@@ -47,7 +53,7 @@ const ISSUED = new WeakSet();
  * Diagonal hatching: lines at 45°, rising to the right, `spacing` pixels apart
  * (measured across the lines) and `width` pixels wide, in the token `stroke`.
  * The pattern is anchored to the picture, not to a track, so tracks that use it
- * show one continuous hatch. Its id is `<prefix>-<name>`; a `name` has no "-", so the last "-" ends the prefix. `idPrefix` is normalized with `safeId`, so prefixes must
+ * show one continuous hatch. Its id is `<prefix>-hatch-<name>`; `idPrefix` is normalized with `safeId`, so prefixes must
  * be unique after that normalization: the frame's prefix keeps two instances on a page separate, and a scene that draws
  * several hatchings gives each its own `name`.
  * @param {{ idPrefix: string, name?: string, stroke?: string, spacing?: number, width?: number }} o
@@ -57,16 +63,17 @@ export function hatchPattern({ idPrefix, name = "hatch", stroke = "line", spacin
 	if (typeof idPrefix !== "string" || idPrefix === "") throw new Error(`hatchPattern: idPrefix must be the frame's idPrefix, a non-empty string, got ${JSON.stringify(idPrefix)}`);
 	if (typeof name !== "string" || !ID_PART.test(name)) throw new Error(`hatchPattern: name must use letters, digits and "_" (no "-", which ends the prefix in the id), got ${JSON.stringify(name)}`);
 	if (RESERVED_NAMES.has(name)) throw new Error(`hatchPattern: name "${name}" is reserved for the picture's own ids`);
+	if (!finite(spacing) || spacing <= 0) throw new Error(`hatchPattern: spacing must be a finite positive number, got ${spacing}`);
+	if (!finite(width) || width <= 0 || width >= spacing) throw new Error(`hatchPattern: width must be finite, more than 0 and less than the spacing, got ${width} of ${spacing}`);
 	const drawnSpacing = Number(num(spacing));
 	const drawnWidth = Number(num(width));
-	if (!finite(spacing) || spacing <= 0 || !finite(drawnSpacing) || drawnSpacing <= 0) throw new Error(`hatchPattern: spacing must remain finite and positive after SVG rounding, got ${spacing}`);
-	if (!finite(width) || width <= 0 || width >= spacing || !finite(drawnWidth) || drawnWidth <= 0 || drawnWidth >= drawnSpacing) throw new Error(`hatchPattern: width must remain finite, more than 0 and less than the spacing after SVG rounding, got ${width} of ${spacing}`);
-	const id = `${safeId(idPrefix)}-${name}`; // the frame's prefix is a safe id already; the gate's own call passes the raw scene id
+	if (!finite(drawnSpacing) || drawnSpacing <= 0) throw new Error(`hatchPattern: spacing must remain finite and positive after SVG rounding, got ${spacing}`);
+	if (!finite(drawnWidth) || drawnWidth <= 0 || drawnWidth >= drawnSpacing) throw new Error(`hatchPattern: width must remain finite, more than 0 and less than the spacing after SVG rounding, got ${width} of ${spacing}`);
+	const id = `${safeId(idPrefix)}-hatch-${name}`; // the frame's prefix is a safe id already; the gate's own call passes the raw scene id
 	// One vertical line in the middle of a square tile, turned 45° by the pattern.
 	const line = el("path", { d: `M${num(spacing / 2)} 0 V${num(spacing)}`, fill: "none", stroke: tok(stroke), "stroke-width": width });
 	const pattern = el("pattern", { id, width: spacing, height: spacing, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, line);
 	const hatch = Object.freeze({ id, fill: `url(#${id})`, markup: el("defs", {}, pattern) });
-	ISSUED.add(hatch);
 	return hatch;
 }
 
@@ -75,6 +82,7 @@ function checkRect(who, { x, y, width, height }, allowEmpty = false) {
 	if (![x, y, width, height].every(finite)) throw new Error(`${who}: x, y, width and height must be finite numbers`);
 	if (allowEmpty && width === 0 && height > 0) return;
 	if (width <= 0 || height <= 0) throw new Error(`${who}: width and height must be positive, got ${width} × ${height}`);
+	if ((!allowEmpty && Number(num(width)) <= 0) || Number(num(height)) <= 0) throw new Error(`${who}: width and height must remain positive after SVG rounding, got ${width} × ${height}`);
 }
 
 /** The corner radius for a rect `w` × `h`: `radius`, never more than half of either side. */
@@ -94,7 +102,7 @@ const corner = (/** @type {number | undefined} */ radius, /** @type {number} */ 
  */
 export function drawTrack({ x, y, width, height, hatch, fill = "surface", radius, opacity = 1, id }) {
 	checkRect("drawTrack", { x, y, width, height });
-	if (hatch !== undefined && (!hatch || !ISSUED.has(hatch))) throw new Error("drawTrack: hatch must come from hatchPattern()");
+	if (hatch !== undefined && !isHatch(hatch)) throw new Error("drawTrack: hatch must be an immutable hatchPattern result");
 	if (!hatch && fill === null) throw new Error("drawTrack: a track needs a fill or a hatch");
 	const rx = corner(radius, width, height);
 	const rect = (/** @type {string} */ paint) => el("rect", { x, y, width, height, rx, fill: paint });
@@ -120,9 +128,10 @@ export function drawBar({ x, y, width, height, p, fill = "accent", radius, track
 	if (share <= 0) return "";
 	const w = width * share;
 	if (w <= 0) return "";
+	if (Number(num(w)) <= 0) return "";
 	const bar = el("rect", { x, y, width: w, height, rx: corner(radius, w, height), fill: tok(fill) });
 	if (trackWidth === undefined) return fade(opacity, id ? { "data-bar": id } : {}, bar);
-	const clipId = `${safeId(idPrefix)}-bar-${id}-clip`;
+	const clipId = `${safeId(idPrefix)}-clip-${id}`;
 	const clip = el("defs", {}, el("clipPath", { id: clipId }, el("rect", { x, y, width: trackWidth, height, rx: corner(trackRadius, trackWidth, height) })));
 	return fade(opacity, { "data-bar": id }, clip, el("g", { "clip-path": `url(#${clipId})` }, bar));
 }

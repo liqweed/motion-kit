@@ -366,28 +366,27 @@ functions; a colour is a token name (G4 applies).
 - **Hatch.** `hatchPattern({idPrefix, name, stroke, spacing, width})` returns
   `{id, fill, markup}`: a `<pattern>` of lines at 45°, rising to the right,
   `spacing` px apart (default 7) and `width` px wide (default 1.5), in the token
-  `stroke` (default `line`). Its id is `${safeId(idPrefix)}-${name}` (`name` defaults to
-  `hatch`), so it satisfies G14; a scene that draws several hatchings gives each
-  its own `name`, of letters, digits and `_` only, so the last `-` ends the prefix
-  and prefixes must be unique after `safeId` normalizes them. `name` also cannot be `title` or `desc`,
+  `stroke` (default `line`). Its id is `${safeId(idPrefix)}-hatch-${name}` (`name` defaults to
+  `hatch`), so its hatch namespace cannot collide with a clip path; a scene that draws several hatchings gives each
+  its own `name`, of letters, digits and `_` only. Prefixes must be unique after `safeId` normalizes them. `name` also cannot be `title` or `desc`,
   which `renderSvg` reserves. `markup` is a `<defs>` the frame emits once, before the tracks,
   on every frame; `fill` is `url(#id)`. The pattern is in picture units, so
   tracks that share it show one continuous hatch, and in the player, in `bake`
   and in a PNG or video export it draws the same. It makes the `idPrefix` a safe id token as `renderSvg` does; it throws for an
   empty `idPrefix`, a `name` that is not a safe id token or is reserved, a `spacing` of 0 or less, and a `width` of
-  0 or less or not below the spacing after SVG number rounding.
+  0 or less or not below the spacing after SVG number rounding. An immutable, self-consistent hatch may be passed between separately vendored runtime copies.
 - **Track.** `drawTrack({x, y, width, height, hatch, fill, radius, opacity, id})`
   is an empty bar: a rounded rect filled with the token `fill` (default
   `surface`, `null` for none) and the `hatch` over it. It needs one of the two.
   `radius` defaults to half the height and is never more than half a side. It
-  throws for a size of 0 or less and for a `hatch` not from `hatchPattern`.
+  throws for a size of 0 or less (including after SVG number rounding) and for a mutable or inconsistent hatch.
 - **Bar.** `drawBar({x, y, width, height, p, fill, radius, trackRadius, opacity, idPrefix, id, trackWidth})` draws a
   bar from `x` that is `width * p` long (`width` is its length when done, a share
   of the track's, `p` the eased
   progress 0..1 of its growth), rounded at both ends all the way, so it grows as
   a pill. Nothing for `p ≤ 0`; `p ≥ 1` is the bar it rests as. `fill` is a token
   (default `accent`). Give `trackWidth`, the frame's `idPrefix`, and a local safe
-  `id` (letters, digits and `_`) to clip a short bar to its rounded track; use
+  `id` (letters, digits and `_`) to clip a short bar to its rounded track; clip IDs use a separate `-clip-` namespace. Use
   `trackRadius` when that silhouette differs from the bar's own radius.
 - **Growth.** `barProgress(t, {start, duration}, style)` is the bar's `p`: 0
   before `start` and exactly 1 from `barEnd(run)` = `start + duration` on, on the
