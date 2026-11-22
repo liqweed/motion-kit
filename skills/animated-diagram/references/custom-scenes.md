@@ -192,8 +192,8 @@ moving hero is a 3D model's job, not motion-kit's.
 ## Code and a moving highlight
 
 `kit` also walks through a snippet (`runtime/code.mjs`). Template:
-`examples/code-steps.scene.mjs` (eleven lines; the band lands on three line
-ranges, one per step).
+`examples/code-steps.scene.mjs` (a short snippet; the band lands on one line
+range per step).
 
 | Need | Use |
 |---|---|

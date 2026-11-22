@@ -318,6 +318,35 @@ describe("the code-steps example", () => {
 	});
 });
 
+describe("codeBlock input hardening", () => {
+	it("refuses combining marks and characters XML cannot hold, naming the line", () => {
+		assert.throws(() => codeBlock({ lines: ["ok", "e\u0301"], x: 0, y: 0, width: 400 }), /line 2 has U\+0301/);
+		assert.throws(() => codeBlock({ lines: ["a\u0000b"], x: 0, y: 0, width: 400 }), /line 1 has the character U\+0000/);
+		assert.throws(() => codeBlock({ lines: ["a\u000Bb"], x: 0, y: 0, width: 400 }), /U\+000B/);
+	});
+
+	it("keeps its own copy of the roles", () => {
+		const role = { token: "ink" };
+		const b = codeBlock({ lines: [[{ text: "x", role: "mine" }]], x: 0, y: 0, width: 400, roles: { mine: role } });
+		const before = drawCode(b, 1, [{ lines: 1, start: 0 }]);
+		role.token = "nope";
+		assert.equal(drawCode(b, 1, [{ lines: 1, start: 0 }]), before);
+	});
+
+	it("takes its line count once, at construction", () => {
+		const lines = ["a", "b", "c"];
+		const b = codeBlock({ lines, x: 0, y: 0, width: 400 });
+		lines.length = 0;
+		assert.deepEqual(b.rowSpan(1, 3), [0, 3]);
+		lines.push("a", "b", "c", "d");
+		assert.throws(() => b.rowSpan(1, 4), RangeError);
+	});
+
+	it("keeps the band's marker off the code", () => {
+		assert.throws(() => block({ padding: 0 }), /padding.*at least 10/);
+	});
+});
+
 describe("kit", () => {
 	it("hands the code parts to custom scenes", () => {
 		for (const name of ["codeBlock", "drawCode", "codeEnd", "codeFocus", "codePairs", "CODE_ROLES", "CODE_FONT", "CODE_BAND_LAG"]) assert.ok(name in KIT, name);

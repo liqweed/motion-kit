@@ -65,6 +65,8 @@ export const CODE_BAND_LAG = 0.07;
 
 /** Share of the surface the band's tint covers, under the lines. */
 const BAND_TINT = 0.18;
+/** Where the band's marker ends, from the panel's left edge: the least padding. */
+const MIN_PADDING = 10;
 
 /**
  * A run of code in one role.
@@ -115,6 +117,12 @@ function expandTabs(s, tabSize, col) {
 /** Characters that take two cells (CJK, full-width forms, emoji): a column grid cannot hold them. */
 const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
 
+/** Zero-advance characters (combining marks, joiners, variation selectors): a cell grid cannot place them. */
+const ZERO_WIDTH = /\p{M}|[\u200B-\u200D\u2060\uFEFF]/u;
+
+/** Characters XML 1.0 forbids, lone surrogates included: they would make the SVG invalid. */
+const NOT_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+
 /**
  * A line as a list of characters, each with its role.
  * @param {CodeLine} line
@@ -134,6 +142,10 @@ function flatten(line, n, roles, tabSize) {
 		const role = run.role ?? "code";
 		if (!Object.hasOwn(roles, role)) throw new Error(`codeBlock: line ${n} uses the role "${role}", which is not defined (known: ${Object.keys(roles).join(", ")}); add it to the \`roles\` option`);
 		if (/[\r\n]/.test(run.text)) throw new Error(`codeBlock: line ${n} contains a line break; give each line of code its own entry in \`lines\``);
+		const bad = run.text.match(NOT_XML)?.[0];
+		if (bad) throw new Error(`codeBlock: line ${n} has the character U+${bad.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}, which an SVG cannot hold; remove it`);
+		const zero = run.text.match(ZERO_WIDTH)?.[0];
+		if (zero) throw new Error(`codeBlock: line ${n} has U+${zero.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}, a combining or zero-width character; the block sets code on a grid of one-column characters, so use the precomposed character (or ASCII)`);
 		const wide = run.text.match(WIDE)?.[0];
 		if (wide) throw new Error(`codeBlock: line ${n} has "${wide}", which is wider than one column; the block sets code on a grid of one-column characters, so write that character in ASCII (or draw it outside the block)`);
 		for (const ch of expandTabs(run.text, tabSize, chars.length)) {
@@ -234,22 +246,26 @@ export function codeBlock(opts) {
 	if (!(width > 0)) throw new Error("codeBlock: `width` must be positive");
 	if (fontSize < FONT_MIN) throw new Error(`codeBlock: \`fontSize\` ${fontSize} is under ${FONT_MIN} px, the smallest text the kit draws; show fewer or shorter lines instead`);
 	if (!(lineHeight >= 1)) throw new Error("codeBlock: `lineHeight` must be at least 1");
-	if (!(padding >= 0) || !(radius >= 0)) throw new Error("codeBlock: `padding` and `radius` must not be negative");
+	if (!(radius >= 0)) throw new Error("codeBlock: `radius` must not be negative");
+	if (!(padding >= MIN_PADDING)) throw new Error(`codeBlock: \`padding\` must be at least ${MIN_PADDING} px, so the band's marker (at the panel's left edge) does not paint over the code`);
 	if (!Number.isInteger(tabSize) || tabSize < 1) throw new Error("codeBlock: `tabSize` must be a whole number from 1");
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
 	if (!["error", "wrap", "clip"].includes(overflow)) throw new Error(`codeBlock: \`overflow\` must be "error", "wrap" or "clip", got ${JSON.stringify(overflow)}`);
 	if (typeof font !== "string" || /[<>{};\\]/.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
 	/** @type {Record<string, CodeRole>} */
-	const roles = { ...CODE_ROLES, ...(opts.roles ?? {}) };
-	for (const [name, role] of Object.entries(roles)) {
+	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
+	for (const [name, role] of Object.entries(given)) {
 		if (!role || !TOKENS.includes(role.token)) throw new Error(`codeBlock: role "${name}" names the token "${role?.token}", which is not a style token (known: ${TOKENS.join(", ")})`);
 		if (role.weight !== undefined && !(Number.isInteger(role.weight) && role.weight >= 100 && role.weight <= 900)) throw new Error(`codeBlock: role "${name}" has a weight that is not a whole number from 100 to 900`);
 	}
 
+	/** Own, frozen copies: the caller's role objects can change after construction. */
+	const roles = Object.fromEntries(Object.entries(given).map(([name, role]) => [name, Object.freeze({ ...role })]));
+	const lineCount = lines.length;
 	const charWidth = fontSize * ADVANCE;
 	const rowHeight = fontSize * lineHeight;
-	const digits = String(lines.length).length;
+	const digits = String(lineCount).length;
 	const gutter = lineNumbers ? (digits + 2) * charWidth : 0;
 	const columns = Math.floor((width - 2 * padding - gutter) / charWidth);
 	if (columns < 8) throw new Error(`codeBlock: a width of ${num(width)} px leaves ${Math.max(columns, 0)} columns for code at ${fontSize} px; give the block more width (a wider format) or turn the line numbers off`);
@@ -292,10 +308,10 @@ export function codeBlock(opts) {
 
 	/** @param {number} from @param {number} to */
 	const check = (from, to) => {
-		if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from || to > lines.length) throw new RangeError(`code lines ${from}–${to} are not a range inside the snippet's ${lines.length} lines`);
+		if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from || to > lineCount) throw new RangeError(`code lines ${from}–${to} are not a range inside the snippet's ${lineCount} lines`);
 	};
 	return {
-		x, y, width, height, fontSize, rowHeight, charWidth, padding, radius, font, dim, lineNumbers, digits, columns, roles, lineCount: lines.length, rows, source,
+		x, y, width, height, fontSize, rowHeight, charWidth, padding, radius, font, dim, lineNumbers, digits, columns, roles, lineCount, rows, source,
 		text: source.join("\n"),
 		rowSpan(from, to) {
 			check(from, to);
