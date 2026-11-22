@@ -40,6 +40,13 @@ Rules:
   `{ fg: "accent", bg: "surface", min: 3, use: "bar on its track" }` (4.5 for
   text, 3 for shapes; `references/styles.md`). A scene that declares none is
   held to every shared pair, so declare what you draw.
+- Caution, alert and the monospace face come from the style
+  (`references/styles.md`): `tok("caution")` with `tok("onCaution")` on it,
+  `tok("alert")` with `tok("onAlert")`, and `frame(t, { style })` gives
+  `style.mono` for `font-family`. Never a family of your own; the gate fails one.
+  A scene that draws caution or alert declares the pair
+  (`kit.sharedPairs("caution/bg", "onCaution/caution")`) or the gate fails it.
+  Template: `examples/release-check.scene.mjs`.
 - Use `fade()`/`el()` so invisible elements disappear; `drawOn()` for lines.
 - Ids (clip paths, gradients, masks, markers, filters) MUST be built from
   `idPrefix`, the second argument's field: `${idPrefix}-clip`, referenced as

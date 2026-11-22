@@ -339,11 +339,20 @@ functions; a colour is a token name (G4 applies).
   (`red`), hex, colour functions and other custom properties (`var(--brand)`,
   `var(--mk-accent, red)`) are literals. Text content is not checked: a label
   may say "#1".
-- Tokens (`runtime/style.mjs:14-23`): `bg`, `surface`, `ink`, `muted`, `line`,
-  `accent`, `onAccent`, `emphasis`. Roles: see
+- Tokens (`TOKENS` in `runtime/style.mjs`): `bg`, `surface`, `ink`, `muted`,
+  `line`, `accent`, `onAccent`, `emphasis`, and the optional `caution`,
+  `onCaution`, `alert`, `onAlert` (`OPTIONAL_TOKENS`). Roles: see
   [`styles.md`](../../skills/animated-diagram/references/styles.md). Exactly one
-  element at a time SHOULD carry `emphasis`.
-- A style is data: `{name, font, radius, stroke, motion, light: {token: #rrggbb}, dark: {…}}`.
+  element at a time SHOULD carry `emphasis`; `caution` and `alert` mark a state
+  of what is shown and any number of elements may carry them. A live SVG's
+  inline `style` names an optional token only when the frame uses it, so a
+  scene that draws none renders byte for byte as before they existed; a host
+  page or player declares every token.
+- A style is data: `{name, font, mono, radius, stroke, motion, light: {token: #rrggbb}, dark: {…}}`.
+  `mono` is a CSS font-family list for metrics and code (default: neutral's);
+  a scene reaches it as `style.mono` and MUST NOT write a family of its own:
+  [gate] `findFontLiteral` fails a `font-family` that is neither `style.font`,
+  `style.mono` nor `inherit`.
   `normalizeStyle` fills missing fields from `NEUTRAL`
   (`runtime/style.mjs:25-50,58-77`) and MUST throw on an unknown token or a
   non-`#rrggbb` value (`runtime/style.mjs:70-73`). If `dark` is absent, dark
@@ -382,6 +391,12 @@ functions; a colour is a token name (G4 applies).
   (`lib/check.mjs`) and MUST report, once per run, every shared pair the style
   misses with the scene types that draw it (`lib/gate.mjs`), without failing
   on it. `neutral` MUST pass every shared pair (`test/runtime.test.mjs`).
+  The pairs of the optional tokens (`caution`/`bg` and `alert`/`bg` at 3:1,
+  `onCaution`/`caution` and `onAlert`/`alert` at 4.5:1) are shared pairs no
+  scene type draws: a scene that declares nothing is not held to them, a scene
+  that uses one of the four tokens MUST declare a pair that names it
+  ([gate] `lib/check.mjs`), and the run reports one as a warning only when the
+  style sets that token itself.
 - motion-kit ships only `neutral` (`styles/neutral.json`); brand styles MUST
   live in the consumer repo.
 

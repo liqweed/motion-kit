@@ -48,7 +48,7 @@ Two kinds of change are not breaking, even though output differs:
   `{ ...options, format, locale, kit }`, with optional exported `locales` for gate coverage.
 - The spec format of each registered scene type (`sequence`, `hub-spoke`, `timeline`,
   `stack`, `state-machine`, `request-journey`, `flowchart`).
-- Style data: `{ name?, font?, radius?, stroke?, motion?: { enter?, move? }, light: {token: "#rrggbb"}, dark: {…} }`
+- Style data: `{ name?, font?, mono?, radius?, stroke?, motion?: { enter?, move? }, light: {token: "#rrggbb"}, dark: {…} }`
   and the token names in `TOKENS`.
 
 ### Runtime exports
@@ -63,7 +63,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/iso.mjs` | `camera`, `CAMERA_PLAN`, `CAMERA_ISOMETRIC`, `ISO_ELEVATION`, `lerpCamera`, `fitCamera`, `projector`, `project`, `path3`, `box`, `slab`, `prism`, `regularPolygon`, `orderSolids`, `drawSolid`, `drawSolids`, `labelAnchor`, `labelProblems` (the solid and label-box shapes they take and return) |
 | `runtime/connectors.mjs` | `connectorPath` (its `at`, `cut`, `tip`), `drawConnector`, `drawJunction`, `drawPulse`, `pulseEnd`, `pulseHead`, `PULSE_LAG` (the option and `run` shapes they take) |
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
-| `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` (and its optional pair list), `contrastReport`, `sharedPairs`, `CONTRAST_PAIRS`, `CONTRAST_EXEMPT` |
+| `runtime/style.mjs` | `TOKENS`, `OPTIONAL_TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars` (and its optional markup argument), `resolveTokens`, `contrast`, `checkContrast` (and its optional pair list), `contrastReport`, `sharedPairs`, `setsOptionalToken`, `CONTRAST_PAIRS`, `CONTRAST_EXEMPT` |
 | `runtime/patch.mjs` | `patchMarkup` |
 | `runtime/player.mjs` | `mountPlayer` (its options and the controller: `seek`, `play`, `pause`, `seekStep`, `playToStep`, `onStep`, `destroy`, `time`, `scene`), `resolveLabels` and the label keys, `playerMarkup`, `themeCss`, `PLAYER_CSS` |
 | `runtime/links.mjs` | `scrollSteps` and `linkSteps` (their options, the `data-mk-step` attribute, the `aria-current="step"` marks, the returned dispose function), `stepRef`, `sectionSteps`, `activeSection`, `scrollMove` |

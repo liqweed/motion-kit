@@ -1,6 +1,7 @@
 {
 	"name": "neutral",
 	"font": "ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", \"Helvetica Neue\", Helvetica, Arial, sans-serif",
+	"mono": "ui-monospace, \"SF Mono\", \"Cascadia Mono\", Menlo, Consolas, \"DejaVu Sans Mono\", monospace",
 	"radius": 10,
 	"stroke": 2,
 	"motion": {
@@ -15,7 +16,11 @@
 		"line": "#8b929c",
 		"accent": "#1d36a8",
 		"onAccent": "#ffffff",
-		"emphasis": "#d97706"
+		"emphasis": "#d97706",
+		"caution": "#a16207",
+		"onCaution": "#ffffff",
+		"alert": "#dc2626",
+		"onAlert": "#ffffff"
 	},
 	"dark": {
 		"bg": "#0f1115",
@@ -25,6 +30,10 @@
 		"line": "#6b7280",
 		"accent": "#2563eb",
 		"onAccent": "#ffffff",
-		"emphasis": "#fbbf24"
+		"emphasis": "#fbbf24",
+		"caution": "#facc15",
+		"onCaution": "#111827",
+		"alert": "#f87171",
+		"onAlert": "#0f1115"
 	}
 }

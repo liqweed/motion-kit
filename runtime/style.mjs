@@ -11,14 +11,14 @@
  * viewers do not understand CSS variables.
  *
  * A style is plain data:
- *   { name, font, radius, stroke, motion, light: {token: color}, dark: {token: color} }
+ *   { name, font, mono, radius, stroke, motion, light: {token: color}, dark: {token: color} }
  */
 import { DEFAULT_MOTION } from "./motion.mjs";
 
 /**
- * A visual style: font, shape constants, the entrance and movement curves and
- * one colour per token, per theme.
- * @typedef {{ name?: string, font: string, radius: number, stroke: number, motion: Motion, light: Record<string, string>, dark: Record<string, string> }} Style
+ * A visual style: the font and the monospace font, shape constants, the
+ * entrance and movement curves and one colour per token, per theme.
+ * @typedef {{ name?: string, font: string, mono: string, radius: number, stroke: number, motion: Motion, light: Record<string, string>, dark: Record<string, string> }} Style
  */
 
 export const TOKENS = [
@@ -30,11 +30,25 @@ export const TOKENS = [
 	"accent", // active / reached state fill and path
 	"onAccent", // text and glyphs on accent
 	"emphasis", // the single emphasis element (marker, highlight)
+	"caution", // a shared concern or a regression: amber, not the emphasis marker
+	"onCaution", // text and glyphs on caution
+	"alert", // a warning, a failure or a struck-out idea: red
+	"onAlert", // text and glyphs on alert
 ];
+
+/**
+ * The tokens beyond the original eight. A style that does not set them gets
+ * neutral's, and a frame that never draws one renders as it always did: the
+ * inline `style` of a live SVG names an optional token only when the frame
+ * uses it (`cssVars`), and the shared contrast pairs that involve one are held
+ * only against scenes that declare them (`CONTRAST_PAIRS`).
+ */
+export const OPTIONAL_TOKENS = Object.freeze(["caution", "onCaution", "alert", "onAlert"]);
 
 export const NEUTRAL = Object.freeze({
 	name: "neutral",
 	font: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif',
+	mono: 'ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace',
 	radius: 10,
 	stroke: 2,
 	motion: DEFAULT_MOTION,
@@ -47,6 +61,10 @@ export const NEUTRAL = Object.freeze({
 		accent: "#1d36a8",
 		onAccent: "#ffffff",
 		emphasis: "#d97706",
+		caution: "#a16207",
+		onCaution: "#ffffff",
+		alert: "#dc2626",
+		onAlert: "#ffffff",
 	}),
 	dark: Object.freeze({
 		bg: "#0f1115",
@@ -57,6 +75,10 @@ export const NEUTRAL = Object.freeze({
 		accent: "#2563eb",
 		onAccent: "#ffffff",
 		emphasis: "#fbbf24",
+		caution: "#facc15",
+		onCaution: "#111827",
+		alert: "#f87171",
+		onAlert: "#0f1115",
 	}),
 });
 
@@ -98,6 +120,7 @@ export function normalizeStyle(style) {
 	const out = {
 		name: style.name ?? "custom",
 		font: style.font ?? NEUTRAL.font,
+		mono: style.mono ?? NEUTRAL.mono,
 		radius: style.radius ?? NEUTRAL.radius,
 		stroke: style.stroke ?? NEUTRAL.stroke,
 		motion: normalizeMotion(style.motion, style.name ?? "custom"),
@@ -108,7 +131,9 @@ export function normalizeStyle(style) {
 		if (!Number.isFinite(out[key]) || out[key] < min || out[key] > max) throw new Error(`style "${out.name}": ${key} must be a number from ${min} to ${max}`);
 	}
 	// The font goes into CSS and markup: a family list never needs these characters.
-	if (typeof out.font !== "string" || /[<>{};\\]/.test(out.font)) throw new Error(`style "${out.name}": font must be a CSS font-family list, got ${JSON.stringify(out.font)}`);
+	for (const key of /** @type {const} */ (["font", "mono"])) {
+		if (typeof out[key] !== "string" || /[<>{};\\]/.test(out[key])) throw new Error(`style "${out.name}": ${key} must be a CSS font-family list, got ${JSON.stringify(out[key])}`);
+	}
 	for (const theme of ["light", "dark"]) {
 		for (const key of Object.keys(out[theme])) {
 			if (!TOKENS.includes(key)) throw new Error(`style "${out.name}": unknown token "${key}" in ${theme}`);
@@ -120,10 +145,19 @@ export function normalizeStyle(style) {
 	return out;
 }
 
-/** CSS custom-property declarations for one theme. */
-export function cssVars(style, theme = "light") {
+/**
+ * CSS custom-property declarations for one theme. With `markup` (a frame), an
+ * optional token is declared only if the markup uses it, so a scene that draws
+ * none of them is styled byte for byte as before they existed; without it,
+ * every token is declared, as a host page or player should.
+ * @param {any} style style data or "neutral"
+ * @param {string} [theme] "light" | "dark"
+ * @param {string} [markup]
+ */
+export function cssVars(style, theme = "light", markup) {
 	const s = normalizeStyle(style);
-	return TOKENS.map((t) => `--mk-${t}:${s[theme][t]}`).join(";");
+	const used = (/** @type {string} */ t) => markup === undefined || !OPTIONAL_TOKENS.includes(t) || markup.includes(`var(--mk-${t})`);
+	return TOKENS.filter(used).map((t) => `--mk-${t}:${s[theme][t]}`).join(";");
 }
 
 /** Replace every var(--mk-token) with its literal value. Unknown tokens throw. */
@@ -186,7 +220,32 @@ export const CONTRAST_PAIRS = Object.freeze([
 		min: 3,
 		use: "the emphasis ring around the reached node it marks (sequence, flowchart): 3.5 units apart, so adjacent at phone size. It tells the current node from the reached ones without relying on hue. The dot of hub-spoke, stack and walk rides over accent connectors",
 	},
+	{ fg: "caution", bg: "bg", min: 3, use: "a caution mark, rule or outline on the canvas (optional token: held only against scenes that declare the pair)" },
+	{ fg: "onCaution", bg: "caution", min: 4.5, use: "text and glyphs on a caution fill (optional token: held only against scenes that declare the pair)" },
+	{ fg: "alert", bg: "bg", min: 3, use: "an alert mark, rule or outline on the canvas (optional token: held only against scenes that declare the pair)" },
+	{ fg: "onAlert", bg: "alert", min: 4.5, use: "text and glyphs on an alert fill (optional token: held only against scenes that declare the pair)" },
 ].map((p) => Object.freeze(p)));
+
+/**
+ * Whether a shared pair involves one of the optional tokens (caution, alert).
+ * No scene type draws them, so such a pair is not part of "a scene that
+ * declares nothing is held to all of them": a scene that draws one declares it
+ * (the gate fails a scene that uses the token and does not).
+ * @param {ContrastPair} p
+ */
+const isOptionalPair = (p) => OPTIONAL_TOKENS.includes(p.fg) || OPTIONAL_TOKENS.includes(p.bg);
+
+/**
+ * Whether the style's author set an optional token of this pair themselves.
+ * Only then is a miss on a pair no scene declares worth a warning: a style
+ * that leaves them at neutral's has not asked for them.
+ * @param {any} style style data as given, before normalizeStyle fills it
+ * @param {ContrastPair} p
+ */
+export function setsOptionalToken(style, p) {
+	if (!style || typeof style !== "object") return false;
+	return [p.fg, p.bg].some((t) => OPTIONAL_TOKENS.includes(t) && (style.light?.[t] !== undefined || style.dark?.[t] !== undefined));
+}
 
 /**
  * Pairs that are drawn (by the scene types, only in motion; or by the
@@ -262,7 +321,9 @@ export function sharedPairs(...names) {
 /**
  * What one scene owes the style, WCAG 1.4.3 and 1.4.11 applied to the pairs it
  * draws. A scene that declares no pairs draws, for this purpose, all of
- * CONTRAST_PAIRS: every miss is a problem. A scene that declares them
+ * CONTRAST_PAIRS but the optional tokens' (caution, alert): every miss is a
+ * problem. A scene that draws those declares them, and the gate fails one that
+ * uses the token without. A scene that declares them
  * (`scene.contrastPairs`) is held to those; the shared pairs it does not
  * declare are only reported, as warnings, because WCAG judges what is drawn,
  * not the palette.
@@ -273,7 +334,7 @@ export function sharedPairs(...names) {
 export function contrastReport(style, drawn) {
 	const s = normalizeStyle(style);
 	// An empty list says nothing about what is drawn, which is no reason to drop every check.
-	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) return { problems: checkContrast(s), warnings: [] };
+	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) return { problems: checkContrast(s, CONTRAST_PAIRS.filter((p) => !isOptionalPair(p))), warnings: [] };
 	if (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length) return { problems: checkContrast(s, drawn), warnings: [] };
 	// A declaration may add pairs and name shared ones, never weaken a shared threshold.
 	// Contrast is symmetric, so a pair written the other way round is the same adjacency.
@@ -284,7 +345,7 @@ export function contrastReport(style, drawn) {
 		return shared && d.min < shared.min ? { ...d, min: shared.min } : d;
 	});
 	const problems = checkContrast(s, drawn);
-	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => same(p, d)));
+	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => same(p, d)) && (!isOptionalPair(p) || setsOptionalToken(style, p)));
 	const warnings = misses(s, undrawn).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`);
 	return { problems, warnings };
 }
