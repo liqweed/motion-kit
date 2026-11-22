@@ -77,19 +77,19 @@ describe("site build", () => {
 		}
 	});
 	it("shows each example route's diagram, or its storyboard, without JavaScript", { skip }, async () => {
-		const spec = LIVE.find((e) => e.kind === "spec");
-		const custom = LIVE.find((e) => e.kind === "module");
-		for (const entry of [spec, custom]) {
-			assert.ok(entry, "the catalog has a spec and a custom scene");
+		const live = LIVE.filter((e) => e.kind === "spec" || e.kind === "module");
+		assert.ok(live.some((e) => e.kind === "spec") && live.some((e) => e.kind === "module"), "the catalog has a spec and a custom scene");
+		for (const entry of live) {
 			const html = read(join("examples", entry.id, "index.html"));
 			assertPlayer(html, "ex-wide", await sceneOf(entry, "wide"));
 			assertPlayer(html, "ex-tall", await sceneOf(entry, "tall"));
 		}
-		const planned = PLANNED[0];
-		assert.ok(planned, "the catalog plans something");
-		const html = read(join("examples", planned.id, "index.html"));
-		assert.ok(!html.includes('class="mk-player'), "a planned example is not shown as a player");
-		assert.ok(html.includes(planned.title), "a planned example names itself");
+		assert.ok(PLANNED.length > 0, "the catalog plans something");
+		for (const planned of PLANNED) {
+			const html = read(join("examples", planned.id, "index.html"));
+			assert.ok(!html.includes('class="mk-player'), `${planned.id}: a planned example is not shown as a player`);
+			assert.ok(html.includes(planned.title), `${planned.id}: a planned example names itself`);
+		}
 	});
 	it("sets the site in its two typefaces, self-hosted", { skip }, () => {
 		const dir = join(dist, "_astro");
@@ -100,12 +100,16 @@ describe("site build", () => {
 		assert.match(css, /body\s*\{[^}]*var\(--sans\)/, "body uses the sans variable");
 		assert.match(css, /(?:code|pre)[^{]*\{[^}]*var\(--mono\)/, "code uses the mono variable");
 		for (const face of ["Instrument Sans", "DM Mono"]) {
-			const rule = css.match(new RegExp(`@font-face\\{[^}]*${face}[^}]*\\}`))?.[0] ?? "";
-			const url = rule.match(/url\(["']?([^)"']+\.woff2)/)?.[1];
-			assert.ok(url, `${face} is declared with a woff2 source`);
-			assert.ok(existsSync(join(dist, url.replace(/^\//, ""))) || existsSync(join(dir, url.split("/").pop() ?? "")), `${face}'s file is served`);
+			const rules = [...css.matchAll(/@font-face\{[^}]*\}/g)].map((m) => m[0]).filter((r) => r.includes(face));
+			assert.ok(rules.length > 0, `${face} is declared`);
+			for (const rule of rules) {
+				const url = rule.match(/url\(["']?([^)"']+\.woff2)/)?.[1];
+				assert.ok(url, `${face} is declared with a woff2 source`);
+				assert.ok(existsSync(join(dist, url.replace(/^\//, ""))), `${face}'s file ${url} is served`);
+			}
 		}
 		assert.ok(!/Space Grotesk|Inter Variable|(^|[^\w-])["']?Inter["']?\s*[,;}]/m.test(css), "no Space Grotesk or Inter");
+		for (const f of ["instrument-sans", "dm-mono"]) assert.ok(existsSync(join(dist, "licenses", `LICENSE-${f}.txt`)), `${f}'s OFL notice ships with the site`);
 		assert.ok(files.some((f) => /instrument-sans.*\.woff2$/.test(f)) && files.some((f) => /dm-mono.*\.woff2$/.test(f)), "both typefaces are self-hosted");
 	});
 });

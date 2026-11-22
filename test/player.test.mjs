@@ -553,3 +553,24 @@ it("a destroyed controller reports no pending autoplay", () => {
 	env.player.destroy();
 	assert.equal(env.player.autoplayPending, false);
 });
+
+it("playing and autoplayPending follow the controller through play, completion and a seek", () => {
+	const waiting = setup({ autoplay: "visible" });
+	assert.deepEqual([waiting.player.playing, waiting.player.autoplayPending], [false, true], "autoplay waits for the view");
+	waiting.player.seek(0);
+	assert.equal(waiting.player.autoplayPending, false, "a seek cancels the pending autoplay");
+	assert.equal(waiting.player.playing, false);
+
+	const shown = setup({ autoplay: "visible" });
+	shown.show();
+	assert.deepEqual([shown.player.playing, shown.player.autoplayPending], [true, false], "entering the view starts it");
+	shown.advance(scene.duration * 1000 + 1000);
+	assert.equal(shown.player.time, scene.duration);
+	assert.equal(shown.player.playing, false, "completion ends playback");
+
+	const manual = setup();
+	manual.player.play();
+	assert.equal(manual.player.playing, true);
+	manual.player.pause();
+	assert.equal(manual.player.playing, false);
+});

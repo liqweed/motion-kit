@@ -81,14 +81,26 @@ export function responsive(base, mountOne, env = { doc: document, query: matchMe
 				}
 				let alive = true;
 				const entry = { stop: /** @type {(() => Handoff) | null} */ (null), cancel: () => (alive = false) };
-				el.inert = false;
 				mounted.set(format, entry);
+				// The figure's old markup stays inert until the new player has mounted (or failed), so nobody tabs into dead controls.
+				const settle = () => {
+					if (alive) el.inert = false;
+				};
 				mountOne(el, format, { live: () => alive, resume }).then((stop) => {
-					if (!stop) return;
+					if (!stop) {
+						// A failed mount leaves no controller: forget it so a later check of this format tries again.
+						if (alive && mounted.get(format) === entry) mounted.delete(format);
+						settle();
+						return;
+					}
+					settle();
 					// A mount cancelled while it was loading still returns its teardown: run it now, so nothing it acquired outlives the switch.
 					if (alive) entry.stop = stop;
 					else stop();
-				}, () => {});
+				}, () => {
+					if (alive && mounted.get(format) === entry) mounted.delete(format);
+					settle();
+				});
 			}
 		}
 	};

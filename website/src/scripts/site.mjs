@@ -271,6 +271,10 @@ export function keyControls(root, controller, { legend, callouts, plate }) {
 		plate.classList.add("leaders-draw");
 	};
 	const off = new AbortController();
+	// A shared plate may still carry the armed class from a layout that was torn down, so reduced motion shows the final state outright.
+	// A player restored already settled (a handoff after the scene finished) has nothing left to wait for either.
+	const settled = !controller.playing && !controller.autoplayPending && controller.time >= controller.scene.duration - 0.02;
+	if (!drawn && (reducedMotion() || settled)) draw();
 	if (!drawn && !reducedMotion() && !plate.classList.contains("leaders-draw")) {
 		plate.classList.add("leaders-armed");
 		// The player rests on its final frame until autoplay starts, so only a playback that has begun can end.

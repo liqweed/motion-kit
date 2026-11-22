@@ -92,7 +92,17 @@ describe("breakpoint handoff", () => {
 		await tick();
 		assert.equal(stops, 1, "the cancelled mount's teardown ran");
 		w.cross("wide");
+		assert.equal(w.doc.getElementById("f-wide").inert, true, "still inert while the new player loads");
+		await tick();
 		assert.equal(w.doc.getElementById("f-wide").inert, false, "a new mount makes it live again");
+	});
+	it("a mount that failed is forgotten, so the format is tried again", async () => {
+		const w = windowWith("wide");
+		let attempts = 0;
+		const go = responsive("f", async () => { attempts++; }, w);
+		await tick();
+		go();
+		assert.equal(attempts, 2);
 	});
 	it("a mount that was still loading when the window crossed never goes live", async () => {
 		const w = windowWith("wide");
