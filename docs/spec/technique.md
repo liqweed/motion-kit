@@ -69,8 +69,8 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | T1 | `frame(t)` MUST depend only on `t` and the scene's constants: no `Date`, `Math.random`, `performance.now`, no state carried between calls, no module-level mutable state. | [gate] G1 re-renders each `t`; G11 renders under stubbed clocks and scans the source (`lib/check.mjs`) | Random access: a player can jump, an exporter can write exactly one frame, video samples `t = f/fps` (`runtime/scene.mjs:14-17`). |
 | T2 | Same `t` (and same style/options) MUST give byte-identical output. | [gate] G1 | Tests, diffs, caching and committed media all depend on it. |
 | T3 | Callers MUST clamp `t` to `[0, duration]`; `renderSvg` does (`runtime/scene.mjs:70`). `frame` MAY assume a clamped `t`. | — | Defines "before start" and "hold". |
-| T4 | Every number interpolated into markup MUST be rounded: `num(n, 2)` by default, 3 digits for `opacity`, 4 for scale factors (`runtime/svg.mjs:17-22,29,64`). `num` MUST throw on non-finite input and never emit `-0`. | [gate] G3; non-finite → G5 | 17-digit floats made "settled" frames differ by 1 ms (`skills/animated-diagram/references/technique.md:128-129`). |
-| T5 | Visibility MUST be decided on rounded values: an element whose opacity rounds to 0 is omitted; an opacity that rounds to 1 is not written (`runtime/svg.mjs:28,39,68-72`). | by construction (`el`, `fade`) | Identical-looking frames must be identical bytes (opacity 0.9999 vs omitted). |
+| T4 | Every number interpolated into markup MUST be rounded: `num(n, 2)` by default, 3 digits for `opacity`, 4 for scale factors (`num`, `el`, `fade` in `runtime/svg.mjs`). `num` MUST throw on non-finite input and never emit `-0`. | [gate] G3; non-finite → G5 | 17-digit floats made "settled" frames differ by 1 ms (`skills/animated-diagram/references/technique.md:128-129`). |
+| T5 | Visibility MUST be decided on rounded values: an element whose opacity rounds to 0 is omitted; an opacity that rounds to 1 is not written (`el`, `fade` in `runtime/svg.mjs`). | by construction (`el`, `fade`) | Identical-looking frames must be identical bytes (opacity 0.9999 vs omitted). |
 | T6 | Scenes MUST NOT use CSS transitions/animations or timers; the renderer owns the clock (`runtime/player.mjs:15`). | — | Exported frames would not match what plays. |
 | T7 | Variation, if any, MUST derive from constants and `t` (seeded), never from runtime randomness. | [gate] G1, G11 | Same as T2. |
 
@@ -197,7 +197,7 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
   `f` of total arc length (`polyline` in `runtime/svg.mjs`).
 - `cubic(p0…p3, samples = 64)` → `{length, d, at(f)}` with a 64-sample
   arc-length lookup table and binary search, so a marker moves at constant
-  speed without a DOM in Node and browsers (`cubic` in `runtime/svg.mjs`).
+  speed (approximately, within a lookup interval) without a DOM in Node and browsers (`cubic` in `runtime/svg.mjs`).
 - `drawOn(length, p)`: `null` for `p ≤ 0`, `{}` for `p ≥ 1`, else
   `stroke-dasharray: L L; stroke-dashoffset: L·(1 − p)`
   (`drawOn` in `runtime/svg.mjs`). Callers MUST skip the element when it returns
@@ -364,8 +364,8 @@ functions; a colour is a token name (G4 applies).
 - `blurReveal(enter, {id, rise = 6, blur = 4}, ...children)` draws `children`
   with an opacity that rises to one and a rise and a blur that go to zero as
   `enter` (an eased progress, §4.2) goes from 0 to 1: one `<g transform opacity filter>` and,
-  while the blur is above 0.005, a `<defs>` holding one `<filter>` with one
-  `<feGaussianBlur>`. It returns `""` for `enter ≤ 0`.
+  while the blur is 0.005 or more, a `<defs>` holding one `<filter>` with one
+  `<feGaussianBlur>`. It returns `""` for `enter ≤ 0` and wherever the opacity rounds to zero.
 - **Settled means bare.** Once `enter` reaches 1, as `fade` rounds it (0.9995
   and above), `blurReveal` MUST return the children unchanged: no group, no
   filter, no `<defs>`, so a settled frame is byte-identical to the same markup
@@ -375,7 +375,7 @@ functions; a colour is a token name (G4 applies).
   (a rise or a blur under 0.005 units), so a frame never carries
   a `stdDeviation="0"`, which renderers read differently.
 - **Ids.** `id` names the filter and MUST be built from `frame`'s `idPrefix`
-  (`${idPrefix}-reveal-1`), one per revealed element, so G14 holds and a baked
+  (`${idPrefix}-reveal-1`), one per revealed element, so the sampled G14 check for ids shared across instances holds and a baked
   SVG, which renders each slice with its own prefix, never repeats one
   [throws unless `id` is a CSS-safe token]. `rise` is 0 to 24 and `blur` 0 to 12
   [throws].
@@ -384,7 +384,7 @@ functions; a colour is a token name (G4 applies).
   which holds the blur of text at least about 50 units wide. For anything
   narrower, or a `blur` above the default, `box: {x, y, width, height}` (the
   element's own box, finite and positive [throws]) makes the region that box
-  plus 3 × `blur` on every side (`filterUnits="userSpaceOnUse"`). The live player (its
+  plus 3 × `blur` on every side (`filterUnits="userSpaceOnUse"`). The tests compare the SVG markup, baked slices and the patched DOM, and a resvg fixture of one mid-reveal frame; other renderers are not compared. The live player (its
   in-place patch updates `stdDeviation` and the group's attributes, and drops
   the group when the reveal ends), `renderSvg`, `bake`, PNG export (resvg and
   Chrome) and video draw the blur the same way (`test/reveal.test.mjs`,
@@ -419,7 +419,7 @@ functions; a colour is a token name (G4 applies).
 ## 5. Markup
 
 - Text and attribute values MUST be escaped (`& < > " '`) via `esc`, `text` or
-  `el`/`attrString` (`runtime/svg.mjs:10-14,24-33,45-57`). Labels MUST NOT be able
+  `el`/`attrString` (`esc`, `text`, `el` in `runtime/svg.mjs`). Labels MUST NOT be able
   to inject markup (`test/runtime.test.mjs:118-124`).
 - `el(tag, attrs, …children)` treats children as trusted markup; untrusted
   strings MUST go through `text()`/`esc()`.
