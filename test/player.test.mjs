@@ -639,6 +639,7 @@ it("a step subscriber that seeks to 0 while the reset frame publishes keeps auto
 it("rejected commands from a step subscriber during the reset frame do not veto autoplay", () => {
 	const env = setup({ autoplay: "visible" });
 	let armed = false;
+	let reachedEnd = false;
 	env.player.onStep(() => {
 		if (!armed) return;
 		armed = false;
@@ -647,9 +648,13 @@ it("rejected commands from a step subscriber during the reset frame do not veto 
 		assert.throws(() => env.player.seekStep("no-such-step"));
 		assert.throws(() => env.player.playToStep(-1));
 		assert.throws(() => env.player.playToStep("no-such-step"));
+		reachedEnd = true;
 	});
 	armed = true;
 	env.show();
+	// draw() swallows listener errors into reportError, so a failed assertion above would otherwise vanish.
+	assert.deepEqual(env.reported, [], "no assertion in the subscriber failed");
+	assert.equal(reachedEnd, true, "the subscriber ran every check");
 	assert.equal(env.player.playing, true, "a rejected command is no takeover, so autoplay still starts");
 	assert.equal(env.player.autoplayPending, false);
 });
@@ -675,6 +680,12 @@ it("omitting autoplay uses the visible default; none and reduced motion leave th
 	assert.equal(none.player.playing, false);
 	assert.equal(none.player.time, scene.duration);
 	assert.equal(none.frames.size, 0);
+	const observed = setup({ options: { autoplay: undefined } });
+	assert.equal(observed.player.autoplayPending, true, "with an observer the omitted option waits for the view");
+	assert.equal(observed.player.playing, false);
+	assert.equal(observed.frames.size, 0, "nothing is queued before a qualifying report");
+	observed.show();
+	assert.equal(observed.player.playing, true, "a qualifying report starts it");
 	const reduced = setup({ options: { autoplay: undefined }, observer: false, reduced: true });
 	assert.equal(reduced.player.playing, false);
 	assert.equal(reduced.player.time, scene.duration);

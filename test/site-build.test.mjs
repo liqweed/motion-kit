@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { sceneFromModule } from "../runtime/kit.mjs";
+import { esc } from "../runtime/svg.mjs";
 import { createScene } from "../runtime/types/index.mjs";
 import { ISO_SHOWCASE, LIVE, PLANNED } from "../website/src/scripts/catalog.mjs";
 
@@ -56,7 +57,9 @@ function assertPlayer(html, id, scene) {
 	assert.equal((fig.match(/<button type="button" class="mk-btn"[ >]/g) ?? []).length, scene.steps.length, `${id} has one button per step`);
 	const controls = fig.replace(/<!--[\s\S]*?-->/g, "").match(/<div\b(?=[^>]*\bclass="mk-controls")[^>]*>/)?.[0];
 	assert.ok(controls, `${id} has a controls element`);
-	assert.match(controls, /\sinert(?=[\s=>\/])/, `${id} controls are inert until the player mounts`);
+	// Read the attribute names, so an `aria-label="… inert …"` value never stands in for the attribute.
+	const attrNames = [...controls.replace(/^<div\b/, "").matchAll(/\s([^\s=>\/]+)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]*))?/g)].map((m) => m[1]);
+	assert.ok(attrNames.includes("inert"), `${id} controls are inert until the player mounts`);
 	const stage = fig.match(/<div\b[^>]*\bclass="mk-stage"[^>]*>/)?.[0];
 	assert.ok(stage, `${id} has a stage wrapper`);
 	assert.doesNotMatch(stage, /\stabindex\b/, `${id} stage has no tab stop before mount`);
@@ -64,7 +67,7 @@ function assertPlayer(html, id, scene) {
 	assert.ok(list, `${id} has its own step list`);
 	const items = [...list[1].matchAll(/<li>([\s\S]*?)<\/li>/g)];
 	assert.equal(items.length, scene.steps.length, `${id} lists every step`);
-	scene.steps.forEach((s, i) => assert.ok(items[i][1].includes(String(s.label).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")), `${id} step ${i + 1} reads "${s.label}"`));
+	scene.steps.forEach((s, i) => assert.ok(items[i][1].includes(esc(String(s.label))), `${id} step ${i + 1} reads "${s.label}"`));
 }
 
 describe("site build", () => {
@@ -95,6 +98,9 @@ describe("site build", () => {
 			const html = read(join("examples", planned.id, "index.html"));
 			assert.ok(!html.includes('class="mk-player'), `${planned.id}: a planned example is not shown as a player`);
 			assert.ok(html.includes(planned.title), `${planned.id}: a planned example names itself`);
+			const board = html.match(/<div\b[^>]*\bclass="storyboard"[^>]*>([\s\S]*?)<\/div>/)?.[1] ?? "";
+			assert.ok(board.includes(esc(`type: ${planned.type}`)), `${planned.id}: the storyboard names its scene type`);
+			assert.ok(board.includes(esc(planned.story)), `${planned.id}: the storyboard tells its story`);
 		}
 	});
 	it("sets the site in its two typefaces, self-hosted", { skip }, () => {
@@ -103,16 +109,26 @@ describe("site build", () => {
 		const css = files.filter((f) => f.endsWith(".css")).map((f) => readFileSync(join(dir, f), "utf8")).join("\n");
 		assert.match(css, /--sans:\s*["']?Instrument Sans/, "body text is set in Instrument Sans");
 		assert.match(css, /--mono:\s*["']?DM Mono/, "labels and code are set in DM Mono");
-		assert.match(css, /body\s*\{[^}]*var\(--sans\)/, "body uses the sans variable");
-		assert.match(css, /(?:code|pre)[^{]*\{[^}]*var\(--mono\)/, "code uses the mono variable");
-		for (const face of ["Instrument Sans", "DM Mono"]) {
-			const rules = [...css.matchAll(/@font-face\{[^}]*\}/g)].map((m) => m[0]).filter((r) => r.includes(face));
+		/** The declarations of the rules whose selector list contains this exact selector. @param {string} selector */
+		const declarations = (selector) => [...css.matchAll(/([^{}@]+)\{([^{}]*)\}/g)]
+			.filter((m) => m[1].split(",").some((x) => x.trim() === selector)).map((m) => m[2]);
+		const fontOf = (/** @type {string} */ selector) => declarations(selector).flatMap((d) => [...d.matchAll(/(?:^|;)\s*font(?:-family)?\s*:([^;]*)/g)].map((m) => m[1]));
+		assert.ok(fontOf("body").some((v) => v.includes("var(--sans)")), "body is set in the sans variable");
+		for (const selector of ["code", "pre"]) assert.ok(fontOf(selector).some((v) => v.includes("var(--mono)")), `${selector} is set in the mono variable`);
+		const expected = { "Instrument Sans": ["400", "500", "600"], "DM Mono": ["400", "500"] };
+		const rulesOf = (/** @type {string} */ face) => [...css.matchAll(/@font-face\{[^}]*\}/g)].map((m) => m[0]).filter((r) => r.includes(face));
+		for (const [face, weights] of Object.entries(expected)) {
+			const rules = rulesOf(face);
 			assert.ok(rules.length > 0, `${face} is declared`);
+			const seen = new Set();
 			for (const rule of rules) {
 				const url = rule.match(/url\(["']?([^)"']+\.woff2)/)?.[1];
 				assert.ok(url, `${face} is declared with a woff2 source`);
 				assert.ok(existsSync(join(dist, url.replace(/^\//, ""))), `${face}'s file ${url} is served`);
+				const weight = rule.match(/font-weight:\s*(\d+)/)?.[1];
+				seen.add(`${weight}${/latin-ext/.test(url) ? " ext" : " latin"}`);
 			}
+			for (const w of weights) for (const subset of ["latin", "ext"]) assert.ok(seen.has(`${w} ${subset}`), `${face} keeps weight ${w} in the ${subset} subset`);
 		}
 		assert.ok(!/Space Grotesk|Inter Variable|(^|[^\w-])["']?Inter["']?\s*[,;}]/m.test(css), "no Space Grotesk or Inter");
 		for (const f of ["instrument-sans", "dm-mono"]) assert.ok(existsSync(join(dist, "licenses", `LICENSE-${f}.txt`)), `${f}'s OFL notice ships with the site`);
