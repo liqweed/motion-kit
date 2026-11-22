@@ -135,7 +135,7 @@ const UNASSIGNED = /\p{Cn}/u;
  * What `font` may be: a comma-separated list of family names, each a quoted
  * string (any text but `<>{};` and a backslash) or an unquoted run of CSS
  * identifiers (letters, digits, `_` and `-`, not starting with a digit) joined
- * by spaces. A name that is not an identifier sequence (`Hawaii 5-0`,
+ * by single spaces (a run of spaces, a no-break space or a name that starts with a generic keyword and goes on must be quoted; a quoted name holds no line break). A name that is not an identifier sequence (`Hawaii 5-0`,
  * `Mono.Name`) must be quoted, and a CSS-wide keyword is no family name.
  * Nothing else is read as a family list, so a function call (`var()`), a
  * comment or any other CSS outside quotes is refused, and the browser and
@@ -143,7 +143,9 @@ const UNASSIGNED = /\p{Cn}/u;
  * space inside it is always followed by an identifier and the trailing spaces
  * belong to the separator alone: the matcher cannot split a run of spaces two ways.
  */
-const FONT_ITEM = /\s*(?:"[^"<>{};\\]*"|'[^'<>{};\\]*'|-?[A-Za-z_][A-Za-z0-9_-]*(?: +-?[A-Za-z_][A-Za-z0-9_-]*)*)\s*(,|$)/y;
+const FONT_ITEM = /[ \t\n\r\f]*(?:"[^"<>{};\\\r\n\f]*"|'[^'<>{};\\\r\n\f]*'|-?[A-Za-z_][A-Za-z0-9_-]*(?: -?[A-Za-z_][A-Za-z0-9_-]*)*)[ \t\n\r\f]*(,|$)/y;
+/** A generic family keyword: it starts a multiword unquoted name that Chromium reads as the keyword followed by stray text. */
+const GENERIC_FIRST = /^(?:serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-[a-z-]+|math|emoji|fangsong) /i;
 const CSS_WIDE = /^(?:inherit|initial|unset|revert|revert-layer|default)$/i;
 
 /**
@@ -157,7 +159,7 @@ function isFontList(font) {
 		const m = FONT_ITEM.exec(font);
 		if (!m) return false;
 		const name = m[0].replace(/,$/, "").trim();
-		if (CSS_WIDE.test(name)) return false;
+		if (CSS_WIDE.test(name) || GENERIC_FIRST.test(name)) return false;
 		if (m[1] === "") return FONT_ITEM.lastIndex === font.length;
 	}
 }
@@ -387,7 +389,7 @@ function normalize(block, moves) {
 		const [from, to] = Array.isArray(m?.lines) ? m.lines : [m?.lines, m?.lines];
 		if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from || to > block.lineCount) throw new RangeError(`code move ${i + 1}: lines ${JSON.stringify(m?.lines)} are not a line or a [from, to] range inside the snippet's ${block.lineCount} lines`);
 		const duration = m.duration ?? (i === 0 ? 0.3 : 0.5);
-		if (!finite(m.start) || m.start < 0 || !finite(duration) || duration <= 0) throw new Error(`code move ${i + 1}: needs a start of 0 or more and a duration above 0`);
+		if (!finite(m.start) || m.start < 0 || !finite(duration) || duration < 0.001) throw new Error(`code move ${i + 1}: needs a start of 0 or more and a duration of at least 0.001 s`);
 		if (m.start < free - 1e-9) throw new Error(`code move ${i + 1} starts at ${m.start}s, before the move before it is over (at ${num(free, 3)}s, its trailing edge included); start it later or shorten that one`);
 		if (m.start <= prevStart) throw new Error(`code move ${i + 1} starts at ${m.start}s, not after the move before it (${prevStart}s); the starts must increase`);
 		prevStart = m.start;
@@ -469,7 +471,7 @@ export function drawCode(block, t, moves, opts = {}) {
 		}
 		const spans = row.runs.map((run) => {
 			const spec = block.roles[run.role];
-			return el("tspan", { x: left + run.col * charWidth, fill: tok(spec.token), "font-weight": spec.weight, "font-style": spec.italic ? "italic" : undefined }, esc(run.text).replace(/var\(--mk-/g, "var(&#45;-mk-"));
+			return el("tspan", { "data-mk-code": "", x: left + run.col * charWidth, fill: tok(spec.token), "font-weight": spec.weight, "font-style": spec.italic ? "italic" : undefined }, esc(run.text).replace(/var\(--mk-/g, "var(&#45;-mk-"));
 		});
 		if (spans.length) parts.push(el("text", { y: cy, "xml:space": "preserve" }, ...spans));
 		if (parts.length) out.push(fade(dim + (1 - dim) * cover, {}, ...parts));

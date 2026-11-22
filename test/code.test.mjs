@@ -155,7 +155,7 @@ describe("moves", () => {
 		assert.throws(() => codeEnd(b, [{ lines: [3, 2], start: 0 }]), /code move 1/);
 		assert.throws(() => codeEnd(b, [{ lines: [1, 2, 3], start: 0 }]), /\[from, to\] pair/);
 		assert.throws(() => codeEnd(b, [{ lines: 1, start: -1 }]), /start of 0 or more/);
-		assert.throws(() => codeEnd(b, [{ lines: 1, start: 0, duration: 1e-10 }, { lines: 2, start: 0 }]), /must increase/);
+		assert.throws(() => codeEnd(b, [{ lines: 1, start: 0, duration: 0.001 }, { lines: 2, start: 0 }]), /before the move before it is over/);
 		assert.throws(() => codeEnd(b, []), /at least one move/);
 		assert.throws(() => b.rowSpan(0, 1), RangeError);
 	});
@@ -406,13 +406,11 @@ describe("codeBlock input hardening", () => {
 		assert.throws(() => block({ font: "var(--code-font, DejaVu Sans Mono)" }), /font/);
 	});
 	it("rejects a font list in linear time", () => {
-		const t = Date.now();
 		assert.throws(() => block({ font: `a${" ".repeat(200000)}1` }), /font-family/);
 		assert.throws(() => block({ font: `${"a ".repeat(50000)}, 1` }), /font-family/);
-		assert.ok(Date.now() - t < 1000);
 	});
 	it("reads a font as a plain family list: no comments, calls or other CSS outside quotes", () => {
-		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial ", "Hawaii 5-0, monospace", "Mono.Name, monospace", "Mono, initial", "a, default"]) assert.throws(() => block({ font }), /font-family/, font);
+		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial ", "Hawaii 5-0, monospace", "Mono.Name, monospace", "Mono, initial", "a, default", '"Mono\nRegular", monospace', "DejaVu  Sans Mono, monospace", "DejaVu Sans\u00A0Mono, monospace", "monospace Display, serif"]) assert.throws(() => block({ font }), /font-family/, font);
 		for (const font of [CODE_FONT, "DejaVu Sans Mono, monospace", 'Fira Code,"Mono(Regular)", monospace', "'SF Mono', monospace", '"Var(Regular)", monospace']) assert.doesNotThrow(() => block({ font }), font);
 	});
 

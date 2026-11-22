@@ -509,7 +509,7 @@ functions; a colour is a token name (G4 applies).
   `ế`, `ἄ` and `ԁ` pass); any other, such as CJK, emoji, combining marks,
   unassigned code points or invisible letters, is refused with the line number
   and the code point (an embedded CR or LF is refused first, naming the line only; U+2028 and U+2029 are refused here as unsupported characters) (a panel under eight columns is refused first, naming no line): the block
-  is a grid of one-column cells. The scene gate scans the whole frame, code text included: the words `NaN`, `undefined` and `Infinity` and a number with five or more decimals (`3.14159`) in a snippet fail `motion-kit check`, so choose another snippet or split such a token across runs only if the gate's reading allows it; the gate does not yet scope those checks to SVG numbers. The text of every line, wrapped or clipped
+  is a grid of one-column cells. The scene gate skips the code's own text (the `data-mk-code` runs) when it looks for the words `NaN`, `undefined` and `Infinity` and for a number with five or more decimals, and skips `<title>` and `<desc>` text for the decimals, so a snippet may show `3.14159` or `NaN`. The text of every line, wrapped or clipped
   or not, stays in `block.text` and `block.rangeText(from, to)`, for the
   scene's `description` and its step `detail`s.
 - **Roles.** `CODE_ROLES` maps `code`, `keyword`, `string` and `comment` to a
@@ -521,7 +521,7 @@ functions; a colour is a token name (G4 applies).
 - **Band.** `drawCode(block, t, moves, {ease})` draws the panel (`surface`,
   outlined in `line`), the band and the lines. A move is `{lines, start,
   duration?}`: `lines` is a line or a `[from, to]` range (1-based, inclusive).
-  The first move is where the band appears, fading in over its `duration`
+  The first move is where the band appears, fading in over its `duration` (at least 0.001 s, for every move)
   (default 0.3 s); each later one moves the band from the range before it
   (default 0.5 s) on `ease`, the style's movement curve
   (`easings(style.motion).easeStandard`): the leading edge moves first and the
