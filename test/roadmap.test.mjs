@@ -51,7 +51,7 @@ it("gate validates finite dimensions and time, raw end hold, duration and shared
 	assert.equal(long.ok, true);
 	assert.ok(long.advice.some((a) => a.rule === "duration"));
 	assert.match(long.advice.find((a) => a.rule === "duration")?.found ?? "", /duration 12\.01 s exceeds 12 s/);
-	assert.match(checkScene({ ...scene, duration: 12.01 }, { strict: true }).problems.join("\n"), /advice \[duration\].*strict mode/);
+	assert.match(checkScene({ ...scene, duration: 12.01 }, { strict: true }).problems.join("\n"), /strict mode: unacknowledged advice \[duration\]/);
 	assert.match(checkScene({ ...scene, frame: (t, ctx) => scene.frame(t, ctx) + (t > scene.duration ? "<g/>" : "") }).problems.join("\n"), /after the end/);
 	assert.match(checkScene(scene, { style: { light: { onAccent: "#1d36a8" } } }).problems.join("\n"), /contrast/);
 });

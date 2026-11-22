@@ -249,7 +249,7 @@ describe("styles", () => {
 		const ring = checkScene(createScene(seq, { format: "16:9", locale: "en" }), { style: blue });
 		assert.equal(ring.ok, true);
 		assert.ok(ring.advice.some((a) => a.rule === "emphasis-on-accent" && /emphasis on accent is 1\.13:1/.test(a.found)));
-		assert.ok(checkScene(createScene(seq, { format: "16:9", locale: "en" }), { style: blue, strict: true }).problems.some((p) => /^advice \[emphasis-on-accent\]/.test(p)));
+		assert.ok(checkScene(createScene(seq, { format: "16:9", locale: "en" }), { style: blue, strict: true }).problems.some((p) => /^strict mode: unacknowledged advice \[emphasis-on-accent\]/.test(p)));
 		const faint = { name: "faint", light: { emphasis: "#f2f2f2" } }; // 1.1:1 on the white canvas
 		for (const spec of [seq, hub]) {
 			const { problems } = checkScene(createScene(spec, { format: "16:9", locale: "en" }), { style: faint });
@@ -689,7 +689,7 @@ describe("advice and acknowledgements", () => {
 		assert.deepEqual(adviceLines(r.advice[0]), ["acknowledged [nothing-animates]: A still logo mark."]);
 		const strict = checkScene(still, { strict: true });
 		assert.equal(strict.ok, false);
-		assert.match(strict.problems[0], /^advice \[nothing-animates\]: .* \(strict mode: fix it, or acknowledge it with a reason\)$/);
+		assert.match(strict.problems[0], /^strict mode: unacknowledged advice \[nothing-animates\] \(fix it, or acknowledge it with a reason\)$/);
 		assert.equal(checkScene(still).ok, true, "off by default");
 		// Acknowledging a rule nothing broke is said; a narrative scene's flag is its own acknowledgement.
 		assert.deepEqual(checkScene({ ...said, frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Mark</text>` }).unusedAcknowledgements, ["nothing-animates"]);
