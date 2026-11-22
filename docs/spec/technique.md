@@ -369,8 +369,10 @@ functions; a colour is a token name (G4 applies).
 - **Settled means bare.** Once `enter` reaches 1, as `fade` rounds it (0.9995
   and above), `blurReveal` MUST return the children unchanged: no group, no
   filter, no `<defs>`, so a settled frame is byte-identical to the same markup
-  drawn without the reveal, and every step frame, the final frame, a baked
-  last slice and a reduced-motion frame carry no filter. Between 0 and 1 the
+  drawn without the reveal, and a step frame, the final frame, a baked
+  last slice and a reduced-motion frame carry no filter once the scene has
+  finished the reveal (the gate checks the bytes around the step, not that the
+  scene completed it: an unfinished reveal is the author's to finish). Between 0 and 1 the
   `transform` and the `filter` are left off once they round to nothing
   (a rise or a blur under 0.005 units), so a frame never carries
   a `stdDeviation="0"`, which renderers read differently.
@@ -461,8 +463,8 @@ functions; a colour is a token name (G4 applies).
   token `ink`, `dominant-baseline` central on `y`). `format` is the caller's and
   carries the units, decimals and locale; it must return a string, which is
   escaped. It throws for a `format` that is not a function or returns another
-  type, and for a non-finite number. Until the monospace face of the style
-  lands, a scene sets its own `family` to keep the digits from jittering.
+  type, and for a non-finite number. A scene passes `family: style.mono` (from
+  `frame(t, { style })`) to keep the digits from jittering.
 - **Canon.** A bar grows once, in a step's beat, and rests (§4.8): every bar of
   the beat has settled (`barEnd`) at least 50 ms before the step's `at`, and from
   then its value is exactly `format(to)`, so the step frame is the settled
