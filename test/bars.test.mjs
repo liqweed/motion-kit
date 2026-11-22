@@ -16,6 +16,12 @@ const near = (/** @type {number} */ a, /** @type {number} */ b, eps = 1e-9) => a
 const idsOf = (/** @type {string} */ svg) => [...svg.matchAll(/\sid="([^"]*)"/g)].map((m) => m[1]);
 
 describe("hatchPattern", () => {
+	it("returns a frozen hatch, so its paint cannot be changed after issue", () => {
+		const h = hatchPattern({ idPrefix: "p" });
+		assert.ok(Object.isFrozen(h));
+		assert.throws(() => { "use strict"; h.fill = "red"; }, TypeError);
+		assert.equal(h.fill, "url(#p-hatch)");
+	});
 	it("is a 45° pattern in a token colour, anchored to the picture", () => {
 		const h = hatchPattern({ idPrefix: "mk-a" });
 		assert.equal(h.id, "mk-a-hatch");

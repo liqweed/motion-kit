@@ -63,7 +63,7 @@ export function hatchPattern({ idPrefix, name = "hatch", stroke = "line", spacin
 	// One vertical line in the middle of a square tile, turned 45° by the pattern.
 	const line = el("path", { d: `M${num(spacing / 2)} 0 V${num(spacing)}`, fill: "none", stroke: tok(stroke), "stroke-width": width });
 	const pattern = el("pattern", { id, width: spacing, height: spacing, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, line);
-	const hatch = { id, fill: `url(#${id})`, markup: el("defs", {}, pattern) };
+	const hatch = Object.freeze({ id, fill: `url(#${id})`, markup: el("defs", {}, pattern) });
 	ISSUED.add(hatch);
 	return hatch;
 }
