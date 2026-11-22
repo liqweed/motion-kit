@@ -789,6 +789,11 @@ describe("advice and acknowledgements", () => {
 		const long = { ...still, duration: 1200, steps: [{ at: 10.5, label: "Mark" }, { at: 1200, label: "Mark" }], frame: (t) => (t > 10.4 && t < 10.6 ? "<g" : `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text>Mark</text>`) };
 		assert.match(checkScene(long).problems.join("\n"), /malformed at t=10\.500/);
 	});
+	it("reads quoted attribute values and invalid character references as XML does", () => {
+		const ship = (body) => ({ ...still, steps: [{ at: 1, label: "Ship" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20">${body}</text>` });
+		assert.deepEqual(ruleOf(checkScene(ship(`Sh<tspan data-note="a>b x=">ip</tspan>`))), [], "a > or x= inside a quoted value is not markup");
+		assert.match(checkScene(ship("Ship&#11;Now")).problems.join("\n"), /invalid character reference/);
+	});
 	it("finds a step label wrapped at a slash", () => {
 		const wrapped = { ...still, steps: [{ at: 1, label: "Archive/Dispose" }], frame: (t) => `<rect width="${t < 1 ? 50 : 100}" height="40" fill="var(--mk-accent)"/><text x="4" y="20"><tspan>Archive/</tspan><tspan>Dispose</tspan></text>` };
 		assert.deepEqual(ruleOf(checkScene(wrapped)), []);
