@@ -69,6 +69,10 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   height is invisible. Draw a flat top first (`h` > 0 only so the faces exist).
 - **Depth:** `orderSolids` is the order; never draw by hand. Heights and
   footprints decide it; a floor slab is drawn first.
+- **Backdrop, faces and tags:** the grid backdrop is static: it fades in with
+  the floor and then rests (a shimmer or pan is ambient motion). Content on a
+  top face fades in after its solid has settled, and turns with the camera
+  like any face. Pill tags fade in like labels, once the camera rests.
 - **Several tokens:** stagger their starts by 0.25–0.4 s on a trip of 1.2–2 s,
   so 3–4 are in flight at once without touching. Use `linear` for tokens that
   travel a conveyor at a steady speed, and grow them in and out over the first
