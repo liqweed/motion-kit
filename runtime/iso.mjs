@@ -212,8 +212,15 @@ export function path3(points) {
  * a whole, with no line where two faces meet, and only the shade changes from
  * group to group (`roundedBox` sets both; a `prism` without them draws one
  * outlined face per edge, as a polygon should). `top` is 2D content drawn on
- * the top face (`TopContent`).
- * @typedef {Readonly<{ points: { x: number, y: number }[], z0: number, z1: number, fill: string, sides: string, shade: string | null, stroke: string, strokeWidth: number, opacity: number, id?: string, groups?: readonly number[], smooth?: boolean, top?: Readonly<TopContent> }>} Solid
+ * the top face (`TopContent`). A solid with a `pose` is oriented: `points`,
+ * `z0` and `z1` are in its own frame, and the pose places that frame in the
+ * world (`rotateSolid`).
+ * @typedef {Readonly<{ points: { x: number, y: number }[], z0: number, z1: number, fill: string, sides: string, shade: string | null, stroke: string, strokeWidth: number, opacity: number, id?: string, groups?: readonly number[], smooth?: boolean, top?: Readonly<TopContent>, pose?: Pose }>} Solid
+ */
+/**
+ * Where an oriented solid's own frame lies in the world: a world point is
+ * `m` (row-major, a rotation) times the solid's point, plus `t`.
+ * @typedef {Readonly<{ m: readonly number[], t: Readonly<{ x: number, y: number, z: number }> }>} Pose
  */
 
 /**
@@ -403,6 +410,80 @@ export function regularPolygon(x, y, r, n, rotation = 0) {
 
 const EPS = 1e-9;
 
+/* ------------------------------------------------------------ oriented solids */
+
+const IDENTITY = Object.freeze({ m: Object.freeze([1, 0, 0, 0, 1, 0, 0, 0, 1]), t: Object.freeze({ x: 0, y: 0, z: 0 }) });
+
+/**
+ * A point of the solid's own frame in the world.
+ * @param {Solid} s
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ * @returns {{ x: number, y: number, z: number }}
+ */
+function place(s, x, y, z) {
+	if (!s.pose) return { x, y, z };
+	const { m, t } = s.pose;
+	return { x: m[0] * x + m[1] * y + m[2] * z + t.x, y: m[3] * x + m[4] * y + m[5] * z + t.y, z: m[6] * x + m[7] * y + m[8] * z + t.z };
+}
+
+/**
+ * A direction of the solid's own frame in the world (no translation).
+ * @param {Solid} s
+ * @param {number} x
+ * @param {number} y
+ * @param {number} z
+ * @returns {{ x: number, y: number, z: number }}
+ */
+function turn(s, x, y, z) {
+	if (!s.pose) return { x, y, z };
+	const m = s.pose.m;
+	return { x: m[0] * x + m[1] * y + m[2] * z, y: m[3] * x + m[4] * y + m[5] * z, z: m[6] * x + m[7] * y + m[8] * z };
+}
+
+/**
+ * `solid` turned by `deg` degrees about an axis through `about` (default the
+ * world origin), in the world's frame, right-handed: a positive angle about
+ * `"z"` turns east toward north, about `"x"` north toward up, about `"y"` up
+ * toward east. `axis` is `"x"`, `"y"`, `"z"` or a direction `{ x, y, z }`. The
+ * result is an oriented solid drawn, shaded and depth ordered like any other;
+ * turn it again to compose (each turn is about a world axis), and `0` returns
+ * the same solid. To put a tilted solid somewhere, build it where it should
+ * pivot and turn it about that point. Sines and cosines are exact at multiples of 90°. A solid with
+ * `top` cannot be turned: content on a plane is horizontal.
+ * @param {Solid} solid
+ * @param {{ axis: "x" | "y" | "z" | { x: number, y: number, z: number }, deg: number, about?: Point3 }} o
+ * @returns {Solid}
+ */
+export function rotateSolid(solid, { axis, deg, about = { x: 0, y: 0, z: 0 } }) {
+	if (!finite(deg)) throw new Error(`rotateSolid: deg must be a finite number of degrees, got ${deg}`);
+	if (!about || !finite(about.x) || !finite(about.y) || !finite(about.z ?? 0)) throw new Error("rotateSolid: about must be a finite point { x, y, z }");
+	const unit = { x: { x: 1, y: 0, z: 0 }, y: { x: 0, y: 1, z: 0 }, z: { x: 0, y: 0, z: 1 } };
+	let k;
+	if (typeof axis === "string") {
+		if (!Object.hasOwn(unit, axis)) throw new Error(`rotateSolid: axis must be "x", "y", "z" or a direction { x, y, z }, got "${axis}"`);
+		k = unit[/** @type {"x" | "y" | "z"} */ (axis)];
+	} else {
+		if (!axis || !finite(axis.x) || !finite(axis.y) || !finite(axis.z)) throw new Error("rotateSolid: axis must be a finite direction { x, y, z }");
+		const len = Math.hypot(axis.x, axis.y, axis.z);
+		if (len < EPS) throw new Error("rotateSolid: the axis has no direction");
+		k = { x: axis.x / len, y: axis.y / len, z: axis.z / len };
+	}
+	if (solid.top) throw new Error("rotateSolid: a solid with `top` content cannot be turned; draw the content with drawOnPlane");
+	if (deg === 0) return solid;
+	const [s, c] = sincos(deg);
+	const r = 1 - c;
+	// Rodrigues: R = c·I + s·[k]× + (1 − c)·k·kᵀ
+	const R = [c + k.x * k.x * r, k.x * k.y * r - k.z * s, k.x * k.z * r + k.y * s, k.y * k.x * r + k.z * s, c + k.y * k.y * r, k.y * k.z * r - k.x * s, k.z * k.x * r - k.y * s, k.z * k.y * r + k.x * s, c + k.z * k.z * r];
+	const pose = solid.pose ?? IDENTITY;
+	const m = [0, 1, 2].flatMap((i) => [0, 1, 2].map((j) => R[3 * i] * pose.m[j] + R[3 * i + 1] * pose.m[3 + j] + R[3 * i + 2] * pose.m[6 + j]));
+	const o = { x: about.x, y: about.y, z: about.z ?? 0 };
+	const d = { x: pose.t.x - o.x, y: pose.t.y - o.y, z: pose.t.z - o.z };
+	const t = { x: R[0] * d.x + R[1] * d.y + R[2] * d.z + o.x, y: R[3] * d.x + R[4] * d.y + R[5] * d.z + o.y, z: R[6] * d.x + R[7] * d.y + R[8] * d.z + o.z };
+	return Object.freeze({ ...solid, pose: Object.freeze({ m: Object.freeze(m), t: Object.freeze(t) }) });
+}
+
 /**
  * @typedef {{ kind: "side" | "top", points: { x: number, y: number }[], shade: number, layers?: { points: { x: number, y: number }[], shade: number }[] }} Face
  */
@@ -424,15 +505,16 @@ function visibleFaces(solid, cam) {
 	const faces = /** @type {Face[]} */ ([]);
 	const pts = solid.points;
 	const n = pts.length;
+	/** How far a face turns from the light: its world normal's share along screen right, −1 (lit) to 1. A face is toward the camera when the normal's dot with the direction to it, (sin az·cos el, −cos az·cos el, sin el), is above 0. */
+	const toward = (/** @type {{ x: number, y: number, z: number }} */ w) => (w.x * sa - w.y * ca) * ce + w.z * se;
+	const shadeOf = (/** @type {number} */ t) => Math.round((0.1 + 0.16 * ((t + 1) / 2)) * 100) / 100;
 	if (solid.z1 - solid.z0 > EPS) {
 		// turn: −1 faces screen left (lit), 1 faces screen right; null for an edge turned away.
 		const turns = pts.map((a, i) => {
 			const b = pts[(i + 1) % n];
 			const len = Math.hypot(b.x - a.x, b.y - a.y);
-			const nx = (b.y - a.y) / len;
-			const ny = -(b.x - a.x) / len;
-			// Toward the camera, horizontally, is (sin az, −cos az).
-			return (nx * sa - ny * ca) * ce <= EPS ? null : nx * ca + ny * sa;
+			const w = turn(solid, (b.y - a.y) / len, -(b.x - a.x) / len, 0);
+			return toward(w) <= EPS ? null : w.x * ca + w.y * sa;
 		});
 		const groups = solid.groups ?? pts.map((_, i) => i);
 		const wall = (/** @type {number} */ i) => (solid.smooth ? 0 : groups[i]);
@@ -448,10 +530,10 @@ function visibleFaces(solid, cam) {
 		/** The side polygon over a run of consecutive edges, and its shade. */
 		const side = (/** @type {number[]} */ edges) => {
 			const chain = [...edges.map((i) => pts[i]), pts[(edges[edges.length - 1] + 1) % n]];
-			const turn = edges.reduce((sum, i) => sum + /** @type {number} */ (turns[i]), 0) / edges.length;
+			const t = edges.reduce((sum, i) => sum + /** @type {number} */ (turns[i]), 0) / edges.length;
 			return {
-				points: [...chain.map((p) => to({ ...p, z: solid.z0 })), ...chain.map((p) => to({ ...p, z: solid.z1 })).reverse()],
-				shade: Math.round((0.1 + 0.16 * ((turn + 1) / 2)) * 100) / 100,
+				points: [...chain.map((p) => to(place(solid, p.x, p.y, solid.z0))), ...chain.map((p) => to(place(solid, p.x, p.y, solid.z1))).reverse()],
+				shade: shadeOf(t),
 			};
 		};
 		/** @type {number[]} */
@@ -481,7 +563,11 @@ function visibleFaces(solid, cam) {
 		}
 		flush();
 	}
-	if (se > EPS) faces.push({ kind: "top", points: pts.map((p) => to({ ...p, z: solid.z1 })), shade: 0 });
+	// The cap at the top (the solid's own +z), drawn as a top; a tilted solid can show the one at the bottom instead, drawn as a side.
+	const up = turn(solid, 0, 0, 1);
+	const facing = toward(up);
+	if (facing > EPS) faces.push({ kind: "top", points: pts.map((p) => to(place(solid, p.x, p.y, solid.z1))), shade: 0 });
+	else if (facing < -EPS) faces.push({ kind: "side", points: pts.map((p) => to(place(solid, p.x, p.y, solid.z0))), shade: shadeOf(-(up.x * ca + up.y * sa)) });
 	return faces;
 }
 
@@ -567,6 +653,72 @@ function behind(a, b, sa, ca, se) {
 }
 
 /**
+ * What a separating-axis test needs of an oriented solid, in the world: its
+ * corners, its face normals and its edge directions (unit vectors).
+ * @param {Solid} s
+ * @returns {{ corners: { x: number, y: number, z: number }[], normals: { x: number, y: number, z: number }[], edges: { x: number, y: number, z: number }[] }}
+ */
+function hull(s) {
+	const corners = s.points.flatMap((p) => [place(s, p.x, p.y, s.z0), place(s, p.x, p.y, s.z1)]);
+	const up = turn(s, 0, 0, 1);
+	const normals = [up];
+	const edges = [up];
+	for (const [i, a] of s.points.entries()) {
+		const b = s.points[(i + 1) % s.points.length];
+		const len = Math.hypot(b.x - a.x, b.y - a.y);
+		edges.push(turn(s, (b.x - a.x) / len, (b.y - a.y) / len, 0));
+		normals.push(turn(s, (b.y - a.y) / len, -(b.x - a.x) / len, 0));
+	}
+	return { corners, normals, edges };
+}
+
+/**
+ * `behind` for solids of which one is oriented: the separating plane of two
+ * convex solids lies along a face of one or along an edge of each (the
+XX
+ * @param {ReturnType<typeof hull>} a
+ * @param {ReturnType<typeof hull>} b
+ * @param {{ x: number, y: number, z: number }} toCam the direction to the camera
+ * @returns {-1 | 0 | 1}
+ */
+function behindOriented(a, b, toCam) {
+	let vote = 0;
+	let conflict = false;
+	/** @type {Set<string>} */
+	const tried = new Set();
+	/** @param {{ x: number, y: number, z: number }} v a direction, not necessarily a unit one */
+	const axis = (v) => {
+		const len = Math.hypot(v.x, v.y, v.z);
+		if (len < 1e-6) return; // two parallel edges
+		const [x, y, z] = [v.x / len, v.y / len, v.z / len];
+		const flip = x < -1e-9 || (Math.abs(x) <= 1e-9 && (y < -1e-9 || (Math.abs(y) <= 1e-9 && z < 0))) ? -1 : 1;
+		const key = [x, y, z].map((c) => Math.round(c * flip * 1e6) + 0).join(",");
+		if (tried.has(key)) return;
+		tried.add(key);
+		const facing = (x * toCam.x + y * toCam.y + z * toCam.z) * flip;
+		if (Math.abs(facing) <= EPS) return;
+		const range = (/** @type {{ x: number, y: number, z: number }[]} */ pts) => {
+			const d = pts.map((p) => (p.x * x + p.y * y + p.z * z) * flip);
+			return [Math.min(...d), Math.max(...d)];
+		};
+		const [a0, a1] = range(a.corners);
+		const [b0, b1] = range(b.corners);
+		/** @type {-1 | 1 | 0} */
+		let v2 = 0;
+		if (a1 <= b0 + EPS) v2 = facing > 0 ? -1 : 1; // b is on the positive side
+		else if (b1 <= a0 + EPS) v2 = facing > 0 ? 1 : -1;
+		if (v2 === 0) return;
+		if (vote !== 0 && vote !== v2) conflict = true;
+		vote = v2;
+	};
+	for (const v of [...a.normals, ...b.normals]) axis(v);
+	for (const u of a.edges) {
+		for (const w of b.edges) axis({ x: u.y * w.z - u.z * w.y, y: u.z * w.x - u.x * w.z, z: u.x * w.y - u.y * w.x });
+	}
+	return conflict ? 0 : /** @type {-1 | 0 | 1} */ (vote);
+}
+
+/**
  * The solids in drawing order, farthest first, for `cam`. Two solids are
  * ordered by the axes that separate them (footprint edges and height), only
  * when they overlap on the screen; the rest is a topological sort, ties and
@@ -580,21 +732,25 @@ function behind(a, b, sa, ca, se) {
 export function orderSolids(solids, cam) {
 	const to = projector(cam);
 	const [sa, ca] = sincos(cam.azimuth);
-	const [se] = sincos(cam.elevation);
+	const [se, ce] = sincos(cam.elevation);
+	const toCam = { x: sa * ce, y: -ca * ce, z: se };
 	const info = solids.map((s) => {
-		const corners = s.points.flatMap((p) => [to({ ...p, z: s.z0 }), to({ ...p, z: s.z1 })]);
+		const corners = s.points.flatMap((p) => [to(place(s, p.x, p.y, s.z0)), to(place(s, p.x, p.y, s.z1))]);
 		const xs = corners.map((c) => c.x);
 		const ys = corners.map((c) => c.y);
 		const cx = s.points.reduce((n, p) => n + p.x, 0) / s.points.length;
 		const cy = s.points.reduce((n, p) => n + p.y, 0) / s.points.length;
-		return { min: { x: Math.min(...xs), y: Math.min(...ys) }, max: { x: Math.max(...xs), y: Math.max(...ys) }, near: to({ x: cx, y: cy, z: (s.z0 + s.z1) / 2 }).depth };
+		return { min: { x: Math.min(...xs), y: Math.min(...ys) }, max: { x: Math.max(...xs), y: Math.max(...ys) }, near: to(place(s, cx, cy, (s.z0 + s.z1) / 2)).depth };
 	});
+	/** @type {(ReturnType<typeof hull> | undefined)[]} */
+	const hulls = [];
+	const hullOf = (/** @type {number} */ i) => (hulls[i] ??= hull(solids[i]));
 	const after = solids.map(() => /** @type {number[]} */ ([])); // after[i]: drawn after i
 	const waiting = solids.map(() => 0);
 	for (let i = 0; i < solids.length; i++) {
 		for (let j = i + 1; j < solids.length; j++) {
 			if (!screenOverlap(info[i], info[j])) continue;
-			const order = behind(solids[i], solids[j], sa, ca, se);
+			const order = solids[i].pose || solids[j].pose ? behindOriented(hullOf(i), hullOf(j), toCam) : behind(solids[i], solids[j], sa, ca, se);
 			if (order === 0) continue;
 			const [first, second] = order < 0 ? [i, j] : [j, i];
 			after[first].push(second);
