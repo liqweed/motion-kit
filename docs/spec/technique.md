@@ -307,7 +307,7 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   up and a label box above it (or beside its top), and returns the markup and
   the `LabelBox`, rounded to two decimals as the SVG attributes are, so the gate
   and the picture agree on those coordinates. `labelProblems(boxes, {width, height, gap = 4, limit})`
-  lists the collisions G15 reports, and stops at `limit` (a whole number or Infinity; default all). Labels follow §7 (wrapped, localized, ≥ 14 px).
+  lists the collisions G15 reports, and stops at `limit` (a whole number from 0 or Infinity, else `RangeError`; default all; 0 returns none; only distinct sentences count). Labels follow §7 (wrapped, localized, ≥ 14 px).
   `labelPill({id, x, y, lines, fontSize, fill, stroke, ink, opacity})` is a
   stemless tag: a rounded box of text centred on the screen point (`x`, `y`),
   its colours tokens (`surface`, `line`, `ink` by default). It returns the

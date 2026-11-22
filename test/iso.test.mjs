@@ -320,6 +320,7 @@ describe("label anchors", () => {
 			assert.throws(() => labelProblems(outside, { ...view, limit: -1 }), RangeError);
 			assert.throws(() => labelProblems(outside, { ...view, limit: NaN }), RangeError);
 			assert.throws(() => labelProblems(outside, { ...view, limit: 0.5 }), RangeError);
+			assert.throws(() => labelProblems(outside, { ...view, limit: /** @type {any} */ (Symbol("x")) }), RangeError);
 		});
 		it("reports a repeated sentence once and skips ignored ones without counting them", () => {
 			const dup = Array.from({ length: 20 }, () => ({ id: "a", x: 10, y: 10, width: 50, height: 20 }));
@@ -441,6 +442,15 @@ describe("the scene gate and labels", () => {
 		const same = Array.from({ length: 1000 }, (_, i) => ({ id: `l${i}`, x: 10, y: 10, width: 50, height: 20 }));
 		const r = checkScene(sceneWithLabels([], { labelBoxes: () => same }));
 		assert.ok(r.problems.length > 0 && r.problems.length <= 13, `${r.problems.length} problems`);
+	});
+	it("does not ask labelBoxes() once the problem cap is spent, and caps fixed ids", () => {
+		let calls = 0;
+		const many = sceneWithLabels([], { labelBoxes: () => { calls++; return []; } });
+		const frame = /** @type {(t: number, o?: any) => string} */ (many.frame);
+		many.frame = /** @type {any} */ ((/** @type {number} */ t, /** @type {any} */ o) => frame(t, o) + Array.from({ length: 30 }, (_, i) => `<g id="fixed${i}"/>`).join(""));
+		const r = checkScene(many);
+		assert.ok(r.problems.length <= 13, `${r.problems.length} problems`);
+		assert.equal(calls, 0, "labelBoxes() must not be called after the cap");
 	});
 	it("does a linear amount of work for thousands of identical label boxes", () => {
 		let reads = 0;
