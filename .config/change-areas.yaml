@@ -2,7 +2,7 @@
 # touches. Read through drive.change_areas_catalog in .config/jig.yaml; resolve a
 # change with the jig `change-areas` skill, check this file with its check.ts.
 #
-# Four areas, picked from where open pull requests overlapped most: the spec
+# Areas are picked from where open pull requests overlapped most: the spec
 # text, the kit runtime, the scene gate and the website. A file no area claims
 # fails closed to the deepest profile, so everything else is still validated in
 # full.
