@@ -159,6 +159,7 @@ function isFontList(font) {
 		const m = FONT_ITEM.exec(font);
 		if (!m) return false;
 		const name = m[0].replace(/,$/, "").trim();
+		if (/^["']\s|\s["']$/.test(name)) return false; // resvg trims inside the quotes, Chromium keeps the space
 		if (CSS_WIDE.test(name) || GENERIC_FIRST.test(name)) return false;
 		if (m[1] === "") return FONT_ITEM.lastIndex === font.length;
 	}

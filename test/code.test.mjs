@@ -424,7 +424,7 @@ describe("codeBlock input hardening", () => {
 		assert.throws(() => block({ font: `${"a ".repeat(50000)}, 1` }), /font-family/);
 	});
 	it("reads a font as a plain family list: no comments, calls or other CSS outside quotes", () => {
-		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial ", "Hawaii 5-0, monospace", "Mono.Name, monospace", "Mono, initial", "a, default", '"Mono\nRegular", monospace', "DejaVu  Sans Mono, monospace", "DejaVu Sans\u00A0Mono, monospace", "monospace Display, serif", "-webkit-body Display, monospace"]) assert.throws(() => block({ font }), /font-family/, font);
+		for (const font of ['/*"*/var(--theme-font, monospace)/*"*/', "a, /* x */ b", "calc(1px)", "a,", "", "a;b", "inherit", " Initial ", "Hawaii 5-0, monospace", "Mono.Name, monospace", "Mono, initial", "a, default", '"Mono\nRegular", monospace', "DejaVu  Sans Mono, monospace", "DejaVu Sans\u00A0Mono, monospace", "monospace Display, serif", "-webkit-body Display, monospace", '" Mono ", monospace', '"Mono ", monospace']) assert.throws(() => block({ font }), /font-family/, font);
 		for (const font of [CODE_FONT, "DejaVu Sans Mono, monospace", 'Fira Code,"Mono(Regular)", monospace', "'SF Mono', monospace", '"Var(Regular)", monospace']) assert.doesNotThrow(() => block({ font }), font);
 	});
 
@@ -473,11 +473,34 @@ describe("the gate and the code's own text", () => {
 		assert.ok((await gate('<g font-family="Mono" x="1.234567"></g>')).problems.some((p) => /unrounded number/.test(p)));
 	});
 
-	it("stays fast on a malformed span that repeats the marker", async () => {
+	it("does not read text as an attribute: a text ending in font-family=' hides no geometry", async () => {
+		const r = await gate(`<text>a font-family='</text><rect x="1.234567" y="NaN"/><text>it's</text>`);
+		assert.ok(r.problems.some((p) => /unrounded number 1.234567/.test(p)), r.problems.join("; "));
+		assert.ok(r.problems.some((p) => /NaN\/undefined/.test(p)), r.problems.join("; "));
+	});
+
+	it("rejects a tag that repeats an attribute, a balanced code span included", async () => {
+		const r = await gate(`<text>${tspan(' data-mk-code=""')}</text>`);
+		assert.ok(r.problems.some((p) => /duplicate attribute data-mk-code/.test(p)), r.problems.join("; "));
+	});
+
+	it("stays fast on a balanced span that repeats the marker, and says so", async () => {
 		const t0 = performance.now();
-		const r = await gate(`<tspan${' data-mk-code=""'.repeat(4096)}`);
-		assert.ok(!r.ok);
+		const r = await gate(`<text><tspan${' data-mk-code=""'.repeat(4096)}>z</tspan></text>`);
+		assert.ok(r.problems.some((p) => /duplicate attribute/.test(p)), r.problems.join("; "));
 		assert.ok(performance.now() - t0 < 2000);
+	});
+
+	it("passes a quoted font name that looks like a colour or a colour function", async () => {
+		assert.ok((await gate('<g font-family="Mono #123, RGB(x), monospace"></g>')).ok);
+	});
+
+	it("passes the code block's own markup, drawn by drawCode, through the full gate", async () => {
+		const b = block({ lines: ["x = 3.14159", "y = NaN", "z = Infinity"], font: '"Mono #123", "RGB(x)", monospace' });
+		const { scene } = await loadScene(EXAMPLE, { format: "16:9", locale: "en" });
+		const frame = (/** @type {number} */ t, /** @type {any} */ o) => scene.frame(t, o) + drawCode(b, 0.5, [{ lines: [1, 2], start: 0 }]);
+		const r = checkScene({ ...scene, description: b.text, frame });
+		assert.ok(!r.problems.some((p) => /unrounded|NaN|malformed/.test(p)), r.problems.join("; "));
 	});
 });
 
