@@ -339,9 +339,12 @@ functions; a colour is a token name (G4 applies).
   `wrap` or `clip`, give the block more width or height (another format), or show
   fewer lines (one scene per snippet; a longer walkthrough is several scenes or
   a deck with one click per range). The panel needs room for eight columns of code, whatever the lines
-  say. Only characters known to take one cell are accepted (Latin, Greek,
-  Cyrillic, common punctuation and symbols); any other, such as CJK, emoji,
-  combining marks or invisible letters, is refused, naming the line: the block
+  say. Only assigned characters known to take one cell are accepted (Latin
+  through Latin Extended Additional, IPA, Greek and Greek Extended, Cyrillic and
+  its supplement, common punctuation and symbols; precomposed letters such as
+  `ế`, `ἄ` and `ԁ` pass); any other, such as CJK, emoji, combining marks,
+  unassigned code points or invisible letters, is refused with the line number
+  and the code point (a panel under eight columns is refused first, naming no line): the block
   is a grid of one-column cells. The text of every line, wrapped or clipped
   or not, stays in `block.text` and `block.rangeText(from, to)`, for the
   scene's `description` and its step `detail`s.

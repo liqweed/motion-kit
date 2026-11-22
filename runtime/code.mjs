@@ -116,16 +116,20 @@ function expandTabs(s, tabSize, col) {
 
 /**
  * The characters the grid accepts: ones known to take exactly one cell. Basic
- * Latin, Latin-1 to the spacing modifiers, Greek, Cyrillic, currency signs,
+ * Latin, Latin-1 to IPA and the spacing modifiers, Greek and Greek Extended,
+ * Cyrillic and its supplement, Latin Extended Additional, currency signs,
  * general punctuation, arrows, mathematical operators, box drawing and block
  * elements. Everything else is refused, not listed: a list of the wide or
  * invisible characters needs every Unicode release, and one that is behind
  * puts the next run off its column.
  */
-const NARROW_ONLY = /[^\t\u0020-\u007E\u00A0-\u02FF\u0370-\u03FF\u0400-\u04FF\u2010-\u2027\u2030-\u205E\u20A0-\u20BF\u2190-\u21FF\u2200-\u22FF\u2500-\u259F\u{1D400}-\u{1D7FF}]/u;
+const NARROW_ONLY = /[^\t\u0020-\u007E\u00A0-\u02FF\u0370-\u03FF\u0400-\u052F\u1E00-\u1FFF\u2010-\u2027\u2030-\u205E\u20A0-\u20BF\u2190-\u21FF\u2200-\u22FF\u2500-\u259F\u{1D400}-\u{1D7FF}]/u;
 
 /** Zero-advance characters (combining marks, joiners, bidi and other every Unicode format character such as soft hyphens, variation selectors): a cell grid cannot place them. */
 const ZERO_WIDTH = /\p{M}|\p{Cf}|[\u200B-\u200F\u2060-\u2064]/u;
+
+/** Code points no Unicode release has assigned: they have no glyph, so the cell is not known. */
+const UNASSIGNED = /\p{Cn}/u;
 
 /** Characters XML 1.0 forbids, lone surrogates included: they would make the SVG invalid. */
 const NOT_XML = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
@@ -153,8 +157,8 @@ function flatten(line, n, roles, tabSize) {
 		if (bad) throw new Error(`codeBlock: line ${n} has the character U+${bad.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}, which an SVG cannot hold; remove it`);
 		const zero = run.text.match(ZERO_WIDTH)?.[0];
 		if (zero) throw new Error(`codeBlock: line ${n} has U+${zero.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}, a combining or zero-width character; the block sets code on a grid of one-column characters, so use the precomposed character (or ASCII)`);
-		const odd = run.text.match(NARROW_ONLY)?.[0];
-		if (odd) throw new Error(`codeBlock: line ${n} has "${odd}" (U+${odd.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}), which is not known to fit one column (wider than one column, or invisible); the block sets code on a grid of one-column characters and accepts Latin, Greek, Cyrillic and common symbols, so write that character in ASCII (or draw it outside the block)`);
+		const odd = run.text.match(NARROW_ONLY)?.[0] ?? run.text.match(UNASSIGNED)?.[0];
+		if (odd) throw new Error(`codeBlock: line ${n} has "${odd}" (U+${odd.codePointAt(0)?.toString(16).toUpperCase().padStart(4, "0")}), which is not known to fit one column (wider than one column, or invisible); the block sets code on a grid of one-column characters and accepts assigned Latin (including Extended Additional), Greek (including Extended), Cyrillic and common symbols, so write that character in ASCII (or draw it outside the block)`);
 		for (const ch of expandTabs(run.text, tabSize, chars.length)) {
 			chars.push(ch);
 			names.push(role);
@@ -262,7 +266,7 @@ export function codeBlock(opts) {
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
 	if (!["error", "wrap", "clip"].includes(overflow)) throw new Error(`codeBlock: \`overflow\` must be "error", "wrap" or "clip", got ${JSON.stringify(overflow)}`);
-	if (typeof font !== "string" || /[<>{};\\]/.test(font) || NOT_XML.test(font) || /var\(/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
+	if (typeof font !== "string" || /[<>{};\\]/.test(font) || NOT_XML.test(font) || /var\(\s*--mk-/i.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
 	/** @type {Record<string, CodeRole>} */
 	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
 	for (const [name, role] of Object.entries(given)) {
