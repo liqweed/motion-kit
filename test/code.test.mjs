@@ -100,6 +100,9 @@ describe("codeBlock", () => {
 		for (const ch of ["\u{18D00}", "\u{18D8F}", "\u{18D90}", "\u{18DF2}", "\u{1F3FB}", "\u{1F3FF}", "\u1160", "\uFFA0", "\u2630", "\u{1D300}"]) assert.throws(() => codeBlock({ lines: ["ok", ch], x: 0, y: 0, width: 400 }), new RegExp(`line 2 has .*U\\+${(ch.codePointAt(0) ?? 0).toString(16).toUpperCase().padStart(4, "0")}.*not known to fit one column`), String(ch.codePointAt(0)));
 		for (const ch of ["\u0378", "\u{1D455}"]) assert.throws(() => codeBlock({ lines: ["ok", ch], x: 0, y: 0, width: 400 }), /line 2 has .*not known to fit one column/, "unassigned");
 		assert.doesNotThrow(() => codeBlock({ lines: ["tiếng ἄ ԁ ế"], x: 0, y: 0, width: 400 }));
+		const mixed = codeBlock({ lines: [["ế", { text: "ἄԁ", role: "keyword" }, "x"]], x: 0, y: 0, width: 400 });
+		assert.equal(mixed.text, "ếἄԁx");
+		assert.deepEqual(mixed.rows[0].runs.map((r) => [r.text, r.col]), [["ế", 0], ["ἄԁ", 1], ["x", 3]]);
 		assert.doesNotThrow(() => codeBlock({ lines: ["é ß Ж λ → ≤ │ … €"], x: 0, y: 0, width: 400 }));
 		assert.throws(() => codeBlock({ lines: ["a 😀"], x: 0, y: 0, width: 400 }), /line 1 has/);
 		assert.throws(() => codeBlock({ lines: [" ".repeat(50) + "x"], x: 0, y: 0, width: 300, overflow: "wrap" }), /line 1 is indented 50 columns.*cannot wrap/);
@@ -376,7 +379,6 @@ describe("codeBlock input hardening", () => {
 		const scene = { id: "s", title: "t", description: b.text, width: 400, height: 100, duration: 1, steps: [], frame: () => drawCode(b, 0, [{ lines: [1, 1], start: 0 }]) };
 		const svg = renderSvg(scene, 1, { standalone: true });
 		const text = (/** @type {string} */ markup) => [...markup.split("</desc>")[1].matchAll(/<tspan[^>]*>([^<]*)<\/tspan>/g)].map((m) => m[1].replace(/&#45;/g, "-")).join("|");
-		assert.notEqual(text(svg), "");
 		assert.equal(text(svg), "color: var(--mk-accent)");
 		assert.ok(svg.includes("<desc id=\"s-desc\">color: var(--mk-accent)</desc>"), "the description keeps the exact text");
 		const odd = codeBlock({ lines: ["var(--mk-nope)"], x: 0, y: 0, width: 400 });
@@ -387,6 +389,7 @@ describe("codeBlock input hardening", () => {
 	it("refuses a font that names a token", () => {
 		assert.throws(() => block({ font: "'var(--mk-nope)', monospace" }), /font/);
 		assert.throws(() => block({ font: "var(--mk-accent)" }), /font/);
+		assert.throws(() => block({ font: "var(--code-font, DejaVu Sans Mono)" }), /font/);
 	});
 
 	it("keeps the band's marker off the code", () => {
