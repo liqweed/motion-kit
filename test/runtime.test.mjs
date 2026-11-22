@@ -122,14 +122,14 @@ describe("styles", () => {
 		]);
 	});
 	it("checks every pair the scene types draw, at 4.5 for text and 3 for shapes", () => {
-		const text = ["ink/bg", "ink/surface", "muted/bg", "muted/surface", "onAccent/accent"];
-		const shapes = ["line/bg", "accent/bg", "emphasis/bg", "emphasis/accent"];
-		assert.deepEqual(CONTRAST_PAIRS.map((p) => `${p.fg}/${p.bg}:${p.min}`), [...text.map((p) => `${p}:4.5`), ...shapes.map((p) => `${p}:3`)]);
+		const text = ["ink/bg", "ink/surface", "muted/bg", "muted/surface", "onAccent/accent", "onCaution/caution", "onAlert/alert"];
+		const shapes = ["line/bg", "accent/bg", "emphasis/bg", "emphasis/accent", "caution/bg", "alert/bg"];
+		assert.deepEqual(CONTRAST_PAIRS.map((p) => `${p.fg}/${p.bg}:${p.min}`).sort(), [...text.map((p) => `${p}:4.5`), ...shapes.map((p) => `${p}:3`)].sort());
 		for (const { fg, bg, use } of CONTRAST_PAIRS) {
 			assert.ok(use, `${fg} on ${bg} says where it is drawn`);
 			// The fg token painted in the bg colour: 1:1, in the theme changed only.
 			const problems = checkContrast({ name: "probe", light: { [fg]: NEUTRAL.light[bg] }, dark: {} });
-			assert.ok(problems.includes(`probe light: ${fg} on ${bg} is 1.00:1, needs ${fg === "onAccent" || ["ink", "muted"].includes(fg) ? 4.5 : 3}:1`), `${fg} on ${bg}: ${problems.join("; ")}`);
+			assert.ok(problems.includes(`probe light: ${fg} on ${bg} is 1.00:1, needs ${["onAccent", "onCaution", "onAlert", "ink", "muted"].includes(fg) ? 4.5 : 3}:1`), `${fg} on ${bg}: ${problems.join("; ")}`);
 			assert.ok(problems.every((p) => p.startsWith("probe light:")), "the dark theme is untouched");
 		}
 	});
