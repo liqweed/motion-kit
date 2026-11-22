@@ -413,9 +413,8 @@ functions; a colour is a token name (G4 applies).
   this part. A scene that draws the bar's accent on the track's colour declares
   the pairs in `contrastPairs` (G12), for example `accent` on `surface` at 3 and
   `line` on `surface` at 2.5 for decorative hatch texture. Informative hatching
-  is a shape and needs 3:1. The bar has an opaque outline in its own fill where
-  it meets the hatched track, so hatch lines cannot show through its anti-aliased
-  silhouette; the bar itself is adjacent to `surface`, not the hatch beneath it.
+  is a shape and needs 3:1; the opaque bar itself is adjacent to `surface`, not
+  to the hatch beneath it.
 
 ## 5. Markup
 
