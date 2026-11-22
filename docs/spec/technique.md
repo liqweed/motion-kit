@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-19
+last_updated: 2026-11-21
 ---
 
 # motion-kit technique — normative specification
@@ -39,7 +39,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
 | `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair but the optional tokens' (`caution`, `alert`, and their `on…` colours) [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known, a pair MUST NOT name one token twice (it shows no contrast), and `min` in [1, 21]. |
-| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor` returns one, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
+| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` and `labelPill(...)` return `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with `id` a string and the rest finite numbers, `width` and `height` not negative, `opacity`, when given, finite, and `stem`, when given, `{x1, y1, x2, y2}` with four finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
@@ -48,7 +48,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
   serializable scene options, passed unchanged; option names `format`,
-  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
+  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `bars` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
@@ -68,9 +68,9 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 |---|---|---|---|
 | T1 | `frame(t)` MUST depend only on `t` and the scene's constants: no `Date`, `Math.random`, `performance.now`, no state carried between calls, no module-level mutable state. | [gate] G1 re-renders each `t`; G11 renders under stubbed clocks and scans the source (`lib/check.mjs`) | Random access: a player can jump, an exporter can write exactly one frame, video samples `t = f/fps` (`runtime/scene.mjs:14-17`). |
 | T2 | Same `t` (and same style/options) MUST give byte-identical output. | [gate] G1 | Tests, diffs, caching and committed media all depend on it. |
-| T3 | Callers MUST clamp `t` to `[0, duration]`; `renderSvg` does (`runtime/scene.mjs:70`). `frame` MAY assume a clamped `t`. | — | Defines "before start" and "hold". |
-| T4 | Every number interpolated into markup MUST be rounded: `num(n, 2)` by default, 3 digits for `opacity`, 4 for scale factors (`runtime/svg.mjs:17-22,29,64`). `num` MUST throw on non-finite input and never emit `-0`. | [gate] G3; non-finite → G5 | 17-digit floats made "settled" frames differ by 1 ms (`skills/animated-diagram/references/technique.md:128-129`). |
-| T5 | Visibility MUST be decided on rounded values: an element whose opacity rounds to 0 is omitted; an opacity that rounds to 1 is not written (`runtime/svg.mjs:28,39,68-72`). | by construction (`el`, `fade`) | Identical-looking frames must be identical bytes (opacity 0.9999 vs omitted). |
+| T3 | Callers MUST clamp `t` to `[0, duration]`; `renderSvg` does (`renderSvg` in `runtime/scene.mjs`). `frame` MAY assume a clamped `t`, except that it MUST hold: the gate also calls it with a raw `t` past `duration` and requires the final frame. | — | Defines "before start" and "hold". |
+| T4 | Every number interpolated into markup MUST be rounded: `num(n, 2)` by default, 3 digits for `opacity`, 4 for scale factors (`num`, `el`, `fade` in `runtime/svg.mjs`). `num` MUST throw on non-finite input and never emit `-0`. | [gate] G3; non-finite → G5 | 17-digit floats made "settled" frames differ by 1 ms (`skills/animated-diagram/references/technique.md`, "Lessons learned"). |
+| T5 | Visibility MUST be decided on rounded values: an element whose opacity rounds to 0 is omitted; an opacity that rounds to 1 is not written (`el`, `fade` in `runtime/svg.mjs`). | by construction (`el`, `fade`) | Identical-looking frames must be identical bytes (opacity 0.9999 vs omitted). |
 | T6 | Scenes MUST NOT use CSS transitions/animations or timers; the renderer owns the clock (`runtime/player.mjs:15`). | — | Exported frames would not match what plays. |
 | T7 | Variation, if any, MUST derive from constants and `t` (seeded), never from runtime randomness. | [gate] G1, G11 | Same as T2. |
 
@@ -194,13 +194,13 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 ### 4.7 Geometry: arc length and draw-on (`runtime/svg.mjs`)
 
 - `polyline(points)` → `{length, d, at(f)}`; `at` returns the point at fraction
-  `f` of total arc length (`runtime/svg.mjs:92-113`).
+  `f` of total arc length (`polyline` in `runtime/svg.mjs`).
 - `cubic(p0…p3, samples = 64)` → `{length, d, at(f)}` with a 64-sample
   arc-length lookup table and binary search, so a marker moves at constant
-  speed without a DOM in Node and browsers (`runtime/svg.mjs:119-152`).
+  speed (approximately, within a lookup interval) without a DOM in Node and browsers (`cubic` in `runtime/svg.mjs`).
 - `drawOn(length, p)`: `null` for `p ≤ 0`, `{}` for `p ≥ 1`, else
   `stroke-dasharray: L L; stroke-dashoffset: L·(1 − p)`
-  (`runtime/svg.mjs:159-163`). Callers MUST skip the element when it returns
+  (`drawOn` in `runtime/svg.mjs`). Callers MUST skip the element when it returns
   `null`: a zero-length dash with round caps paints a dot.
 - Two-state elements (pending → active) MUST cross-fade two layers with
   opacities `1 − p` and `p` instead of interpolating colours, which would need
@@ -247,13 +247,55 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   opacity, id})` extrudes a convex footprint (any winding; stored
   counter-clockwise) from base height `z` by `h` ≥ 0; `box` (centred on x, y)
   and `slab` (default `h` 0.25) are rectangular prisms; `regularPolygon` makes
-  a footprint. A non-convex, degenerate or too-small footprint, an unknown
+  a footprint. A non-convex, degenerate or too-small footprint, one with a repeated vertex (adjacent or not, so a footprint that winds round twice), an unknown
   token or a negative height throws. `fill` is the token of the top face,
   `sides` of the side faces (default `fill`); `shade` (default `ink`, `null`
   for none) is layered over each side at an opacity from 0.10 to 0.26 by how
   far the face turns from screen left. Faces are `<path>`s outlined with
   `stroke`; only faces that face the camera are drawn (the top when elevation
   > 0, a side when its outward normal faces the camera and elevation < 90°).
+- **Rounded solids.** `roundedBox({x, y, w, d, h, radius, segments = 8, …})`
+  and `roundedSlab` (default `h` 0.25) are a box whose four vertical corners
+  are arcs of `radius` sampled in `segments` straight pieces. `radius` MUST be
+  from 0 to half the shorter side and `segments` an integer ≥ 1 [throws];
+  radius 0 is a `box`, half the shorter side a stadium or a circle. The
+  footprint is an ordinary convex prism, so depth order treats it like any
+  solid. The solid is `smooth` and carries `groups` (one number per footprint
+  edge: each arc, and each straight side, is a group): its visible sides draw
+  as one wall, a single `<path>` outlined once, shaded by one unstroked layer
+  per group (so the number of side paths is bounded by the arcs and sides, at
+  most 8 layers, and does not grow with `segments`; an arc within one sample of
+  tangent to the view may add or lose its layer as `segments` changes). `prism` takes the same `groups` (in the
+  winding of its `points`) and `smooth`; without `smooth` a group is a face
+  outlined by itself, without `groups` (and without `smooth`) every edge is;
+  a `smooth` solid draws its visible sides as one wall with or without `groups`.
+- **Content on a plane.** `planeMatrix(cam, {x, y, z = 0, w, d, view})` is the
+  SVG `matrix` that takes 2D content to the horizontal plane at height `z`,
+  the rectangle `w` (east) by `d` (north) centred on (`x`, `y`). The content is
+  drawn in its own `view` (`{width, height}`, origin at its top left, y down):
+  the view is fitted into the rectangle, centred, its aspect kept; its x runs
+  east, its y south. The matrix is the projection of the plane, so it follows
+  every camera, including each one of a `lerpCamera` swivel. Entries are
+  raw numbers; `drawOnPlane` serialises them through `num(v, 4)` (G3), and a
+  caller who writes its own transform MUST do the same. `drawOnPlane(cam, plane, markup, opacity = 1)`
+  wraps the markup in it, and returns `""` for a plane seen edge on (elevation
+  0°) or too small to draw (its rounded matrix singular) or with `opacity` 0. A solid's `top` (`{markup, view, inset = 0, opacity
+  = 1}`, any prism) draws such content on its top face, on the footprint's
+  bounding box less `inset` (which MUST leave room [throws]), inside the solid's
+  own group, so it is ordered, and fades, with the solid; it is not drawn when
+  the top is edge on. Stroke widths and font sizes in the markup are in the
+  view's units; colours are tokens.
+- **Grid backdrop.** `drawGrid(cam, {radius, step = 1, x = 0, y = 0, z = 0,
+  stroke = "line", strokeWidth = 1, opacity = 0.5, bands = 6})` draws grid
+  lines every `step` along x and y in the floor plane at height `z`, out to
+  about `radius` of (`x`, `y`) (a segment of one `step` is kept when its middle
+  is inside, so a line's end may lie up to half a `step` beyond): diamonds in isometric, squares in plan. The lines fade
+  radially in `bands` rings, one `<path>` each, faintest first, at up to
+  `opacity` (no gradient, no id). `radius` and `step` MUST be above 0, `bands`
+  an integer from 1 to 64, and the grid at most 200 cells each way from the centre
+  [throws]. It is static (a function of the camera alone) and has no depth: a
+  scene draws it before the solids. Any motion added to it (a shimmer, a pan)
+  is ambient motion, which the canon excludes: a scene plays once and holds (§2, §8).
 - **Depth order.** `orderSolids(solids, cam)` returns the solids far to near.
   Two solids whose projections overlap are ordered by the axes that separate
   them (a footprint edge, or height when seen from above); where the axes
@@ -263,8 +305,13 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
 - **Labels.** `labelAnchor(cam, {id, at, lines, fontSize, lift, side,
   opacity})` draws a dot on the projected point, a vertical stem `lift` pixels
   up and a label box above it (or beside its top), and returns the markup and
-  the `LabelBox`. `labelProblems(boxes, {width, height, gap = 4})` lists the
-  collisions G15 reports. Labels follow §7 (wrapped, localized, ≥ 14 px).
+  the `LabelBox`, rounded to two decimals as the SVG attributes are, so the gate
+  and the picture agree on those coordinates (`labelPill` rounds its box the same way). `labelProblems(boxes, {width, height, gap = 4, limit})`
+  lists the collisions G15 reports, and stops at `limit` (a whole number from 0 or Infinity, else `RangeError`; default all; 0 returns none; only distinct sentences count). Labels follow §7 (wrapped, localized, ≥ 14 px).
+  `labelPill({id, x, y, lines, fontSize, fill, stroke, ink, opacity})` is a
+  stemless tag: a rounded box of text centred on the screen point (`x`, `y`),
+  its colours tokens (`surface`, `line`, `ink` by default). It returns the
+  markup and a `LabelBox` without a stem, which G15 checks like any other.
 - **Paths.** `path3(points)` is a polyline through world points with its
   length in world units, so a token keeps a constant speed whatever the camera
   does when its progress is linear (`tokenPoints` defaults to `easeStandard`;
@@ -312,11 +359,128 @@ functions; a colour is a token name (G4 applies).
   its target has filled, and nothing repeats while a step rests, so the
   settled-frame rule (G6) holds. Several pulses may run in one beat.
 
+### 4.11 Text reveal and highlighter sweep (`runtime/svg.mjs`)
+
+- `blurReveal(enter, {id, rise = 6, blur = 4}, ...children)` draws `children`
+  with an opacity that rises to one and a rise and a blur that go to zero as
+  `enter` (an eased progress, §4.2) goes from 0 to 1: one `<g transform opacity filter>` and,
+  while the blur is 0.005 or more, a `<defs>` holding one `<filter>` with one
+  `<feGaussianBlur>`. It returns `""` for `enter ≤ 0` and wherever the opacity rounds to zero.
+- **Settled means bare.** Once `enter` reaches 1, as `fade` rounds it (0.9995
+  and above), `blurReveal` MUST return the children unchanged: no group, no
+  filter, no `<defs>`, so a settled frame is byte-identical to the same markup
+  drawn without the reveal, and every step frame, the final frame, a baked
+  last slice and a reduced-motion frame carry no filter. Between 0 and 1 the
+  `transform` and the `filter` are left off once they round to nothing
+  (a rise or a blur under 0.005 units), so a frame never carries
+  a `stdDeviation="0"`, which renderers read differently.
+- **Ids.** `id` names the filter and MUST be built from `frame`'s `idPrefix`
+  (`${idPrefix}-reveal-1`), one per revealed element, so the sampled G14 check for ids shared across instances holds and a baked
+  SVG, which renders each slice with its own prefix, never repeats one
+  [throws unless `id` is a CSS-safe token]. `rise` is 0 to 24 and `blur` 0 to 12
+  [throws].
+- **Renderers.** The filter is `feGaussianBlur` in sRGB over a region of
+  `x −25 %`, `y −100 %`, `width 150 %`, `height 300 %` of the element's box,
+  which holds the blur only while, on each side, the padding (25 % of the width sideways, 100 % of the height above and below) less any overhang of stroke or markers past the box leaves at least 3 × `blur` of clearance. For an element too narrow or shallow for that (a zero-height rule included), a `blur` above the default, or a stroke or markers that eat the padding (a thick stroke on a small shape, at any size), `box: {x, y, width, height}` (the
+  element's own painted box: all four fields finite, `width` and `height` positive, `x` and `y` free [throws], covering the painted stroke) makes the region that box
+  plus 3 × `blur` on every side (`filterUnits="userSpaceOnUse"`). The tests compare the SVG markup, baked slices and the patched DOM, and a resvg fixture of one mid-reveal frame; other renderers are not compared. The live player (its
+  in-place patch updates `stdDeviation` and the group's attributes, and drops
+  the group when the reveal ends), `renderSvg` and `bake` use the same helper and filter parameters; their SVG bytes differ (`bake` renames filter ids per slice and wraps frames in groups; `renderSvg` resolves token references only in standalone mode), so do not compare or reuse them interchangeably. PNG export and video rasterize with resvg or Chrome, and raster appearance can vary with renderer, fonts and scale (`test/reveal.test.mjs`,
+  `test/player.test.mjs`). A consumer that ignores SVG filters (some slide
+  applications) shows the fade and the rise without the blur, and only in a
+  frame taken mid-reveal: step frames carry no filter.
+- **Timing.** The reveal is one entrance, 300 to 600 ms (§4.2), on the style's
+  entrance curve (`easings(style.motion).easeOut`), finished 50 ms or more
+  before the step it belongs to. That is the scene's obligation: G6 only checks that frames around a step are stable, so a scene that holds `enter` at, say, 0.5 through a step or the end keeps a filter in those frames and passes. The no-filter guarantee holds only for a reveal completed in time. It happens once per element and holds.
+  The blur is a paint cost no other motion helper has; the plain fade
+  (`fade`) stays the default for a label whose arrival does not need to be
+  watched
+  ([`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)).
+- `highlightSweep(p, {x, y, width, height, token = "emphasis", opacity = 0.3,
+  radius = 4})` draws a rounded `<rect>` filled with a token at `opacity`,
+  from `x` to `x + width · p` (`p` eased, 0 to 1); `""` for a swept width under 0.01 (`p ≤ 0` included), which returns before the `token` is read, so an unknown token throws only once the swept width reaches 0.01; an `opacity` that rounds to zero also yields `""`, but only after the `token` has been checked; at 1 the
+  rectangle is the same on every frame. It is drawn before the text it marks,
+  and `opacity` starts low (0.2 to 0.4): at the default 0.3 the neutral
+  style's ink reads on the tinted canvas at 4.5:1 or more in both themes
+  (`test/reveal.test.mjs`). The gate checks text against the canvas, not
+  against the band, so a custom style must check its ink against the
+  composited tint itself. `width` is the scene's to set; `estimateWidth` is a
+  rough heuristic (characters × size × 0.56), not a bound, so pass a
+  conservative width where the band must cover the whole line [throws on a
+  non-finite or non-positive size, an unknown token, or an `opacity` that is
+  not a finite number in (0, 1]].
+- Both helpers are pure functions of their arguments. `examples/text-reveal.scene.mjs`
+  reveals three labels in reading order, then a quoted line with one band per
+  wrapped line swept first line to last.
+
+### 4.12 Bars with values (`runtime/bars.mjs`)
+
+For custom scenes that chart a few values; handed to them in `kit`. Pure
+functions; a colour is a token name (G4 applies).
+
+- **Hatch.** `hatchPattern({idPrefix, name, stroke, spacing, width})` returns
+  `{id, fill, markup}`: a `<pattern>` of lines at 45°, rising to the right,
+  `spacing` px apart (default 7) and `width` px wide (default 1.5), in the token
+  `stroke` (default `line`). Its id is `${safeId(idPrefix)}-hatch-${name}` (`name` defaults to
+  `hatch`), so its hatch namespace cannot collide with clip paths generated by `drawBar`; a scene that draws several hatchings gives each
+  its own `name`, of letters, digits and `_` only. Prefixes must be unique after `safeId` normalizes them. `name` also cannot be `title` or `desc`,
+  which `renderSvg` reserves. `markup` is a `<defs>` the frame emits once, before the tracks,
+  on every frame; `fill` is `url(#id)`. The pattern is in the user space of the element that references it (picture
+  units for tracks drawn at the top level, which scale with the SVG), so
+  tracks that share it show one continuous hatch, and in the player, in `bake`
+  and in a PNG or video export it draws the same. It makes the `idPrefix` a safe id token as `renderSvg` does; it throws for an
+  empty `idPrefix`, a `name` that is not a safe id token or is reserved, a `spacing` of 0 or less, and a `width` of
+  0 or less or not below the spacing after SVG number rounding. A hatch must come from `hatchPattern`; a frozen hatch from another vendored runtime copy works too, if its `fill` is an own data property `url(#id)` (a getter or an inherited `fill` is refused).
+- **Track.** `drawTrack({x, y, width, height, hatch, fill, radius, opacity, id})`
+  is an empty bar: a rounded rect filled with the token `fill` (default
+  `surface`, `null` for none) and the `hatch` over it. It needs one of the two.
+  `radius` defaults to half the height and is never more than half a side. It
+  throws for a size of 0 or less (including after SVG number rounding) and for a hatch that is not frozen or whose `fill` is not `url(#id)`. It emits only the hatch's `fill`; putting its `markup` in the frame is the scene's job, and a hatch whose `<defs>` is missing paints nothing.
+- **Bar.** `drawBar({x, y, width, height, p, fill, radius, trackRadius, opacity, idPrefix, id, trackWidth})` draws a
+  bar from `x` that is `width * p` long (`width` is its length when done, a share
+  of the track's, `p` the eased
+  progress 0..1 of its growth), rounded at both ends all the way, so it grows as
+  a pill. Nothing for `p ≤ 0`; `p ≥ 1` is the bar it rests as. `fill` is a token
+  (default `accent`). Give `trackWidth`, the frame's `idPrefix`, and a local safe
+  `id` (letters, digits and `_`, except `title` and `desc`) to clip a short bar to its rounded track; clip IDs use a separate `-clip-` namespace. Use
+  `trackRadius` whenever the track sets a `radius` explicitly (the clip otherwise defaults to half the track height, whatever the bar's own `radius`).
+- **Growth.** `barProgress(t, {start, duration}, style)` is the bar's `p`: 0
+  before `start` and exactly 1 from `barEnd(run)` = `start + duration` on, on the
+  style's movement curve (`style.motion.move`, through `easings`, so it settles
+  whatever curve the style names), the default curve for no style. `style` is the
+  one `frame(t, {idPrefix, style})` receives. A run has a finite `start` and a
+  finite, positive `duration` and a finite end strictly after its start; invalid
+  runs throw rather than producing an invalid end time.
+- **Value.** `rollingValue(from, to, p)` is `from` at `p ≤ 0`, `to` itself, not a
+  sum that rounds to it, at `p ≥ 1`, and between them a straight line in `p`, so
+  the raw number and the bar, which `p` has already eased, arrive together (a
+  `format` that rounds may show its final digits before the bar settles).
+  `drawValue({x, y, to, from, p, format, fontSize, anchor, fill, weight, family,
+  opacity, id})` draws `format(rollingValue(from, to, p))` as text (default
+  `from` 0, `format` rounding to a whole number, `anchor` `start`, `fill` the
+  token `ink`, `dominant-baseline` central on `y`). `format` is the caller's and
+  carries the units, decimals and locale; it must return a string, which is
+  escaped. It throws for a `format` that is not a function or returns another
+  type, and for a non-finite number. Until the monospace face of the style
+  lands, a scene sets its own `family` to keep the digits from jittering.
+- **Canon.** A bar grows once, in a step's beat, and rests (§4.8): every bar of
+  the beat has settled (`barEnd`) at least 50 ms before the step's `at`, and from
+  then its value is exactly `format(to)`, so the step frame is the settled
+  frame (G6). G6 compares the whole frame up to 45 ms after `at`, so the track's
+  own entrance also finishes 50 ms or more before `at`, and the next motion
+  starts no earlier than 50 ms after it. Nothing repeats. A value that updates live beside footage is not
+  this part. A scene that draws the bar's accent on the track's colour declares
+  the pairs in `contrastPairs` (G12), for example `accent` on `surface` at 3 and
+  `line` on `surface` at 2.5 for decorative hatch texture. Informative hatching
+  is a shape and needs 3:1; the opaque bar itself is adjacent to `surface`, not
+  to the hatch beneath it.
+
+
 ## 5. Markup
 
 - Text and attribute values MUST be escaped (`& < > " '`) via `esc`, `text` or
-  `el`/`attrString` (`runtime/svg.mjs:10-14,24-33,45-57`). Labels MUST NOT be able
-  to inject markup (`test/runtime.test.mjs:118-124`).
+  `el`/`attrString` (`esc`, `text`, `el` in `runtime/svg.mjs`). Labels MUST NOT be able
+  to inject markup (the "escapes label text" test in `test/runtime.test.mjs`).
 - `el(tag, attrs, …children)` treats children as trusted markup; untrusted
   strings MUST go through `text()`/`esc()`.
 - Output MUST be well-formed: balanced tags, no stray `<`, no bare `&` [gate] G2.
@@ -659,14 +823,15 @@ that removes every listener, observer and mark they added.
 ## 11. The gate
 
 `checkScene(scene)` (`lib/check.mjs`) samples 121 evenly spaced times
-(`SAMPLES = 120`) and stops collecting after 13 problems.
+(`SAMPLES = 120`). The per-sample rules test for 13 problems between samples, so one sample can add a few more; the fixed-id check and the label gate (rule 9) hold to what is left of 13, but the settled-step check appends one problem per moving step whatever the count, so the total can exceed 13.
 `motion-kit check` and the vendored `check.mjs` both run `checkFiles`
 (`lib/gate.mjs`): every file × format (all six unless `--format`, repeatable)
 × locale (`--locale`, repeatable; else every locale a spec's strings carry, and
 `en` for a module, §7), with `--options` for modules, plus the style contrast check of the pairs each scene draws and a once-per-run warning
 for the shared pairs the style misses. A file that cannot be read, parsed or built fails on its own and the
-remaining files are still checked; the exit code is 1 on any failure. `npm run gate` = unit tests +
-`check` over `examples/` and `brand/` (`package.json:15-18`).
+remaining files are still checked; the exit code is 1 on any failure. `npm run gate` = `gate:core`
+(typecheck, version sync, unit tests, `check` over `examples/` and `brand/`,
+media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`).
 
 | ID | Rule | Code | Rationale |
 |---|---|---|---|
@@ -677,7 +842,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
 | G6 | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | First frame ≠ last frame. | `:61-63` | Something must animate. |
-| G8 | `render(duration + 5) === render(duration)`. | `:65` | Holds the final frame. |
+| G8 | `frame(duration + 5) === frame(duration)`, called raw, unclamped. | `checkScene` in `lib/check.mjs` | Holds the final frame. |
 | G9 | `duration ≤ 12` s. | `:68` | Hard limit; authoring target ≤ 8 s. |
 | G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `:72-77` | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
 | G11 | Every sampled frame and every step's exact frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |

@@ -137,7 +137,7 @@ const canonical = (markup) =>
 	});
 
 it("draws every sampled time in place, equal to a fresh render, whatever the order of seeks", async () => {
-	const files = ["bench/fleet.scene.mjs", "examples/smart-home.json", "examples/order-flow.json", "examples/integrations.json", "examples/custom-pulse.scene.mjs", "examples/isometric-swivel.scene.mjs", "brand/logo.scene.mjs"];
+	const files = ["bench/fleet.scene.mjs", "examples/smart-home.json", "examples/order-flow.json", "examples/integrations.json", "examples/custom-pulse.scene.mjs", "examples/isometric-swivel.scene.mjs", "examples/text-reveal.scene.mjs", "brand/logo.scene.mjs"];
 	for (const file of files) {
 		for (const format of ["16:9", "9:16"]) {
 			const { scene: s } = await loadScene(fileURLToPath(new URL(`../${file}`, import.meta.url)), { format });
@@ -202,6 +202,18 @@ it("under reduced motion the isometric example shows its final frame, and does n
 	player.playToStep(1);
 	assert.equal(player.time, s.steps[1].at, "a step is reached by a jump");
 	assert.equal(frames.size, 0);
+});
+
+it("under reduced motion the text reveal shows the settled text: no filter, no group, no rise", async () => {
+	const { scene: s } = await loadScene(fileURLToPath(new URL("../examples/text-reveal.scene.mjs", import.meta.url)), { format: "16:9" });
+	const { player, container, frames } = setup({ reduced: true, sceneOverride: s, options: { id: "p", autoplay: "visible" } });
+	const stage = container.children[0];
+	assert.equal(canonical(stage.innerHTML), canonical(renderSvg(s, s.duration, { idPrefix: "p", live: true })));
+	assert.doesNotMatch(stage.innerHTML, /filter|<defs|<g[ >]|transform=/);
+	assert.match(stage.innerHTML, />Faster startup</);
+	assert.equal(frames.size, 0, "nothing is scheduled");
+	player.seekStep(0);
+	assert.doesNotMatch(stage.innerHTML, /filter|<defs|<g[ >]|transform=/);
 });
 
 it("reduced motion always jumps to the requested step", () => {

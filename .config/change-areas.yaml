@@ -1,0 +1,75 @@
+# motion-kit's change-area catalog: which parts of the repository a change
+# touches. Read through drive.change_areas_catalog in .config/jig.yaml; resolve a
+# change with the jig `change-areas` skill, check this file with its check.ts.
+#
+# Areas are picked from where open pull requests overlapped most: the spec
+# text, the kit runtime, the scene gate and the website. A file no area claims
+# fails closed to the deepest profile, so everything else is still validated in
+# full.
+#
+# No area is `serialize: true`. `history.ts --propose-serialize` (jig's
+# resolve-conflicts skill) was run against this catalog; see the pull request
+# that added it for the proposal.
+
+# Profiles, shallowest first; the last is the deepest and the default.
+profiles:
+  # Text only: the gate without the site build, what CI also runs on Node 22.
+  core:
+    localChecks: ["npm run gate:core"]
+    verificationChecks: ["npm run gate:core"]
+  # Everything the pre-push hook runs.
+  full:
+    localChecks: ["npm run gate"]
+    verificationChecks: ["npm run gate"]
+
+areas:
+  spec-text:
+    title: "Spec text"
+    category: docs
+    # The normative contract and what semver covers, plus every skill reference
+    # page (the skills' spec of scene types, styles, targets and custom scenes).
+    paths:
+      - "docs/spec/**"
+      - "docs/stability.md"
+      - "skills/*/references/**"
+    workspace: []
+    impliedBy: []
+    deployTier: none
+    validation: { profile: core }
+    notes: >-
+      docs/spec/technique.md, docs/stability.md and the custom-scenes.md
+      reference are touched by most pull requests; AGENTS.md says to update the
+      spec when a contract changes.
+
+  kit-runtime:
+    title: "Kit runtime"
+    category: library
+    paths: ["runtime/**"]
+    workspace: ["runtime"]
+    impliedBy: []
+    deployTier: none
+    validation: { profile: full }
+    notes: "Dependency-free ES modules that run in the browser and in Node; consumers vendor them verbatim."
+
+  gate:
+    title: "Scene gate"
+    category: library
+    paths:
+      - "lib/gate.mjs"
+      - "lib/check.mjs"
+    workspace: []
+    # The gate runs every scene through the runtime.
+    impliedBy: [kit-runtime]
+    deployTier: none
+    validation: { profile: full }
+
+  website:
+    title: "Website"
+    category: app
+    paths: ["website/**"]
+    workspace: ["website"]
+    # The site imports runtime/ directly (Vite globs, no copies).
+    impliedBy: [kit-runtime]
+    deployTier: primary
+    validation: { profile: full }
+    notes: "motion-kit.dev, deployed to Cloudflare by .github/workflows/deploy-site.yml on merge to main."

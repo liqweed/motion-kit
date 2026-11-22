@@ -25,6 +25,23 @@ custom scene's `frame` rather than importing the constants.
 | Pause between beats | ≥ 50 ms, so step frames settle |
 | Whole explainer | aim for ≤ 8 s, then hold; gate limit 12 s |
 
+## Blur reveal or plain fade (`blurReveal`, `highlightSweep`)
+
+| | Plain fade (`fade`, the node parts' 8-unit rise) | Blur reveal (`blurReveal`) |
+|---|---|---|
+| Use it for | Nodes, connectors, anything in a dense diagram; text that is not the point of the beat | Text the viewer should watch land: a heading, the label of the one thing the beat introduces, a quoted line, a card |
+| Looks like | Appears from transparent, rising a few units | The same, and starts soft: sharpens into place over the same 300–600 ms |
+| Cost | Opacity and transform only | An SVG filter per revealing element, every frame of the reveal. Keep to a few elements at a time |
+| Settled | No opacity or transform left; `fade` still wraps the markup in a `<g>` | No trace: the markup comes back bare, byte-identical |
+
+Reveal in reading order, siblings 80–150 ms apart, on the style's entrance
+curve. A reveal that does not carry a beat is decoration: use the fade. A
+`highlightSweep` marks one thing in a scene (it uses the `emphasis` token, and
+there is one emphasis element), grows left to right behind its text over about
+0.6 s on the entrance curve, and starts while the text is still sharpening or
+once it has. Neither helper loops; a blinking cursor is ambient motion, so a
+cursor stays static.
+
 ## Springs, without breaking random access (derived)
 
 Frame-by-frame spring simulation depends on earlier frames. Use the closed form.
@@ -69,6 +86,10 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   height is invisible. Draw a flat top first (`h` > 0 only so the faces exist).
 - **Depth:** `orderSolids` is the order; never draw by hand. Heights and
   footprints decide it; a floor slab is drawn first.
+- **Backdrop, faces and tags:** the grid backdrop is static: it fades in with
+  the floor and then rests (a shimmer or pan is ambient motion). Content on a
+  top face fades in after its solid has settled, and turns with the camera
+  like any face. Pill tags fade in like labels, once the camera rests.
 - **Several tokens:** stagger their starts by 0.25–0.4 s on a trip of 1.2–2 s,
   so 3–4 are in flight at once without touching. Use `linear` for tokens that
   travel a conveyor at a steady speed, and grow them in and out over the first
@@ -95,6 +116,22 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   ambient motion (canon above). Loops are forbidden by contract and need review;
   the gate's settled-frame rule only catches motion around the sampled step
   boundaries, so it will not see every repeat.
+
+## Bars and rolling values (derived)
+
+- **Bar:** grows from the start of its track over 0.5–0.8 s on `easeStandard`
+  (the style's movement curve), as a pill. The track starts first (0.3–0.4 s);
+  the bar follows after about 0.25 s and may begin while the track finishes fading.
+- **Value:** rolls from its start value to its end value with the bar's own
+  eased progress, so the raw number and the bar arrive together (a formatter
+  that rounds may show its final digits earlier), and shows exactly the end value
+  once the bar has settled. Never a separate timer; never a count that finishes
+  after the bar.
+- **Timing rule:** the bar has settled (`barEnd`), and the value with it, ≥ 50 ms
+  before the step. Rows reveal one at a time, one step each, the next row's
+  entrance starting no earlier than 50 ms after the step.
+- **Never** a bar or a number that keeps moving while a step rests: a value that
+  updates live is footage, not part of the diagram.
 
 ## Container and text timing
 
