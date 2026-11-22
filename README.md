@@ -59,6 +59,7 @@ runtime/        dependency-free ES modules (browser + Node)
   svg.mjs       escaping, rounding, el/text/fade, polyline + Bézier arc-length, drawOn, several tokens
   iso.mjs       isometric kit for custom scenes: camera, solids, depth order, label anchors
   connectors.mjs dashed connectors, diamond junctions and single-pass light pulses for custom scenes
+  bars.mjs      hatched tracks, rounded bars on the style's curve and rolling values for custom scenes
   wrap.mjs      label wrapping with hard budgets
   style.mjs     tokens, neutral style, contrast checks, token resolution
   scene.mjs     scene contract, formats, renderSvg
@@ -74,7 +75,8 @@ skills/         animated-diagram, motion-render, project-logo (Claude Code / Cra
 examples/       order-flow (sequence), smart-home (hub-spoke), incident (timeline),
                 web-stack (stack), custom-pulse (custom module),
                 isometric-swivel (custom module: isometric kit, several tokens),
-                connectors (custom module: connectors, diamond junctions, pulses)
+                connectors (custom module: connectors, diamond junctions, pulses),
+                bars (custom module: hatched tracks, bars, rolling values)
 bench/          heavy scene for npm run bench:player (live-player frame cost)
 brand/          logo scene (built with motion-kit); renders go to assets/ + .idea/ (npm run media)
 assets/         generated project icon: icon.svg, icon.png, icon-animated.svg

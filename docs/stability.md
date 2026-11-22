@@ -62,6 +62,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/svg.mjs` | `esc`, `num`, `attrString`, `el`, `text`, `translate`, `scaleAbout`, `fade`, `dist`, `pointOnLine`, `trimSegment`, `polyline`, `cubic`, `drawOn`, `tokenPoints`, `tokensAlong` |
 | `runtime/iso.mjs` | `camera`, `CAMERA_PLAN`, `CAMERA_ISOMETRIC`, `ISO_ELEVATION`, `lerpCamera`, `fitCamera`, `projector`, `project`, `path3`, `box`, `slab`, `prism`, `regularPolygon`, `orderSolids`, `drawSolid`, `drawSolids`, `labelAnchor`, `labelProblems` (the solid and label-box shapes they take and return) |
 | `runtime/connectors.mjs` | `connectorPath` (its `at`, `cut`, `tip`), `drawConnector`, `drawJunction`, `drawPulse`, `pulseEnd`, `pulseHead`, `PULSE_LAG` (the option and `run` shapes they take) |
+| `runtime/bars.mjs` | `hatchPattern` (its `{ id, fill, markup }`), `drawTrack`, `drawBar`, `drawValue`, `rollingValue`, `barProgress`, `barEnd` (the option and `run` shapes they take) |
 | `runtime/wrap.mjs` | `wrapLabel`, `estimateWidth` |
 | `runtime/style.mjs` | `TOKENS`, `NEUTRAL`, `tok`, `normalizeStyle`, `cssVars`, `resolveTokens`, `contrast`, `checkContrast` (and its optional pair list), `contrastReport`, `sharedPairs`, `CONTRAST_PAIRS`, `CONTRAST_EXEMPT` |
 | `runtime/patch.mjs` | `patchMarkup` |
@@ -69,7 +70,7 @@ Two kinds of change are not breaking, even though output differs:
 | `runtime/links.mjs` | `scrollSteps` and `linkSteps` (their options, the `data-mk-step` attribute, the `aria-current="step"` marks, the returned dispose function), `stepRef`, `sectionSteps`, `activeSection`, `scrollMove` |
 | `runtime/bake.mjs` | `bake`, `bakeStats` |
 
-`KIT` holds every export of `motion`, `svg`, `iso`, `connectors`, `style`, `scene` and `wrap`; only
+`KIT` holds every export of `motion`, `svg`, `iso`, `connectors`, `bars`, `style`, `scene` and `wrap`; only
 the ones listed above are covered. Anything else in `runtime/` (for example
 `runtime/parts.mjs`, `withId`, `ENTRANCE_MAX`) is internal and may change in
 any release.
