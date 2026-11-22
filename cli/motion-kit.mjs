@@ -169,12 +169,17 @@ async function main() {
 				}
 				if (tall) {
 					// The tall layout ships too, so it passes the same gate; its report is told apart from the primary's.
-					const tr = checkScene(tall, { style, strict });
-					reportGate({ ...tr, warnings: [], advice: tr.advice.map((x) => ({ ...x, found: `tall layout: ${x.found}` })) });
-					// An optional preview: a tall layout that fails the gate is left out, as one that cannot be built is.
-					if (tr.ok) phone.scene = tall;
-					else phone.error = `the tall layout fails the gate: ${tr.problems.join("; ")}`;
+					// An optional preview: a tall layout that fails the gate, or whose check throws, is left out, as one that cannot be built is.
+					try {
+						const tr = checkScene(tall, { style, strict });
+						reportGate({ ...tr, warnings: [], advice: tr.advice.map((x) => ({ ...x, found: `tall layout: ${x.found}` })) });
+						if (tr.ok) phone.scene = tall;
+						else phone.error = `the tall layout fails the gate: ${tr.problems.join("; ")}`;
+					} catch (e) {
+						phone.error = `the tall layout could not be checked: ${e instanceof Error ? e.message : String(e)}`;
+					}
 				}
+				if (phone.error) console.error(`⚠ tall preview left out: ${phone.error}`);
 			}
 			const m = await exportSteps(scene, { out: need(a.out, "--out"), advice: r.advice, style, theme: a.theme, png: a.png, scale: Number(a.scale), qc: a.qc, background: a.background, sourceFile: resolve(file), version: VERSION, phone, ...sopts });
 			console.log(`wrote ${m.files.length} frames + index.html + manifest.json to ${a.out}`);

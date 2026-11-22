@@ -340,6 +340,11 @@ describe("instance ids", () => {
 		assert.equal(problems.length, 1);
 		assert.match(problems[0], /fixed id "face-clip"/);
 	});
+	it("the gate refuses one id twice in a single frame", () => {
+		const twice = { ...clipped, frame: (t, o) => `${clipped.frame(t, o)}${clipped.frame(t, o)}` };
+		const { problems } = checkScene(twice);
+		assert.ok(problems.some((p) => /duplicate id ".*-clip"/.test(p)), problems.join("; "));
+	});
 	it("bake gives each slice that defines ids its own prefix", () => {
 		const svg = bake(clipped, { fps: 4 });
 		const all = ids(svg);
