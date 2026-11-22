@@ -297,7 +297,7 @@ export function contrastReport(style, drawn) {
 		// A scene never classifies a pair itself: `advice` comes only from the shared registry,
 		// and only while the scene asks no more than the shared threshold. A stricter declared
 		// minimum is a drawn requirement, so it stays a hard failure.
-		const { advice: _declared, ...own } = d;
+		const own = { fg: d.fg, bg: d.bg, min: d.min };
 		const shared = CONTRAST_PAIRS.find((p) => same(p, d));
 		if (!shared) return own;
 		return { ...own, min: Math.max(d.min, shared.min), ...(shared.advice && d.min <= shared.min ? { advice: shared.advice } : {}) };

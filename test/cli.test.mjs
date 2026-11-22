@@ -157,7 +157,7 @@ describe("cli", () => {
 		assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/);
 		assert.match(r.out, /scene fails the gate:\n {2}- advice \[duration\]/);
 		assert.equal(existsSync(out("v-strict.mp4")), false, "video wrote nothing");
-		if (hasFfmpeg()) {
+		if (hasFfmpeg() && hasRaster) {
 			r = both("video", plain, "-f", "1:1", "-o", out("v.mp4"), "--fps", "5", "--scale", "1", "--hold", "0");
 			assert.equal(r.status, 0, r.out);
 			assert.match(r.out, /motion-kit: advice \[duration\]: duration 16\.0 s exceeds 12 s/);
@@ -228,7 +228,7 @@ describe("cli", () => {
 		// The other commands say it too, and a control character in a reason is refused.
 		const e = spawnSync(process.execPath, [CLI, "bake", calm, "-o", join(dir, "calm.svg"), "--options", join(dir, "labels.json")], { encoding: "utf8" });
 		assert.equal(e.status, 0, e.stderr);
-		assert.match(e.stderr, /acknowledges \[duration\] but never breaks it/);
+		assert.match(e.stderr, /acknowledges \[duration\] but this variant never breaks it/);
 		r = check(make("escape.scene.mjs", '[{ rule: "duration", reason: "\\u001b[2JApproved" }]'));
 		assert.equal(r.status, 1);
 		assert.match(r.out, /one line of plain text/);

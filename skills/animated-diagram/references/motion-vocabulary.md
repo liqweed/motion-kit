@@ -139,7 +139,7 @@ The reason each is advised against, and when breaking it is fine:
 | Advice against | Why | Fine when |
 |---|---|---|
 | Bounce, elastic, overshoot | Explanatory motion is not playful motion: an overshoot reads as emphasis the data does not have | A consumer's brand style asks for it and the step frames still settle (G6 stays hard) |
-| Looping, or a scene that never rests | Looping decoration competes with the text beside the diagram; a loop has no final frame to hold, step or print | An ambient status display that a page drives itself; the scene acknowledges `nothing-animates`, and the page owns the loop |
+| Looping, or a scene that never rests | Looping decoration competes with the text beside the diagram; a loop has no final frame to hold, step or print | An ambient status display that a page drives itself; the page owns the loop; a scene whose first and last frames are identical acknowledges `nothing-animates`, a finite scene the page replays does not |
 | Ambient motion | Same as looping | The same |
 | Parallax, scroll-scrubbing | The diagram should rest only on settled steps | A page's design language asks for it; that is the page's decision, not the scene's |
 | `transition: all` | It animates what nobody meant to animate | Never in a scene; in the page around it, name the properties |

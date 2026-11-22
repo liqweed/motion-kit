@@ -93,7 +93,7 @@ Advice (the canon; break it with a reason):
 
 - Plays once and holds the final frame; don't loop an explainer. No player
   loops a scene. An ambient display is a page's own decision, driven by the
-  page, and acknowledges `nothing-animates`.
+  page; only a scene whose first and last frames are identical acknowledges `nothing-animates`.
 - Motion guidance (reviewed, mostly not mechanically timed): one entrance ≤ 600 ms, siblings staggered 80–150 ms, aim for a whole scene ≤ 8 s. The gate gives advice (`duration`) above 12 s: fine when a voice-over or talk track sets the pace; otherwise split at a settled step.
 - No bounce/elastic, no parallax, no ambient motion inside an explainer.
 - Every motion must answer "what does this help the viewer understand?".
