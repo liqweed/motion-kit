@@ -14,7 +14,10 @@
   draws on (`drawOn` + `easeStandard`), one accent beat lands last
   (`springTo` pop). The final frame is the logo and must hold. Same scene
   rules as diagrams: tokens only, `num()` everything, no clock/randomness;
-  set `stepLabelsInFrame: false` and one step at `duration`.
+  set `stepLabelsInFrame: false` and one step at `duration`. A still form with
+  identical first and last frames (a 16 px variant, a one-colour sketch) needs
+  no fake fade: acknowledge the advice instead,
+  `acknowledge: [{ rule: "nothing-animates", reason: "A still mark." }]`.
 - **Dark variant:** check `.idea/icon_dark.svg`. If `accent` is the same in
   both themes, the tile carries the contrast; otherwise make sure the motif
   still reads on the dark accent.

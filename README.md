@@ -182,8 +182,13 @@ for inline specs, styles, lifecycle and error handling.
 
 Deterministic bytes · settled step frames · rounded numbers · token-only colours ·
 escaped labels · labels fit their budget in every locale · holds the final frame ·
-hard limit 12 s (aim for ≤ 8 s) · no clock or randomness in scenes · ids from the instance prefix. See
-`skills/animated-diagram/references/technique.md`.
+WCAG contrast of what a scene draws · no clock or randomness in scenes · ids from the instance prefix.
+These fail a scene. The motion canon (a scene over 12 s, no motion at all, a step label
+the frame does not draw, emphasis on accent under 3:1) is advice: the check says what it
+found, why, when breaking it is fine and what to do instead. A scene that breaks it on
+purpose acknowledges it with a reason (`acknowledge: [{ rule, reason }]`), and `--strict`
+(or `MOTION_KIT_STRICT=1`) fails advice nobody acknowledged. See
+`skills/animated-diagram/references/technique.md` and the spec's §11.
 
 ## Contributing, changes and stability
 
@@ -219,5 +224,5 @@ shares a JSON spec directly in the browser.
 Localized dictionaries must contain the requested locale; plain strings are
 shared. Custom modules can export `locales = ["en", "nl"]` for gate coverage.
 Narrative scenes may set `stepLabelsInFrame: false`; otherwise every step label
-must appear in the final frame. `controller.onStep(callback)` observes changes
+should appear in the final frame (advice). `controller.onStep(callback)` observes changes
 without polling and returns an unsubscribe function.

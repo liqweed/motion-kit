@@ -352,8 +352,10 @@ export function contrast(a, b) {
 /**
  * Two tokens drawn one against the other, and the contrast the pair needs in
  * both themes: 4.5 for text (WCAG 1.4.3), 3 for shapes and strokes (WCAG
- * 1.4.11). `use` says where it is drawn.
- * @typedef {{ fg: string, bg: string, min: number, use?: string }} ContrastPair
+ * 1.4.11). `use` says where it is drawn. `advice` names the advisory rule
+ * (runtime/advice.mjs) a pair belongs to: a scene that draws it and misses is
+ * given advice instead of a failure, because no WCAG criterion asks for it.
+ * @typedef {{ fg: string, bg: string, min: number, use?: string, advice?: string }} ContrastPair
  */
 /**
  * A token pair the check leaves out on purpose, and why.
@@ -382,6 +384,7 @@ export const CONTRAST_PAIRS = Object.freeze([
 		fg: "emphasis",
 		bg: "accent",
 		min: 3,
+		advice: "emphasis-on-accent",
 		use: "the emphasis ring around the reached node it marks (sequence, flowchart): 3.5 units apart, so adjacent at phone size. It tells the current node from the reached ones without relying on hue. The dot of hub-spoke, stack and walk rides over accent connectors",
 	},
 	{ fg: "caution", bg: "bg", min: 3, use: "a caution mark, rule or outline on the canvas (optional token: held only against scenes that declare the pair)" },
@@ -495,33 +498,48 @@ export function sharedPairs(...names) {
  * uses the token without. A scene that declares them
  * (`scene.contrastPairs`) is held to those; the shared pairs it does not
  * declare are only reported, as warnings, because WCAG judges what is drawn,
- * not the palette.
+ * not the palette. A drawn pair that carries an `advice` rule (emphasis on
+ * accent) is no WCAG requirement: a miss is advice, `{ rule, found }`, for the
+ * gate to explain and a scene to acknowledge (runtime/advice.mjs).
  * @param {any} style style data or "neutral"
  * @param {readonly ContrastPair[]} [drawn] `scene.contrastPairs`
- * @returns {{ problems: string[], warnings: string[] }}
+ * @returns {{ problems: string[], warnings: string[], advice: { rule: string, found: string }[] }}
  */
 export function contrastReport(style, drawn) {
 	const s = normalizeStyle(style);
+	/** Misses of `pairs` as problems, those of an advice pair as advice. @param {readonly ContrastPair[]} pairs */
+	const split = (pairs) => {
+		const hard = pairs.filter((p) => !p.advice);
+		const soft = pairs.filter((p) => p.advice);
+		return {
+			problems: checkContrast(s, hard),
+			advice: soft.flatMap((p) => misses(s, [p]).map((m) => ({ rule: /** @type {string} */ (p.advice), found: `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended` }))),
+		};
+	};
 	// An empty list says nothing about what is drawn, which is no reason to drop every check.
 	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) {
 		// The optional pairs are not owed, but a style that sets their token and misses is still told.
 		const optional = CONTRAST_PAIRS.filter((p) => isOptionalPair(p) && setsOptionalToken(style, p));
 		return {
-			problems: checkContrast(s, CONTRAST_PAIRS.filter((p) => !isOptionalPair(p))),
+			...split(CONTRAST_PAIRS.filter((p) => !isOptionalPair(p))),
 			warnings: misses(s, optional).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`),
 		};
 	}
-	if (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length) return { problems: checkContrast(s, drawn), warnings: [] };
+	if (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length) return { problems: checkContrast(s, drawn), warnings: [], advice: [] };
 	// A declaration may add pairs and name shared ones, never weaken a shared threshold.
 	// Contrast is symmetric, so a pair written the other way round is the same adjacency.
 	/** @param {ContrastPair} p @param {ContrastPair} d */
 	const same = (p, d) => (p.fg === d.fg && p.bg === d.bg) || (p.fg === d.bg && p.bg === d.fg);
 	drawn = drawn.map((d) => {
+		// A scene never classifies a pair itself: `advice` comes only from the shared registry,
+		// and only while the scene asks no more than the shared threshold. A stricter declared
+		// minimum is a drawn requirement, so it stays a hard failure.
+		const own = { fg: d.fg, bg: d.bg, min: d.min };
 		const shared = CONTRAST_PAIRS.find((p) => same(p, d));
-		return shared && d.min < shared.min ? { ...d, min: shared.min } : d;
+		if (!shared) return own;
+		return { ...own, min: Math.max(d.min, shared.min), ...(shared.advice && d.min <= shared.min ? { advice: shared.advice } : {}) };
 	});
-	const problems = checkContrast(s, drawn);
 	const undrawn = CONTRAST_PAIRS.filter((p) => !drawn.some((d) => same(p, d)) && (!isOptionalPair(p) || setsOptionalToken(style, p)));
 	const warnings = misses(s, undrawn).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`);
-	return { problems, warnings };
+	return { ...split(drawn), warnings };
 }

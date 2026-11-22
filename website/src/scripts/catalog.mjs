@@ -219,12 +219,12 @@ export const RULES = [
 	["G4", "No colour literals: tokens only"],
 	["G5", "No NaN, undefined or Infinity"],
 	["G6", "Settled step frames: at rest at the step, unchanged 45 ms after"],
-	["G7", "Something animates"],
+	["G7", "Advice: something animates"],
 	["G8", "Holds the final frame"],
-	["G9", "Duration ≤ 12 s"],
-	["G10", "Every step label appears in the final frame"],
+	["G9", "Advice: duration ≤ 12 s"],
+	["G10", "Advice: every step label appears in the final frame"],
 	["G11", "No clock or randomness in frame() or what it calls"],
-	["G12", "Style contrast, light and dark"],
+	["G12", "Style contrast, light and dark (emphasis on accent is advice)"],
 	["G13", "Builds in every format × locale"],
 ];
 

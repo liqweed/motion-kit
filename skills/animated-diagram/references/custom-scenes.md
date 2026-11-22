@@ -194,7 +194,13 @@ target when the pulse reaches it: `lit: progress(t, arriveAt, 0.25, easeStandard
 where `arriveAt` is `run.start + run.duration` (with `ease: linear`, a junction
 at a fraction `f` of the path is reached at `run.start + f * run.duration`).
 A pulse never repeats while a step rests: a connector that pulses on a loop is
-ambient motion, which the canon rules out.
+ambient motion, which the canon advises against.
+
+Canon, as advice: no loops, no ambient motion, no continuous scrubbing, 12 s
+(8 s target). An isometric scene plays once and holds its last frame, like any
+other, and under reduced motion the player shows that frame. A constantly
+moving hero is a 3D model's job, not motion-kit's; a page that wants one anyway
+repeats the scene's time range itself (a finite scene that holds after `duration`, replayed by the page); only a scene whose first and last frames are identical acknowledges `nothing-animates`, and a scene that keeps changing after `duration` fails G8.
 
 ## Bars with rolling values
 
@@ -217,12 +223,40 @@ min: 2.5, use: "decorative hatching on the track" }` in `contrastPairs`. Hatchin
 rolls with it, within a beat; several bars may share one. Put the step's `at` at least 50 ms after the last motion in the beat (including track entrance and every `barEnd(run)`), and start the next motion no earlier than 50 ms after `at`; the settled-frame rule in the
 gate then holds. A value that keeps updating beside live footage is not this
 part, and a bar that grows again or pulses while a step rests is ambient motion,
-which the canon rules out.
+which the canon advises against.
 
-Canon: no loops, no ambient motion, no continuous scrubbing, 12 s hard limit
-(8 s target). An isometric scene plays once and holds its last frame, like any
-other, and under reduced motion the player shows that frame. A constantly
-moving hero is a 3D model's job, not motion-kit's.
+## Advice and acknowledgements
+
+The gate fails a scene only for hard rules (determinism, markup, settled steps,
+WCAG contrast of what it draws, …). The canon is advice: `mk check` says what
+it found, why the rule exists, when breaking it is fine and what to do instead,
+once per file with the formats and locales it applies to, and every command
+that checks a scene (`build`, `export`, `bake`, `video`, `icon`, the vendored
+`check.mjs`) says the same. The rules:
+
+| Rule | Advice when | Fine when |
+|---|---|---|
+| `duration` | the scene is over 12 s | a voice-over or talk track sets the pace; otherwise split at a settled step |
+| `nothing-animates` | the first and last frames are identical | a still mark, or an ambient display a page drives |
+| `step-labels-in-frame` | a step label is not drawn in the final frame | the labels are captions (`stepLabelsInFrame: false` says so) |
+| `emphasis-on-accent` | the style's emphasis is under 3:1 on the accent where a ring or dot touches it | the shape tells the mark from the node |
+
+A scene that breaks one on purpose acknowledges it, naming the rule and giving
+a one-line reason a reviewer reads:
+
+```js
+return {
+	id: "narrated-tour", …,
+	acknowledge: [{ rule: "duration", reason: "Cued to a 22 s voice-over; the cut points are the steps." }],
+};
+```
+
+A spec of any scene type may carry the same `acknowledge` field. The check then
+reports it as acknowledged, with the reason, and `export` records it in
+`manifest.json`. A reason is required, a hard rule cannot be named, and an
+acknowledgement of a rule the scene does not break is reported so it can go.
+`--strict` (or `MOTION_KIT_STRICT=1`) fails advice that is not acknowledged;
+it is off by default.
 
 ## Text that sharpens into place, and a highlighter
 
@@ -276,8 +310,8 @@ a missing dictionary entry throws. It never silently selects another language.
 
 A scene whose step labels narrate actions rather than name visible objects
 sets `stepLabelsInFrame: false`. Those labels still belong in the player's
-controls and accessible transcript; G10 otherwise requires each label in the
-final frame. `frame(t, { idPrefix, style })` also receives the normalized style
+controls and accessible transcript; G10 otherwise advises each label in the
+final frame (it is the older form of acknowledging `step-labels-in-frame`). `frame(t, { idPrefix, style })` also receives the normalized style
 when called through `renderSvg`; custom shape styling is opt-in. So is the
 style's motion: `const { easeOut, easeStandard } = kit.easings(style.motion)` (or
 `easings` from `runtime/motion.mjs`) gives the curves its `motion` names, the
