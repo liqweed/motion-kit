@@ -241,10 +241,12 @@ function convexCcw(points) {
 		area += a.x * b.y - b.x * a.y;
 	}
 	if (Math.abs(area) < 1e-9) throw new Error("a solid's footprint has no area");
+	// Any two vertices at one place, neighbours or not: a footprint that winds
+	// round twice has every turn and half-plane right, and draws each face twice.
 	for (let i = 0; i < points.length; i++) {
-		const a = points[i];
-		const b = points[(i + 1) % points.length];
-		if (Math.hypot(b.x - a.x, b.y - a.y) < 1e-9) throw new Error("a solid's footprint has a repeated point");
+		for (let j = i + 1; j < points.length; j++) {
+			if (Math.hypot(points[j].x - points[i].x, points[j].y - points[i].y) < 1e-9) throw new Error("a solid's footprint has a repeated point");
+		}
 	}
 	const flipped = area < 0;
 	const ccw = flipped ? points.map((p) => ({ x: p.x, y: p.y })).reverse() : points.map((p) => ({ x: p.x, y: p.y }));
@@ -826,6 +828,8 @@ export function labelAnchor(cam, { id, at, lines, fontSize = 14, lift = 40, side
 	const x = side === "up" ? tipX - width / 2 : side === "right" ? tipX : tipX - width;
 	const y = side === "up" ? tipY - height : tipY - height / 2;
 	const stem = { x1: p.x, y1: p.y, x2: tipX, y2: tipY };
+	const r = drawn2;
+	const labelBox = { id, x: r(x), y: r(y), width: r(width), height: r(height), stem: { x1: r(stem.x1), y1: r(stem.y1), x2: r(stem.x2), y2: r(stem.y2) }, opacity };
 	const markup = fade(
 		opacity,
 		{ "data-label": id },
@@ -834,8 +838,11 @@ export function labelAnchor(cam, { id, at, lines, fontSize = 14, lift = 40, side
 		el("rect", { x, y, width, height, rx: 6, fill: tok("surface"), stroke: tok("line"), "stroke-width": 1.5 }),
 		text({ x: x + width / 2, y: y + height / 2, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fontSize, "font-weight": 600, fill: tok("ink") }, lines, LINE_HEIGHT),
 	);
-	return { markup, box: { id, x, y, width, height, stem, opacity } };
+	return { markup, box: labelBox };
 }
+
+/** A coordinate as the SVG attributes draw it: rounded to two decimals, which is what the gate checks. */
+const drawn2 = (/** @type {number} */ n) => Number(num(n));
 
 /**
  * A pill: a stemless tag, a rounded box of text centred on the screen point
@@ -860,7 +867,7 @@ export function labelPill({ id, x, y, lines, fontSize = 14, fill = "surface", st
 		el("rect", { x: left, y: top, width, height, rx: height / 2, fill: tok(token(fill)), stroke: tok(token(stroke)), "stroke-width": 1.5 }),
 		text({ x, y, "text-anchor": "middle", "dominant-baseline": "central", "font-size": fontSize, "font-weight": 600, fill: tok(token(ink)) }, lines, LINE_HEIGHT),
 	);
-	return { markup, box: { id, x: left, y: top, width, height, opacity } };
+	return { markup, box: { id, x: drawn2(left), y: drawn2(top), width: drawn2(width), height: drawn2(height), opacity } };
 }
 
 /**
@@ -890,22 +897,50 @@ function segmentHits(s, r) {
  * What is wrong with a set of drawn labels: two boxes closer than `gap`
  * pixels (overlapping), a stem running through another label, a box outside
  * the picture. Boxes with `opacity` 0 are not drawn and are skipped. Each
- * problem is one sentence; none for a clean set.
+ * problem is one sentence, and a repeated sentence is reported once; none for
+ * a clean set. It stops at `limit` problems (default: all; 0 returns none; a
+ * `limit` that is not a whole number from 0 or Infinity throws `RangeError`), so collection ends once it has
+ * that many; the collision scan can end early, after the boxes are filtered and indexed. Sentences in `ignore` are skipped
+ * and do not count towards the limit.
  * @param {LabelBox[]} boxes
- * @param {{ width: number, height: number, gap?: number }} view the picture's size
+ * @param {{ width: number, height: number, gap?: number, limit?: number, ignore?: Set<string> }} view the picture's size
  * @returns {string[]}
  */
-export function labelProblems(boxes, { width, height, gap = 4 }) {
+export function labelProblems(boxes, { width, height, gap = 4, limit = Infinity, ignore }) {
+	if (!(limit === Infinity || (Number.isInteger(limit) && limit >= 0))) throw new RangeError(`labelProblems: limit must be a whole number from 0, or Infinity, got ${typeof limit === "number" ? limit : `a value of type ${typeof limit}`}`);
+	if (limit === 0) return [];
+	const eps = 1e-9; // rounded box edges that meet exactly must not fail on float noise
 	// Drawn unless it fades out: `fade` drops an element whose opacity rounds to 0.
-	const drawn = boxes.filter((b) => b.opacity === undefined || Math.round(b.opacity * 1000) > 0);
+	// Exact copies (same id, geometry and stem coordinates) all say the same sentences, and two
+	// of them already report an overlap with each other, so a third adds nothing:
+	// keep two, which bounds the work on a scene that repeats one box thousands of times.
+	/** @type {Map<string, number>} */
+	const copies = new Map();
+	const drawn = boxes.filter((b) => {
+		if (b.opacity !== undefined && Math.round(b.opacity * 1000) <= 0) return false;
+		const key = JSON.stringify([b.id, b.x, b.y, b.width, b.height, b.stem && [b.stem.x1, b.stem.y1, b.stem.x2, b.stem.y2]]);
+		const n = (copies.get(key) ?? 0) + 1;
+		copies.set(key, n);
+		return n <= 2;
+	});
+	/** @type {string[]} */
 	const problems = [];
+	/** @type {Set<string>} */
+	const found = new Set();
+	/** @param {string} message @returns {boolean} whether the limit is reached */
+	const add = (message) => {
+		if (ignore?.has(message) || found.has(message)) return false;
+		found.add(message);
+		return problems.push(message) >= limit;
+	};
 	for (const [i, a] of drawn.entries()) {
-		if (a.x < 0 || a.y < 0 || a.x + a.width > width || a.y + a.height > height) problems.push(`label "${a.id}" is outside the picture`);
-		for (const b of drawn.slice(i + 1)) {
-			if (a.x < b.x + b.width + gap && b.x < a.x + a.width + gap && a.y < b.y + b.height + gap && b.y < a.y + a.height + gap) problems.push(`labels "${a.id}" and "${b.id}" overlap`);
+		if ((a.x < -eps || a.y < -eps || a.x + a.width > width + eps || a.y + a.height > height + eps) && add(`label "${a.id}" is outside the picture`)) return problems;
+		for (let j = i + 1; j < drawn.length; j++) {
+			const b = drawn[j];
+			if (a.x < b.x + b.width + gap - eps && b.x < a.x + a.width + gap - eps && a.y < b.y + b.height + gap - eps && b.y < a.y + a.height + gap - eps && add(`labels "${a.id}" and "${b.id}" overlap`)) return problems;
 		}
 		for (const b of drawn) {
-			if (b !== a && b.stem && segmentHits(b.stem, a)) problems.push(`the stem of label "${b.id}" crosses label "${a.id}"`);
+			if (b !== a && b.stem && segmentHits(b.stem, a) && add(`the stem of label "${b.id}" crosses label "${a.id}"`)) return problems;
 		}
 	}
 	return problems;

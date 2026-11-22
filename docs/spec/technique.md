@@ -39,7 +39,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
 | `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
 | `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known and `min` in [1, 21]. |
-| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor` and `labelPill` return one, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
+| `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` and `labelPill(...)` return `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with `id` a string and the rest finite numbers, `width` and `height` not negative, `opacity`, when given, finite, and `stem`, when given, `{x1, y1, x2, y2}` with four finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
 
 - A scene MUST be produced by either a registered scene type —
@@ -247,7 +247,7 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   opacity, id})` extrudes a convex footprint (any winding; stored
   counter-clockwise) from base height `z` by `h` ≥ 0; `box` (centred on x, y)
   and `slab` (default `h` 0.25) are rectangular prisms; `regularPolygon` makes
-  a footprint. A non-convex, degenerate or too-small footprint, an unknown
+  a footprint. A non-convex, degenerate or too-small footprint, one with a repeated vertex (adjacent or not, so a footprint that winds round twice), an unknown
   token or a negative height throws. `fill` is the token of the top face,
   `sides` of the side faces (default `fill`); `shade` (default `ink`, `null`
   for none) is layered over each side at an opacity from 0.10 to 0.26 by how
@@ -305,8 +305,9 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
 - **Labels.** `labelAnchor(cam, {id, at, lines, fontSize, lift, side,
   opacity})` draws a dot on the projected point, a vertical stem `lift` pixels
   up and a label box above it (or beside its top), and returns the markup and
-  the `LabelBox`. `labelProblems(boxes, {width, height, gap = 4})` lists the
-  collisions G15 reports. Labels follow §7 (wrapped, localized, ≥ 14 px).
+  the `LabelBox`, rounded to two decimals as the SVG attributes are, so the gate
+  and the picture agree on those coordinates (`labelPill` rounds its box the same way). `labelProblems(boxes, {width, height, gap = 4, limit})`
+  lists the collisions G15 reports, and stops at `limit` (a whole number from 0 or Infinity, else `RangeError`; default all; 0 returns none; only distinct sentences count). Labels follow §7 (wrapped, localized, ≥ 14 px).
   `labelPill({id, x, y, lines, fontSize, fill, stroke, ink, opacity})` is a
   stemless tag: a rounded box of text centred on the screen point (`x`, `y`),
   its colours tokens (`surface`, `line`, `ink` by default). It returns the
@@ -689,14 +690,15 @@ that removes every listener, observer and mark they added.
 ## 11. The gate
 
 `checkScene(scene)` (`lib/check.mjs`) samples 121 evenly spaced times
-(`SAMPLES = 120`) and stops collecting after 13 problems.
+(`SAMPLES = 120`). The per-sample rules test for 13 problems between samples, so one sample can add a few more; the fixed-id check and the label gate (rule 9) hold to what is left of 13, but the settled-step check appends one problem per moving step whatever the count, so the total can exceed 13.
 `motion-kit check` and the vendored `check.mjs` both run `checkFiles`
 (`lib/gate.mjs`): every file × format (all six unless `--format`, repeatable)
 × locale (`--locale`, repeatable; else every locale a spec's strings carry, and
 `en` for a module, §7), with `--options` for modules, plus the style contrast check of the pairs each scene draws and a once-per-run warning
 for the shared pairs the style misses. A file that cannot be read, parsed or built fails on its own and the
-remaining files are still checked; the exit code is 1 on any failure. `npm run gate` = unit tests +
-`check` over `examples/` and `brand/` (`package.json:15-18`).
+remaining files are still checked; the exit code is 1 on any failure. `npm run gate` = `gate:core`
+(typecheck, version sync, unit tests, `check` over `examples/` and `brand/`,
+media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`).
 
 | ID | Rule | Code | Rationale |
 |---|---|---|---|
