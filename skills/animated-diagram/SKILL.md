@@ -87,7 +87,7 @@ Hard (the gate fails these; no acknowledgement helps):
 - The final frame holds after `duration`. Nothing plays twice: a scene is a
   pure function of `t` with no `Date`, `Math.random`, `performance.now`.
 - Colours are tokens; text and shapes a scene draws meet WCAG AA contrast.
-- Always a pause control (WCAG 2.2.2); reduced motion = final frame, no autoplay.
+- Player requirements, not checked by the gate (a green check does not prove a custom host has them): always a pause control (WCAG 2.2.2); reduced motion = final frame, no autoplay.
 
 Advice (the canon; break it with a reason):
 
