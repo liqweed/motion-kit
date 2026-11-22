@@ -39,7 +39,7 @@ Rules:
   name; write out others, such as
   `{ fg: "accent", bg: "surface", min: 3, use: "bar on its track" }` (4.5 for
   text, 3 for shapes; `references/styles.md`). A scene that declares none is
-  held to every shared pair, so declare what you draw.
+  held to every shared pair except the optional tokens' (caution, alert), so declare what you draw.
 - Caution, alert and the monospace face come from the style
   (`references/styles.md`): `tok("caution")` with `tok("onCaution")` on it,
   `tok("alert")` with `tok("onAlert")`, and `frame(t, { style })` gives

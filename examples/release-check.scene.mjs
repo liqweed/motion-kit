@@ -142,10 +142,12 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 		stepLabelsInFrame: false,
 		// What the scene draws: the labels and values on the cards, the badge
 		// text on each fill, the card outlines, and the stripe of each tone on
-		// the canvas. The gate holds the style to these, caution and alert
+		// the canvas and each badge against its card. The gate holds the style to these, caution and alert
 		// included, and only warns about the shared pairs left out.
 		contrastPairs: [
 			...sharedPairs("ink/surface", "muted/surface", "onAccent/accent", "onCaution/caution", "onAlert/alert", "line/bg", "accent/bg", "caution/bg", "alert/bg"),
+			// The badges sit on the surface-filled cards: each tone against the card too.
+			...["accent", "caution", "alert"].map((fg) => ({ fg, bg: "surface", min: 3, use: `the ${fg} badge on its card` })),
 		],
 		steps,
 		frame,

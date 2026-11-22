@@ -172,6 +172,13 @@ describe("the gate and the new tokens", () => {
 		assert.match(findFontLiteral(`<text style="font: 12px Courier">1</text>`, style) ?? "", /shorthand/);
 		assert.match(findFontLiteral(`<text font="12px Courier">1</text>`, style) ?? "", /shorthand/);
 		assert.equal(findFontLiteral(`<text style="font-size:12px;font-weight:600">1</text><style>text{font-size:9px}</style>`, style), null);
+		// Multiline values, comments, escapes and quoted strings.
+		assert.match(findFontLiteral(`<text font-family="Courier\n New">1</text>`, style) ?? "", /Courier/);
+		assert.match(findFontLiteral(`<text style="fill:red;\nfont-family: Courier">1</text>`, style) ?? "", /Courier/);
+		assert.match(findFontLiteral(`<style>text{font-family/**/:Courier}</style>`, style) ?? "", /Courier/);
+		assert.match(findFontLiteral(`<style>text{font-\\66 amily:Courier}</style>`, style) ?? "", /Courier/);
+		assert.equal(findFontLiteral(`<style>/* font: 12px Courier */text{font-size:12px}</style>`, style), null);
+		assert.equal(findFontLiteral(`<style>text{content:"font: x";font-size:12px}</style>`, style), null);
 		const scene = { ...draws(["accent"], sharedPairs("accent/bg")), frame: () => `<text font-family="Courier" fill="${tok("accent")}">1</text>` };
 		assert.ok(checkScene(scene).problems.some((p) => p.startsWith('font literal font-family="Courier"')));
 	});
@@ -213,5 +220,21 @@ describe("examples/release-check.scene.mjs", () => {
 	it("keeps the contrast of every pair it names in both neutral themes", () => {
 		for (const [fg, bg] of [["caution", "bg"], ["alert", "bg"]]) for (const theme of /** @type {const} */ (["light", "dark"])) assert.ok(contrast(NEUTRAL[theme][fg], NEUTRAL[theme][bg]) >= 3);
 		assert.ok(CONTRAST_PAIRS.some((p) => p.fg === "onCaution" && p.bg === "caution" && p.min === 4.5));
+	});
+});
+
+describe("optional token use and warnings", () => {
+	it("does not count a token spelled in text, a comment or a title as a use", () => {
+		const scene = { id: "d", width: 100, height: 50, duration: 1, title: "t", description: "d", stepLabelsInFrame: false, steps: [{ at: 0.9, label: "x" }], contrastPairs: sharedPairs("ink/bg"), frame: () => `<!-- var(--mk-caution) --><title>var(--mk-alert)</title><text fill="${tok("ink")}">var(--mk-caution)</text>` };
+		assert.deepEqual(checkScene(scene).problems.filter((p) => p.startsWith("draws")), []);
+		assert.ok(!cssVars("neutral", "light", scene.frame()).includes("--mk-caution"));
+		assert.ok(cssVars("neutral", "light", `<rect fill="var(--mk-caution)"/>`).includes("--mk-caution"));
+	});
+
+	it("warns an undeclared scene about an optional pair the style sets and misses", () => {
+		const style = { name: "weak", light: { caution: "#fde68a" } };
+		const r = contrastReport(style, undefined);
+		assert.ok(r.warnings.some((w) => w.includes("caution on bg")), r.warnings.join("; "));
+		assert.deepEqual(contrastReport("neutral", undefined).warnings, []);
 	});
 });

@@ -165,8 +165,24 @@ export function normalizeStyle(style) {
  */
 export function cssVars(style, theme = "light", markup) {
 	const s = normalizeStyle(style);
-	const used = (/** @type {string} */ t) => markup === undefined || !OPTIONAL_TOKENS.includes(t) || markup.includes(`var(--mk-${t})`);
+	const paint = markup === undefined ? "" : paintSource(markup);
+	const used = (/** @type {string} */ t) => markup === undefined || !OPTIONAL_TOKENS.includes(t) || paint.includes(`var(--mk-${t})`);
 	return TOKENS.filter(used).map((t) => `--mk-${t}:${s[theme][t]}`).join(";");
+}
+
+/**
+ * The part of a frame that can paint: its tags (attributes) and `<style>`
+ * bodies, without comments, text content, `<title>`, `<desc>` or metadata. A
+ * label that spells `var(--mk-caution)` out is not a use of the token.
+ * @param {string} markup
+ * @returns {string}
+ */
+export function paintSource(markup) {
+	const bare = markup.replace(/<!--[\s\S]*?-->/g, "");
+	const out = [];
+	for (const [, tag] of bare.matchAll(/<([a-zA-Z][^>]*)>/g)) out.push(tag);
+	for (const [, css] of bare.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) out.push(css.replace(/\/\*[\s\S]*?\*\//g, ""));
+	return out.join("\n");
 }
 
 /** Replace every var(--mk-token) with its literal value. Unknown tokens throw. */
@@ -348,7 +364,14 @@ export function sharedPairs(...names) {
 export function contrastReport(style, drawn) {
 	const s = normalizeStyle(style);
 	// An empty list says nothing about what is drawn, which is no reason to drop every check.
-	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) return { problems: checkContrast(s, CONTRAST_PAIRS.filter((p) => !isOptionalPair(p))), warnings: [] };
+	if (drawn === undefined || (Array.isArray(drawn) && drawn.length === 0)) {
+		// The optional pairs are not owed, but a style that sets their token and misses is still told.
+		const optional = CONTRAST_PAIRS.filter((p) => isOptionalPair(p) && setsOptionalToken(style, p));
+		return {
+			problems: checkContrast(s, CONTRAST_PAIRS.filter((p) => !isOptionalPair(p))),
+			warnings: misses(s, optional).map((m) => `${s.name} ${m.theme}: ${m.fg} on ${m.bg} is ${m.ratio.toFixed(2)}:1, ${m.min}:1 recommended (this scene does not draw it)`),
+		};
+	}
 	if (!Array.isArray(drawn) || malformedPairs(s.name, drawn).length) return { problems: checkContrast(s, drawn), warnings: [] };
 	// A declaration may add pairs and name shared ones, never weaken a shared threshold.
 	// Contrast is symmetric, so a pair written the other way round is the same adjacency.

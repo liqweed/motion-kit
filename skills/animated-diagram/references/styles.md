@@ -20,7 +20,7 @@ use neutral and say so.
 | `alert` | a warning, a failure or a struck-out idea |
 | `onAlert` | text/glyphs on alert |
 
-The last four are optional: a style that does not set them gets neutral's, in
+The caution and alert tokens are optional: a style that does not set them gets neutral's, in
 light and dark, and nothing in a scene that does not draw them changes. A scene
 type draws none of them; a custom scene does (`examples/release-check.scene.mjs`).
 
@@ -113,7 +113,7 @@ draw where the pair carries meaning in a step frame:
 | emphasis on bg | 3 | the emphasis ring and dot on the canvas |
 | emphasis on accent | 3 | the ring around the reached node it marks: "here" told from "reached" without relying on hue |
 
-Four more pairs belong to the optional tokens. No scene type draws them, so they
+The optional tokens add pairs of their own. No scene type draws them, so they
 are not in the set a scene that declares nothing is held to; a scene that draws
 one declares it and is held to it:
 
@@ -156,7 +156,7 @@ uses `#1d36a8`) with a mid-tone emphasis; on a dark canvas, a light emphasis
 A custom scene says what it draws with `contrastPairs`: the gate holds the style
 to those pairs and only warns about the shared ones it leaves out. Shared pairs
 come by name from `kit.sharedPairs`; others are written out. A scene that
-declares nothing is held to every shared pair, as before, so say what you draw:
+declares nothing is held to every shared pair except the optional tokens' (caution, alert), so say what you draw:
 
 ```js
 return { …, contrastPairs: [
