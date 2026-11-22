@@ -185,10 +185,9 @@ export function renderSvg(scene, t, options = {}) {
 		` font-family="${esc(style.font)}" role="img" aria-labelledby="${id}-title ${id}-desc"${options.live ? "" : vars}>` +
 		`<title id="${id}-title">${esc(scene.title)}</title>` +
 		`<desc id="${id}-desc">${esc(scene.description)}</desc>` +
-		bg +
-		body +
+		(options.standalone ? resolveTokens(bg + body, style, options.theme ?? "light") : bg + body) +
 		`</svg>`;
-	return options.standalone ? resolveTokens(markup, style, options.theme ?? "light") : markup;
+	return markup;
 }
 
 /** Time of each step (convenience). */

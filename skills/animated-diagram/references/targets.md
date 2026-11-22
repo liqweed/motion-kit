@@ -14,6 +14,7 @@
 
 - **Craft Pages** must be one standalone document; `build` output already is.
   Don't write into `pages/<slug>/` directly. Use the page tools.
+- **Code walkthroughs** (a code block with a moving highlight band, `custom-scenes.md`): one range per step, so a deck advances it one range per click: Slidev (build the scene with the example's factory and pass it as `<AnimatedDiagram :scene="scene" />`; `:spec` takes only built-in scene types) shows the first range on arrival and registers a click for each later one (n ranges, n − 1 clicks), and Marp, PowerPoint and Keynote get one slide per step with the band at rest on the range. A snippet is one scene; a longer walkthrough is several scenes, one per snippet.
 - **Baked SVG** costs size (fps × duration distinct frames, holds merged): a
   6 s scene at 15 fps is ~150–400 KB. Lower `--fps` (10–12) for READMEs.
 - **Slides:** frames from one scene share a viewBox, so consecutive step slides
