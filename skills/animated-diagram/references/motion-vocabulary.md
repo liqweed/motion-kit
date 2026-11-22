@@ -92,7 +92,7 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   at once to fan out from a junction (twin pulses outward), or in sequence, each
   starting as the last arrives.
 - **Never** a pulse that repeats or runs while a step rests; that is looping
-  ambient motion (canon above). Loops are forbidden by contract and need review;
+  ambient motion (canon above). Loops are advised against (an authored repetition is not caught by the gate) and need review;
   the gate's settled-frame rule only catches motion around the sampled step
   boundaries, so it will not see every repeat.
 
@@ -133,7 +133,7 @@ Bounce and elastic easing · parallax · looping or auto-advancing carousels ·
 ambient motion · `transition: all` · anything whose only purpose is decoration.
 
 This is advice, not law: the gate does not fail a scene for these, and a scene
-that has a reason to break one says so in its own description. Only four rules can be acknowledged by the machine (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`; `custom-scenes.md`); the rest below are guidance with no `acknowledge` rule, and overshooting style curves still throw (#95).
+that has a reason to break one says so in its own description. Only these rules can be acknowledged by the machine (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`; `custom-scenes.md`); the rest below are guidance with no `acknowledge` rule, and overshooting style curves still throw (#95).
 The reason each is advised against, and when breaking it is fine:
 
 | Advice against | Why | Fine when |

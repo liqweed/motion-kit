@@ -82,8 +82,8 @@ the check prints before acknowledging it: it often names a better scene.
 
 Hard (the gate fails these; no acknowledgement helps):
 
-- Step frames are settled: motion comes to rest by the step's `at`, and the
-  next motion starts no earlier than 50 ms after it.
+- Step frames are settled: nothing moves at the step's `at` (the gate samples
+  up to 45 ms after it). The 50 ms gap before the next motion is advice (below).
 - The final frame holds after `duration`. Nothing plays twice: a scene is a
   pure function of `t` with no `Date`, `Math.random`, `performance.now`.
 - Colours are tokens; text and shapes a scene draws meet WCAG AA contrast.
@@ -94,7 +94,7 @@ Advice (the canon; break it with a reason):
 - Plays once and holds the final frame; don't loop an explainer. No player
   loops a scene. An ambient display is a page's own decision, driven by the
   page; only a scene whose first and last frames are identical acknowledges `nothing-animates`.
-- Motion guidance (reviewed, mostly not mechanically timed): one entrance ≤ 600 ms, siblings staggered 80–150 ms, aim for a whole scene ≤ 8 s. The gate gives advice (`duration`) above 12 s: fine when a voice-over or talk track sets the pace; otherwise split at a settled step.
+- Motion guidance (reviewed, mostly not mechanically timed): one entrance ≤ 600 ms, siblings staggered 80–150 ms, 50 ms between beats, aim for a whole scene ≤ 8 s. The gate gives advice (`duration`) above 12 s: fine when a voice-over or talk track sets the pace; otherwise split at a settled step.
 - No bounce/elastic, no parallax, no ambient motion inside an explainer.
 - Every motion must answer "what does this help the viewer understand?".
 - Skeleton first, then fill: show the whole structure, then walk through it.

@@ -672,7 +672,7 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 | G5 | hard | No `NaN`, `undefined`, `Infinity` in `frame()` output. | `:50` | Silent geometry bugs. |
 | G6 | hard | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | advice | `nothing-animates`: first frame ≠ last frame. | `lib/check.mjs` (rule 3) | Something should animate; a still mark acknowledges it. |
-| G8 | hard | `render(duration + 5) === render(duration)`. | `:65` | Holds the final frame. |
+| G8 | hard | The raw `frame(duration + 5)` equals `frame(duration)`: the gate calls the scene directly, because `renderSvg` clamps `t` to the duration before calling it (T3 lets a frame assume clamped input; G8 checks what happens if it is not). | `:65` | Holds the final frame. |
 | G9 | advice | `duration`: `duration ≤ 12` s. | `lib/check.mjs` (rule 4) | The canon's limit, authoring target ≤ 8 s; a narrated scene cued to a voice-over acknowledges it. |
 | G10 | advice | `step-labels-in-frame`: every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text; `stepLabelsInFrame: false` acknowledges it. | `lib/check.mjs` (rule 5) | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
 | G11 | hard | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
@@ -751,12 +751,12 @@ can break it; *guidance* means only the skill text states it.
 | Drawn non-text pairs ≥ 3:1 against adjacent colours (G12, WCAG 1.4.11) | hard | gate |
 | Builds for every format × locale: labels fit, no collisions, known tokens and types, exact translations (G13) | hard | throws |
 | Ids built from the instance prefix (G14, WCAG 4.1.1) | hard | gate |
-| Visibility decided on rounded opacity (T5) | hard | by construction (`runtime/svg.mjs`) |
-| No CSS transitions, animations or timers in a scene (T6) | hard | by construction (the renderer owns the clock); guidance for scene code |
+| Visibility decided on rounded opacity (T5) | hard | by construction for the helpers' own output (`el`, `fade`); custom markup follows it by contract |
+| No CSS transitions, animations or timers in a scene (T6) | hard | a hard requirement by contract: the renderer owns the clock, but a custom frame can still emit CSS animation markup or use timers, and the gate does not prove otherwise |
 | Declared label boxes do not overlap, cross stems or leave the picture (G15) | hard | gate |
 | Style data is valid: known tokens, `#rrggbb`, a CSS font list (`normalizeStyle`) | hard | throws |
 | Pause control, keyboard stepping announced (§10.2; WCAG 2.2.2, 2.1.1, 4.1.3) | hard | by construction |
-| Reduced motion shows the final frame, no autoplay (§10; WCAG 2.3.3) | hard | by construction |
+| Reduced motion shows the final frame, no autoplay (§10; the toolkit's policy, informed by WCAG 2.3.3, which is Level AAA) | hard | by construction |
 | A1 `duration`: ≤ 12 s (G9) | advice | advice |
 | A2 aim for ≤ 8 s | advice | guidance |
 | A3 `nothing-animates`: first frame ≠ last frame (G7) | advice | advice |
@@ -767,7 +767,7 @@ can break it; *guidance* means only the skill text states it.
 | A8 No overshoot: curves within 0–1, damped springs, no bounce or elastic (§4) | advice | throws for a curve outside 0–1 (`normalizeStyle`), guidance otherwise |
 | A9 No parallax, no `transition: all`, nothing purely decorative | advice | guidance |
 | A10 Timing budgets: entrance ≤ 600 ms, siblings 80–150 ms apart, 50 ms between beats | advice | guidance (G6 itself stays hard) |
-| A11 Type ranges: `sequence` 2–12 nodes, `hub-spoke` 2–10 spokes, `timeline` and `stack` 2–8, walks 2–8 nodes, `flowchart` 2–12 nodes (§9) | advice | throws |
+| A11 Type ranges: `sequence` 2–12 nodes, `hub-spoke` 2–10 spokes, `timeline` and `stack` 2–8, walks 2–8 nodes, `flowchart` 2–12 nodes (§9); the walks' edge limits (1–12 edges, 1–10 explicit path edges) are not yet classed and stay as they are until #95 | advice | throws |
 | A12 Shape styles: radius 0–24, stroke 1–4 (§11.1) | advice | throws |
 | A13 One element at a time carries `emphasis` (§6) | advice | guidance |
 | A14 `emphasis-on-accent`: ≥ 3:1 where a ring or dot touches the reached node (G12) | advice | advice |

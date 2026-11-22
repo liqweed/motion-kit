@@ -242,7 +242,7 @@ describe("cli", () => {
 		mkdirSync(dir);
 		writeFileSync(join(dir, "blue.json"), JSON.stringify({ name: "blue", light: { accent: "#2563eb", emphasis: "#3b6cf0" }, dark: { accent: "#2563eb", emphasis: "#fbbf24" } }));
 		const both = (/** @type {string[]} */ ...args) => {
-			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8" });
+			const p = spawnSync(process.execPath, [CLI, ...args], { encoding: "utf8", env: { ...process.env, MOTION_KIT_STRICT: "" } });
 			return { status: p.status, out: `${p.stdout}${p.stderr}` };
 		};
 		let r = both("check", `${EX}order-flow.json`, "-f", "16:9", "--style", join(dir, "blue.json"));
