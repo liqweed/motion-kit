@@ -333,7 +333,7 @@ functions; a colour is a token name (G4 applies).
 - **Fit.** `fontSize` is at least 14 px (§7). A line wider than the block's
   columns is refused (`overflow: "error"`, the default), wrapped at the last
   space that fits (a word longer than the row is hard-broken) with the continuation indented two columns past the line's own
-  indent, but never past a quarter of the block's columns (`"wrap"`; a line indented by half the columns, rounded down, or more is refused), or cut
+  indent, but never past a quarter of the block's columns (`"wrap"`; a line that must wrap and is indented by half the columns, rounded down, or more is refused), or cut
   with `…` in the last column (`"clip"`). Code taller than `maxHeight` is
   refused. Each error names the line and the remedies: shorten it, choose
   `wrap` or `clip`, give the block more width or height (another format), or show

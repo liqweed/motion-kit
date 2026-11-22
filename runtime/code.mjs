@@ -115,7 +115,7 @@ function expandTabs(s, tabSize, col) {
 }
 
 /** Characters that take two cells (CJK, Tangut, Nüshu, supplementary kana, full-width forms, emoji) and regional indicators (flag sequences): a column grid cannot hold them. */
-const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{16FE0}-\u{16FE4}\u{17000}-\u{18CFF}\u{1AFF0}-\u{1B2FF}\u{1F1E6}-\u{1F1FF}\u{1F200}-\u{1F2FF}\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
+const WIDE = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6\u{16FE0}-\u{16FE4}\u{17000}-\u{18D8F}\u{1AFF0}-\u{1B2FF}\u{1F1E6}-\u{1F1FF}\u{1F200}-\u{1F2FF}\u{1F3FB}-\u{1F3FF}\u{20000}-\u{3FFFD}]|\p{Extended_Pictographic}/u;
 
 /** Zero-advance characters (combining marks, joiners, bidi and other every Unicode format character such as soft hyphens, variation selectors): a cell grid cannot place them. */
 const ZERO_WIDTH = /\p{M}|\p{Cf}|[\u200B-\u200F\u2060-\u2064]/u;
@@ -425,7 +425,7 @@ export function drawCode(block, t, moves, opts = {}) {
 		}
 		const spans = row.runs.map((run) => {
 			const spec = block.roles[run.role];
-			return el("tspan", { x: left + run.col * charWidth, fill: tok(spec.token), "font-weight": spec.weight, "font-style": spec.italic ? "italic" : undefined }, esc(run.text));
+			return el("tspan", { x: left + run.col * charWidth, fill: tok(spec.token), "font-weight": spec.weight, "font-style": spec.italic ? "italic" : undefined }, esc(run.text).replace(/var\(--mk-/g, "var(&#45;-mk-"));
 		});
 		if (spans.length) parts.push(el("text", { y: cy, "xml:space": "preserve" }, ...spans));
 		if (parts.length) out.push(fade(dim + (1 - dim) * cover, {}, ...parts));

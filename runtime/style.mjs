@@ -127,19 +127,18 @@ export function cssVars(style, theme = "light") {
 }
 
 /**
- * Replace every var(--mk-token) with its literal value, in markup (tags and
- * <style> elements) only: text nodes are left as written, so code that shows
- * `var(--mk-accent)` keeps it. Unknown tokens in markup throw.
+ * Replace every var(--mk-token) with its literal value, wherever it appears
+ * in the string (markup, a bare declaration, text). Unknown tokens throw.
+ * Text that must keep a literal `var(--mk-...)` is escaped by its author
+ * (`drawCode` writes the first hyphen as a character reference).
  */
 export function resolveTokens(markup, style, theme = "light") {
 	const s = normalizeStyle(style);
-	const sub = (/** @type {string} */ chunk) =>
-		chunk.replace(/var\(--mk-([a-zA-Z]+)\)/g, (_, name) => {
-			const v = s[theme][name];
-			if (!v) throw new Error(`unknown style token "${name}"`);
-			return v;
-		});
-	return markup.replace(/<style[\s\S]*?<\/style>|<[^<>]*>/g, sub);
+	return markup.replace(/var\(--mk-([a-zA-Z]+)\)/g, (_, name) => {
+		const v = s[theme][name];
+		if (!v) throw new Error(`unknown style token "${name}"`);
+		return v;
+	});
 }
 
 /* ---------------------------------------------------------------- contrast */
