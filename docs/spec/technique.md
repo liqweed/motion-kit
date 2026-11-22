@@ -325,9 +325,10 @@ functions; a colour is a token name (G4 applies).
   A column is 0.6 em (the advance of the common monospace faces) and each run
   is set at its own column, so a fallback face does not shift the lines against
   one another. `font` defaults to `CODE_FONT`, a monospace stack; a style's own
-  monospace face, when it names one, is passed here. It must be monospace: the
-  columns are fixed, so a proportional face can overflow the panel or overlap
-  runs, and the gate cannot tell. The panel is as tall as
+  monospace face, when it names one, is passed here. It must be a monospace face
+  whose advance is 0.6 em: the columns are fixed, so a proportional face, or a
+  fixed-pitch one with another advance (Iosevka's is 0.5 em), can overflow the
+  panel, overlap runs or leave gaps, and the gate cannot tell. The panel is as tall as
   its code; `maxHeight` is what the picture can spare.
 - **Fit.** `fontSize` is at least 14 px (§7). A line wider than the block's
   columns is refused (`overflow: "error"`, the default), wrapped at the last
@@ -376,8 +377,9 @@ functions; a colour is a token name (G4 applies).
   that `at` (`moves[i + 1].start >= steps[i].at + 0.05`), and the settled-frame
   rule (G6) holds. Nothing
   loops, and the scene is at most 12 s, so a snippet that does not fit one scene
-  is several scenes. A deck advances it one range per click (one step per click
-  in Slidev; one slide per step in Marp).
+  is several scenes. A deck advances it one range per click (in Slidev the first range is
+  shown on arrival and each click moves to the next, so n ranges take n − 1
+  clicks; one slide per step in Marp).
 
 ## 5. Markup
 

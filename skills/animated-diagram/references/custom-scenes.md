@@ -204,14 +204,14 @@ range per step).
 | Settled steps | `codeEnd(block, moves)` is when the last move is over; call it in the factory (it also checks the moves). Put each step's `at` at least 50 ms after the end of the move that leads to it: `codeEnd(block, moves.slice(0, i + 1)) + 0.1`; the next move starts at least 50 ms after that `at` |
 | Contrast | `contrastPairs: codePairs(block)` (add the pairs of anything else you draw). The dimmed lines sit below 4.5:1 by design; the band's tint lowers the ratio a little, so check a style whose text is near 4.5:1 on `surface`. Characters wider than a cell (CJK, emoji) are refused |
 | An accessible text | `block.text` is the whole snippet, `block.rangeText(from, to)` a range: put the snippet in the scene's `description` and each range in its step's `detail` |
-| The monospace face | `font` takes a CSS stack. A style has no monospace field yet, so the kit's own stack (`CODE_FONT`) is used unless you pass one. A rasterizer that resolves only the first family of a stack (resvg does) draws a face it does not have as its fallback; each run is placed by column, so the lines still align |
+| The monospace face | `font` takes a CSS stack. A style has no monospace field yet, so the kit's own stack (`CODE_FONT`) is used unless you pass one. The face must have a 0.6 em advance, the column the kit lays out; one with another advance (Iosevka's is 0.5 em) leaves gaps. Families are tried in order, so a missing first family falls to the next installed one; resvg splits at commas, strips quotes and then trims, so give family names unquoted in a stack (`SF Mono`, not `"SF Mono"`). Each run is placed by column, so the lines still align |
 
 The band moves once per step and rests there; the leading edge goes first and the
 trailing edge follows 70 ms later, so it stretches in flight and gathers on
 arrival. The lines under it are at full ink and the rest at 45 %, and each line
 lights as the band reaches it. **One scene per snippet, one range per step**:
 a scene is at most 12 s (8 s is the target), so a longer walkthrough is several
-scenes, or a deck with one click per range. In Slidev each step is one click
+scenes, or a deck with one click per range. In Slidev the first range shows on arrival and each click moves to the next (n ranges, n − 1 clicks)
 (`<AnimatedDiagram>` registers them); in Marp, PowerPoint or Keynote each step
 is one slide from `export`, and the band is at rest on the range in every frame.
 Write the steps' labels as what the range does (`stepLabelsInFrame: false`), not

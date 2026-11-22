@@ -356,6 +356,22 @@ describe("codeBlock input hardening", () => {
 		assert.throws(() => b.rowSpan(1, 4), RangeError);
 	});
 
+	it("refuses a font with an XML-invalid character", () => {
+		assert.throws(() => block({ font: "Mono\u0000" }), /font/);
+	});
+
+	it("names no quoted family in the default stack", () => {
+		assert.ok(!CODE_FONT.includes('"'));
+	});
+
+	it("keeps code that looks like a token as written in a standalone SVG", () => {
+		const b = codeBlock({ lines: ["color: var(--mk-accent)"], x: 0, y: 0, width: 400 });
+		const scene = { id: "s", title: "t", description: b.text, width: 400, height: 100, duration: 1, steps: [], frame: () => drawCode(b, 0, [{ lines: [1, 1], start: 0 }]) };
+		const svg = renderSvg(scene, 1, { standalone: true });
+		assert.match(svg, /var\(--mk-accent\)/);
+		assert.match(svg.split("</desc>")[0], /var\(--mk-accent\)/);
+	});
+
 	it("keeps the band's marker off the code", () => {
 		assert.throws(() => block({ padding: 0 }), /padding.*at least 10/);
 	});

@@ -35,7 +35,7 @@ import { el, esc, fade, num } from "./svg.mjs";
  * A monospace stack for code. A style's own monospace face, when it names one,
  * is passed as `font`.
  */
-export const CODE_FONT = 'ui-monospace, "SF Mono", "Cascadia Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace';
+export const CODE_FONT = 'ui-monospace, SF Mono, Cascadia Mono, DejaVu Sans Mono, Menlo, Consolas, monospace';
 
 /** Advance of one column, in ems: what the common monospace faces measure (0.6). */
 const ADVANCE = 0.6;
@@ -228,8 +228,10 @@ function wrapRows(flat, columns) {
  *
  * `width` is the panel's width; its height is the code's (rows × `fontSize` ×
  * `lineHeight`, plus the padding), and `maxHeight`, when given, is the most the
- * picture can spare for it. `font` must be a monospace face: columns are a fixed
- * 0.6 em, so a proportional face can overflow the panel or overlap runs.
+ * picture can spare for it. `font` must be a monospace face whose advance is 0.6 em:
+ * columns are fixed at 0.6 em, so a proportional face, or a fixed-pitch one with
+ * another advance (Iosevka's is 0.5 em), can overflow the panel, overlap runs or
+ * leave gaps between them.
  * @param {{
  *   lines: CodeLine[], x: number, y: number, width: number, maxHeight?: number,
  *   fontSize?: number, lineHeight?: number, padding?: number, radius?: number,
@@ -253,7 +255,7 @@ export function codeBlock(opts) {
 	if (!(dim >= 0 && dim < 1)) throw new Error("codeBlock: `dim` must be at least 0 and under 1 (the opacity of the lines outside the band)");
 	if (maxHeight !== undefined && !finite(maxHeight)) throw new Error("codeBlock: `maxHeight` must be a finite number");
 	if (!["error", "wrap", "clip"].includes(overflow)) throw new Error(`codeBlock: \`overflow\` must be "error", "wrap" or "clip", got ${JSON.stringify(overflow)}`);
-	if (typeof font !== "string" || /[<>{};\\]/.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
+	if (typeof font !== "string" || /[<>{};\\]/.test(font) || NOT_XML.test(font)) throw new Error(`codeBlock: \`font\` must be a CSS font-family list, got ${JSON.stringify(font)}`);
 	/** @type {Record<string, CodeRole>} */
 	const given = { ...CODE_ROLES, ...(opts.roles ?? {}) };
 	for (const [name, role] of Object.entries(given)) {
