@@ -1,7 +1,7 @@
 ---
 title: motion-kit technique — normative specification
 status: draft
-last_updated: 2026-11-21
+last_updated: 2026-11-22
 ---
 
 # motion-kit technique — normative specification
@@ -20,7 +20,9 @@ practice) stays in the skill references and is linked, not repeated:
 
 **Conventions.** MUST / MUST NOT / SHOULD / MAY as in RFC 2119. **[gate]**
 marks a rule `lib/check.mjs` or the CLI enforces; **[throws]** marks a rule the
-runtime enforces by throwing; unmarked rules are by contract only. Citations are
+runtime enforces by throwing; **[advice]** marks a rule the gate reports as
+advice rather than failing it (§11.2); unmarked rules are by contract only.
+Citations are
 `path:line` against the working tree of 2026-11-15; where code and skill docs
 disagree, §12 records it.
 
@@ -37,7 +39,8 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
 | `description` | string | MUST | Accessible description (`<desc>`) [throws if empty]. |
 | `steps` | `{at, label, detail?, id?}[]` | MUST | ≥ 1 step; `at` strictly increasing; `at ≤ duration` (+1e-9); every `label` non-empty; an `id`, if present, is a non-empty string unique within the scene [throws] (`validateScene`). The last step is the finished diagram. Page scripts address steps by `id` (§10.2); scene types copy a spec node's, hub's or spoke's `id`. |
 | `frame(t, ctx)` | `(number, {idPrefix}) → string` | MUST | Inner SVG markup at `t` (§2). `ctx.idPrefix` is unique to the rendered instance; every id the frame defines (clip paths, gradients, masks, markers, filters) MUST start with it, as `${idPrefix}-name` [gate] G14. A frame that defines no ids MAY ignore `ctx`. |
-| `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn; exempts the scene from gate rule G10 (`lib/check.mjs:74`; used by `examples/custom-pulse.scene.mjs:137`, `brand/logo.scene.mjs:108`). |
+| `stepLabelsInFrame` | boolean | MAY | `false` declares narrative steps whose labels are not drawn. It is the older form of acknowledging the advice rule G10 (`step-labels-in-frame`) with the reason "narrative steps": the gate reports it as acknowledged (`lib/check.mjs`; used by `examples/custom-pulse.scene.mjs`, `brand/logo.scene.mjs`). An explicit `acknowledge` entry for the rule takes its place. |
+| `acknowledge` | `{rule, reason}[]` | MAY | The advice the scene breaks on purpose (§11.2). Each `rule` MUST be an advice rule (`duration`, `nothing-animates`, `step-labels-in-frame`, `emphasis-on-accent`) and appear once; each `reason` MUST be a non-empty single line of at most 240 characters. A hard rule MUST NOT be named: no acknowledgement turns a hard failure into a pass [throws] (`validateScene`, `runtime/advice.mjs`). A scene spec of any type MAY carry `acknowledge`; `createScene` copies it to the scene. The gate reports the acknowledged advice with its reason and the export manifest records it (§10.5). |
 | `contrastPairs` | `{fg, bg, min, use?}[]` | MAY | The token pairs the scene draws (§6). The gate holds the style to exactly these in both themes, and only warns about the shared pairs (`CONTRAST_PAIRS`) the list leaves out; a scene that declares none is held to every shared pair [gate] G12 (`lib/check.mjs`, `contrastReport`; used by `examples/custom-pulse.scene.mjs`; every registered scene type sets it). Tokens MUST be known and `min` in [1, 21]. |
 | `labelBoxes(t)` | `(number) → LabelBox[]` | MAY | The box of every label `frame(t)` draws, in the scene's own coordinates (`{id, x, y, width, height, stem?, opacity?}`; `labelAnchor(...)` and `labelPill(...)` return `{markup, box}`; return its `.box`, not the whole result, §4.9). Must be a function [throws]. The gate fails a scene whose labels overlap, whose stems cross a label or that leave the picture [gate] G15 (`lib/check.mjs`, rule 9; each box MUST be `{id, x, y, width, height}` with `id` a string and the rest finite numbers, `width` and `height` not negative, `opacity`, when given, finite, and `stem`, when given, `{x1, y1, x2, y2}` with four finite numbers [gate]; used by `examples/isometric-swivel.scene.mjs`). |
 | `type`, `format`, `locale` | string | MAY | Set by scene types; recorded in the export manifest (`lib/export.mjs:75-77`). |
@@ -220,7 +223,7 @@ move ends at `start + lag + duration`, which is what step timing MUST budget.
 - Any number of tokens MAY move at the same time. The canon does not change:
   they MUST move only between settled steps, so every token has arrived (or is
   held still) at each step's `at` and the gate's settled-frame rule (G6)
-  holds. A token MUST NOT loop or restart: a scene plays once (§2).
+  holds. A token SHOULD NOT loop or restart: a scene plays once (§2), and no player or exporter restarts one. A page that wants an ambient display drives `frame(t)` itself, which is its own decision (§11.2 A5).
 
 ### 4.9 Isometric kit (`runtime/iso.mjs`)
 
@@ -670,8 +673,9 @@ functions; a colour is a token name (G4 applies).
   Springs and split edges MUST budget their settle time and lag (§4.3, §4.5).
 - The step shown at `t` is the last step with `at ≤ t` (tolerance 1e-9), or
   −1 before the first (`runtime/scene.mjs:93-99`).
-- Unless `stepLabelsInFrame === false`, every word of every step label MUST be
-  visible in the final frame [gate] G10.
+- Every word of every step label SHOULD be visible in the final frame
+  [advice] G10; a scene whose labels are captions acknowledges it
+  (`stepLabelsInFrame: false` does so, §1).
 - Timeline constants SHOULD be named and every event derived from them
   (pattern in [`technique.md` §3](../../skills/animated-diagram/references/technique.md)).
 
@@ -716,11 +720,11 @@ Every target goes through this one function. It MUST emit `<svg>` with
 |---|---|
 | MUST touch the DOM only when mounted; scenes stay pure, the player owns the clock (`requestAnimationFrame`, wall time). | `runtime/player.mjs` (`mountPlayer`, `tick`), `AGENTS.md` |
 | Initial state MUST be the final frame. A server/no-JS fallback SHOULD be `playerMarkup(scene, { id, … })` inside a `.mk-player` container, with `PLAYER_CSS` in a `style[data-mk-player-css]` and the tokens from `themeCss(selector, style, theme)`: the markup the player builds, with the controls `inert`. The step list and the colours then exist without JavaScript, and mounting moves nothing. A plain final-frame SVG MAY be used instead. | `runtime/player.mjs` (`view`, `playerMarkup`, `themeCss`), `lib/build.mjs`, `adapters/astro/AnimatedDiagram.astro`, `test/player.test.mjs` |
-| Autoplay `visible` (default): plays once from 0 when ≥ 40 % of the diagram, or ≥ 40 % of the viewport's height, is in view (decided from the intersection, not `isIntersecting` alone), then holds; `none` disables. MUST NOT loop. | `runtime/player.mjs` (`shown`, `THRESHOLDS`) |
+| Autoplay `visible` (default): plays once from 0 when ≥ 40 % of the diagram, or ≥ 40 % of the viewport's height, is in view (decided from the intersection, not `isIntersecting` alone), then holds; `none` disables. The player never loops; that is by construction, and an explainer SHOULD NOT loop (§11.2 A5). | `runtime/player.mjs` (`shown`, `THRESHOLDS`) |
 | While a playing diagram does not intersect the viewport (scrolled away, `display: none`), its clock MUST stop and no frame be drawn; when it intersects again, playback resumes from the same time. Visibility is observed until `destroy()`. | `runtime/player.mjs` (`onVisibility`, `run`) |
 | Each frame MUST update the stage's SVG in place (`patchMarkup`): nodes that persist between frames are kept, only changed attributes and text are written, and nodes are added, removed or replaced (by position; a different tag replaces the subtree) only where the markup's structure changes. The DOM after each frame MUST equal what `innerHTML` would build from the same markup. Markup outside the subset the patch reproduces exactly (comments, CDATA, single-quoted or bare attributes, named entities beyond the XML five, elements inside `<title>`, `<desc>` or `<foreignObject>`, HTML elements that leave SVG) MUST fall back to `innerHTML` for that frame. Because nodes persist, a CSS transition on the diagram would run between frames: T6 keeps them out of scenes, and pages MUST NOT add them. | `runtime/patch.mjs`, `runtime/player.mjs` (`draw`), `test/patch.test.mjs`, `test/player.test.mjs`, `scripts/bench-player.mjs` |
 | Play/pause MUST always be present when motion can play (WCAG 2.2.2); label shows Play/Pause/Replay. | `runtime/player.mjs` (`playLabel`, `draw`) |
-| Every control (buttons, scrubber) MUST be at least 44 × 44 px. The caption and the play button MUST keep the size of their longest content, so playback does not shift the layout. | `PLAYER_CSS` (`.mk-btn`, `.mk-scrub`, `.mk-caption`, `.mk-play`) |
+| Every control (buttons, scrubber) SHOULD be at least 44 × 44 px (B2, guidance with no gate check; WCAG 2.5.5 is AAA, and AA's 2.5.8 asks 24 px with spacing, which the player also meets); `PLAYER_CSS` ships 44, and a page MAY override it provided it keeps WCAG 2.5.8 (target size and spacing). The caption and the play button MUST keep the size of their longest content, so playback does not shift the layout. | `PLAYER_CSS` (`.mk-btn`, `.mk-scrub`, `.mk-caption`, `.mk-play`) |
 | One `<button>` per step, labelled `N. label`; activating it jumps by default. `animateSteps: true` opts buttons and keyboard navigation into `playToStep`. `aria-current="step"` marks the active step. | `runtime/player.mjs` |
 | Optional range scrubber (`aria-label`, default "Timeline"); input pauses and seeks. | `runtime/player.mjs` (`options.scrubber`) |
 | Caption shows the active step's `detail` and is `aria-hidden`; a visually hidden ordered list of all steps (`label: detail`) MUST be present for screen readers. | `runtime/player.mjs` (`caption`, `sr`) |
@@ -827,8 +831,10 @@ that removes every listener, observer and mark they added.
 - `manifest.json` MUST contain no timestamps: tool, version, scene, type,
   format, locale, scene options, size, duration, style, theme, a 16-hex input
   hash (source file + style + scene options), source commit, source dirty
-  flag, render settings, file list (`lib/export.mjs`). Two exports of the
-  same inputs MUST be equal (`test/cli.test.mjs`).
+  flag, render settings, the advice the gate gave (`advice`: each piece's
+  `rule`, `found` and `acknowledged`, with the `reason` when the scene
+  acknowledged it), file list (`lib/export.mjs`). Two exports of the same
+  inputs MUST be equal (`test/cli.test.mjs`).
 - `sourceCommit` is the short `HEAD` of the repository holding the source
   file. `sourceDirty` is `true` when that file differs from it (modified,
   staged or untracked: `status --porcelain -- <file>` is not empty), `false`
@@ -850,7 +856,7 @@ that removes every listener, observer and mark they added.
   per-frame files; a repeated `t` reuses the previous PNG (`:44-51`).
 - Encoders by extension (`:18-24`): MP4 `libx264 -preset slow -crf 18
   -pix_fmt yuv420p -movflags +faststart`, padded to even dimensions; WebM
-  `libvpx-vp9 -crf 32`; GIF two-pass palette, ≤ 20 fps, Bayer dither, loops.
+  `libvpx-vp9 -crf 32`; GIF two-pass palette, ≤ 20 fps, Bayer dither, plays once (`-loop -1`).
 - Missing `ffmpeg` MUST fail with an install hint (`:31`). Output is silent.
 - Same inputs ⇒ same frames; encoded bytes are only stable per machine/ffmpeg
   version.
@@ -881,8 +887,13 @@ that removes every listener, observer and mark they added.
 
 ## 11. The gate
 
-`checkScene(scene)` (`lib/check.mjs`) samples 121 evenly spaced times
-(`SAMPLES = 120`). The per-sample rules test for 13 problems between samples, so one sample can add a few more; the fixed-id check and the label gate (rule 9) hold to what is left of 13, but the settled-step check appends one problem per moving step whatever the count, so the total can exceed 13.
+`checkScene(scene)` (`lib/check.mjs`) samples evenly spaced times (10 per second of scene, at least 120 and at most 1200 intervals, so 121 to 1201 times)
+The per-sample rules test for 13 problems between samples, so one sample can add a few more; the fixed-id check and the label gate (rule 9) hold to what is left of 13, but the settled-step check appends one problem per moving step, and the duplicate-id check one per duplicated id, whatever the count, so the total can exceed 13. It returns `problems`
+(every message that fails the scene: the hard failures and, in strict mode, one line naming the open advice), `warnings` and `advice`: what the library's
+canon says about the scene, each piece with the rule, what was found, why the
+rule exists, when breaking it is fine and what to do instead (§11.2). Advice
+never fails a scene, except under `strict` (`--strict` or `MOTION_KIT_STRICT=1`),
+where advice the scene has not acknowledged does.
 `motion-kit check` and the vendored `check.mjs` both run `checkFiles`
 (`lib/gate.mjs`): every file × format (all six unless `--format`, repeatable)
 × locale (`--locale`, repeatable; else every locale a spec's strings carry, and
@@ -892,23 +903,24 @@ remaining files are still checked; the exit code is 1 on any failure. `npm run g
 (typecheck, version sync, unit tests, `check` over `examples/` and `brand/`,
 media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`).
 
-| ID | Rule | Code | Rationale |
-|---|---|---|---|
-| G1 | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs` (`checkScene`, rule 1) | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
-| G2 | Each sampled frame MUST be well-formed (balanced tags, no repeated attribute on a tag, no stray `<`, entities only `amp lt gt quot #39 #n`). | `lib/check.mjs` (`wellFormed`, `checkScene` rule 1) | Escaping failures and broken markup break every target. |
-| G3 | No number with ≥ 5 decimals in the full SVG (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Rounding (T4). |
-| G4 | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content and `font-family` values (font names are data, so `"Mono #123"` is a name) are not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
-| G5 | No `NaN`, `undefined`, `Infinity` in `frame()` output (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Silent geometry bugs. |
-| G6 | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
-| G7 | First frame ≠ last frame. | `lib/check.mjs` (`checkScene` rule 3) | Something must animate. |
-| G8 | `frame(duration + 5) === frame(duration)`, called raw, unclamped. | `checkScene` in `lib/check.mjs` | Holds the final frame. |
-| G9 | `duration ≤ 12` s. | `lib/check.mjs` (`checkScene` rule 4) | Hard limit; authoring target ≤ 8 s. |
-| G10 | Every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text, unless `stepLabelsInFrame === false`. | `lib/check.mjs` (`checkScene` rule 5) | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
-| G11 | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
-| G12 | The style passes WCAG contrast in both themes for each pair the scene draws: its `contrastPairs`, which the scene types set to the shared pairs they draw, else every pair in `CONTRAST_PAIRS`. Shared pairs it does not draw are warnings, never failures; the run reports every shared pair the style misses once. | `lib/check.mjs`, `lib/gate.mjs` (`styleWarnings`), `runtime/style.mjs` (`contrastReport`) | Legibility in light and dark, for the pairs actually drawn (WCAG 1.4.3 and 1.4.11 judge rendered content, §6). |
-| G13 | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
-| G14 | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
-| G15 | If the scene defines `labelBoxes`, at each sampled time and each step time: no two boxes with `opacity` > 0 are closer than 4 px, no stem crosses another box and every box lies inside the picture (`0, 0, width, height`). `labelBoxes` MUST return an array and not throw. Each problem is reported once, at its first time. | `lib/check.mjs` (rule 9), `runtime/iso.mjs` (`labelProblems`) | Labels placed in a projected view move with the camera; nothing else checks them against one another. Opacity 0 is not drawn, so a scene hides labels while the camera moves. |
+| ID | Class | Rule | Code | Rationale |
+|---|---|---|---|---|
+| G1 | hard | Rendering the same `t` twice MUST yield identical bytes. | `lib/check.mjs` (`checkScene`, rule 1) | Determinism (T1/T2). Catches clocks/randomness and call-to-call state; cannot catch state that is consistent between two calls. |
+| G2 | hard | Each sampled frame MUST be well-formed (balanced tags, no repeated attribute on a tag, no stray `<`, entities only `amp lt gt quot #39 #n`). | `lib/check.mjs` (`wellFormed`, `checkScene` rule 1) | Escaping failures and broken markup break every target. |
+| G3 | hard | No number with ≥ 5 decimals in the full SVG (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Rounding (T4). |
+| G4 | hard | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content and `font-family` values (font names are data, so `"Mono #123"` is a name) are not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
+| G5 | hard | No `NaN`, `undefined`, `Infinity` in `frame()` output (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Silent geometry bugs. |
+| G6 | hard | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
+| G7 | advice | `nothing-animates`: first frame ≠ last frame. | `lib/check.mjs` (rule 3) | Something should animate; a still mark acknowledges it. |
+| G8 | hard | The raw `frame(duration + 5)` equals `frame(duration)`: the gate calls the scene directly, because `renderSvg` clamps `t` to the duration before calling it (T3 requires a frame to hold past the end even though callers clamp). | `:65` | Holds the final frame. |
+| G9 | advice | `duration`: `duration ≤ 12` s. | `lib/check.mjs` (rule 4) | The canon's limit, authoring target ≤ 8 s; a narrated scene cued to a voice-over acknowledges it. |
+| G10 | advice | `step-labels-in-frame`: every word of every step label (escaped, trailing `/` stripped) appears in the final frame's text; `stepLabelsInFrame: false` acknowledges it. | `lib/check.mjs` (rule 5) | Step buttons and slides refer to things the viewer can see. Word-level, so it does not prove the label is contiguous. |
+| G11 | hard | Every sampled frame MUST render the same bytes under two stubbed clocks as under the real one: `Date`, `performance.now`, `Temporal.Now` and `Math.random` fixed at 1970 and 0, then at 2100 and ≈ 1, the globals restored afterwards. `frame.toString()` MUST NOT contain `Date.now`, `new Date`, `Math.random`, `performance.now`, `Temporal.Now`. | `lib/check.mjs` (rules 1 and 6) | T1. The stubbed render catches reads in the helpers a frame calls; the source scan, code paths the samples miss. A reference taken before the check runs (`const D = Date` at import) escapes the stub. |
+| G12 | hard · advice | The style passes WCAG contrast in both themes for each pair the scene draws, except the shared `emphasis` on `accent` threshold, which is advice (`emphasis-on-accent`; a scene that declares a stricter minimum for that pair keeps it hard, and a scene's own `advice` field is ignored): its `contrastPairs`, which the scene types set to the shared pairs they draw, else every pair in `CONTRAST_PAIRS`. Shared pairs it does not draw are warnings, never failures; the run reports every shared pair the style misses once. | `lib/check.mjs`, `lib/gate.mjs` (`styleWarnings`), `runtime/style.mjs` (`contrastReport`) | Legibility in light and dark, for the pairs actually drawn (WCAG 1.4.3 and 1.4.11 judge rendered content, §6). |
+| G13 | hard | Scene construction succeeds for the format × locale (validation, fit, collisions, wrapping). | `lib/gate.mjs` | Reject, don't invent: a broken picture never renders. |
+| G14 | hard | Rendered with two different `idPrefix` values, sampled frames share no `id`. | `lib/check.mjs` (rule 7) | Two instances on one page (wide and tall, or one diagram twice) must not share ids: `url(#x)` resolves to the first element with that id, and WCAG 2.1 SC 4.1.1 forbids duplicates. |
+| G15 | hard | If the scene defines `labelBoxes`, at each sampled time and each step time: no two boxes with `opacity` > 0 are closer than 4 px, no stem crosses another box and every box lies inside the picture (`0, 0, width, height`). `labelBoxes` MUST return an array and not throw. Each problem is reported once, at its first time. | `lib/check.mjs` (rule 9), `runtime/iso.mjs` (`labelProblems`) | Labels placed in a projected view move with the camera; nothing else checks them against one another. Opacity 0 is not drawn, so a scene hides labels while the camera moves. |
+| G16 | hard | `acknowledge`, if present, MUST be a list of `{ rule, reason }` that names advice rules only, each once, each with a one-line reason of at most 240 characters (Unicode code points, as `[...reason].length` counts them). Advice a scene acknowledges is reported as acknowledged, with its reason; an acknowledgement of a rule the scene does not break is reported as unnecessary. | `runtime/advice.mjs` (`validateAcknowledgements`), `runtime/scene.mjs` (`validateScene`), `lib/check.mjs`, `lib/gate.mjs` | A deliberate break is recorded where a reviewer sees it. A hard rule, such as G1 or a drawn text pair under 4.5:1, is no advice rule and cannot be acknowledged. |
 
 The gate checks structure, not looks. Visual review (before/after frames,
 phone size, real-time playback, dark mode) is required by
@@ -921,7 +933,7 @@ Recorded 2026-11-18 for [#12](https://github.com/liqweed/motion-kit/issues/12):
 
 | Question | Contract and reason |
 |---|---|
-| Duration | 12 s is the hard gate limit; ≤ 8 s is the design target. Keep valid existing scenes while making the two numbers explicit. |
+| Duration | 12 s is the gate's limit, ≤ 8 s the design target; the two numbers stay explicit. Since [#91](https://github.com/liqweed/motion-kit/issues/91) going over 12 s is advice (`duration`), which a scene acknowledges with a reason; it is no longer a failure by itself. |
 | Export coverage | CLI build, export, bake, video and icon MUST run the same scene and style gate before writing output. Library render primitives remain composable. |
 | Module locales | Modules MAY export `locales`; all declared locales MUST be checked by default. Undeclared modules retain `en` for compatibility. Explicit `--locale` overrides. |
 | Translations | A localized object MUST supply the exact requested locale. Plain strings are shared. Silent cross-language fallback is forbidden. |
@@ -929,7 +941,8 @@ Recorded 2026-11-18 for [#12](https://github.com/liqweed/motion-kit/issues/12):
 | Motion tokens | A style MAY set `motion.enter` (entrances) and `motion.move` (movement between visible states) as four numbers, a CSS `cubic-bezier(x1, y1, x2, y2)`, each from 0 to 1: no curve overshoots. Defaults: `(0, 0, .2, 1)` and `(.4, 0, .2, 1)`. Built-in scene types read them through `easings(style.motion)`; durations, delays and step times stay fixed, so a curve changes how a move travels and never when a step settles. A curve that is still moving near its end (a linear one) would leave a step frame unsettled, so `easings` finishes it in the first 95 % of each move and holds it at 1 for the last 5 %; a curve that ends flat (both defaults) is the exact CSS curve. Custom scenes MAY do the same. |
 | Vendored parity | CLI and vendored checks MUST call the same `lib/gate.mjs` and `lib/check.mjs`, including contrast, locales and caller options. |
 | Neutral contrast | Keep emphasis-on-accent at 3:1, the darker light accent and lighter dark emphasis. The site chrome follows the corresponding neutral tokens. |
-| Drawn pairs only | Recorded 2026-11-21 for [#72](https://github.com/liqweed/motion-kit/issues/72), after [#45](https://github.com/liqweed/motion-kit/issues/45) made every shared pair a failure for every scene. WCAG 1.4.3 and 1.4.11 judge what a scene draws against the colours next to it, so a pair that never meets in a scene is not a requirement for it: the gate fails the pairs a scene draws and warns about the other shared ones. Built-in types record the pairs they draw; a custom scene that declares `contrastPairs` is held to those, one that declares nothing to all shared pairs (no check is lost by saying nothing). `emphasis` on `accent` stays a failure for the types whose ring or dot touches the reached colour (`sequence`, `flowchart`, and the dots of `hub-spoke`, `stack` and the walks), though it rests on WCAG 1.4.1 and the shape already meets it, because the library's own call is to keep it. Thresholds and `neutral` are unchanged; detecting drawn pairs from the rendered SVG is left open. [#65](https://github.com/liqweed/motion-kit/issues/65) (logos) reuses the mechanism. |
+| Drawn pairs only | Recorded 2026-11-21 for [#72](https://github.com/liqweed/motion-kit/issues/72), after [#45](https://github.com/liqweed/motion-kit/issues/45) made every shared pair a failure for every scene. WCAG 1.4.3 and 1.4.11 judge what a scene draws against the colours next to it, so a pair that never meets in a scene is not a requirement for it: the gate fails the pairs a scene draws and warns about the other shared ones. Built-in types record the pairs they draw; a custom scene that declares `contrastPairs` is held to those, one that declares nothing to all shared pairs (no check is lost by saying nothing). `emphasis` on `accent` was kept a failure for the types whose ring or dot touches the reached colour (`sequence`, `flowchart`, and the dots of `hub-spoke`, `stack` and the walks), though it rests on WCAG 1.4.1 and the shape already meets it, because it was the library's own call; [#91](https://github.com/liqweed/motion-kit/issues/91) made it advice (`emphasis-on-accent`). Thresholds and `neutral` are unchanged; detecting drawn pairs from the rendered SVG is left open. [#65](https://github.com/liqweed/motion-kit/issues/65) (logos) reuses the mechanism. |
+| Advice, not law | Recorded 2026-11-22 for [#91](https://github.com/liqweed/motion-kit/issues/91), on [Ophir's answers](https://github.com/liqweed/motion-kit/issues/91#issuecomment-7068388785) of 2026-11-21, reopening part of the motion canon (D6 of the visual-design program) for scenes. (1) **Two classes.** A *hard* rule protects correctness, a build or accessibility at WCAG AA; a scene that breaks one fails, and nothing acknowledges it away. An *advisory* rule is the library's taste (the motion canon, house style, authoring ranges): the gate still checks it, and a finding says what was found, why the rule exists, when breaking it is fine and what to do instead; it does not fail the scene. The 14 px font floor and the 44 px control size are advisory (44 px is WCAG AAA, 2.5.5; AA's 2.5.8 asks 24 px; the floor is a house preference); only WCAG AA and correctness stay hard. §11.2 classes every rule it lists; the walks' edge limits stay unclassed until #95. (2) **Acknowledgement.** A scene may acknowledge advice per rule, naming the rule and giving a one-line reason (`acknowledge: [{ rule, reason }]`); the check reports it as acknowledged with that reason, and the export manifest records it. A reason is required, a hard rule cannot be named, and no switch silences a rule for every scene. `stepLabelsInFrame: false` stays as the older acknowledgement of one rule, with the reason "narrative steps". (3) **CI.** Unacknowledged advice fails only in **strict mode**, which is off by default: `--strict` on `check`, `build`, `export`, `bake`, `video`, `icon` and the vendored `check.mjs`, or `MOTION_KIT_STRICT=1` for all of them. A consumer repository (docomply.eu, for its published scenes) turns it on; this repository's own `npm run check` does too. Every command runs the same `checkScene`, so they print the same advice (vendored parity). (4) **Loops.** The canon contradicted itself (`SKILL.md`: loops "only for ambient status displays"; `custom-scenes.md`: "no loops"; `interactivity.md`: "never loop an explainer"). The whole timeline plays once and holds: G8 fails a scene that keeps changing after `duration`, and no player, exporter or video replays it. A repetition authored inside the timeline (a token that runs twice before the final step) is not caught by G8; it is advice against (A5). Looping an explainer is advice against (A5); an ambient display is a page's own decision, driving `frame(t)` itself; only a scene whose first and last frames are identical acknowledges `nothing-animates`. The page around a diagram, on docomply.eu or elsewhere, is governed by that site's design language, not by this table. [#89](https://github.com/liqweed/motion-kit/issues/89) (narration over 12 s) and [#88](https://github.com/liqweed/motion-kit/issues/88) (a Canvas path) are decided under this classification; whether cue-derived timing or a Canvas renderer belongs in motion-kit stays theirs. [#72](https://github.com/liqweed/motion-kit/issues/72) (drawn pairs only) was the first instance; this generalises it. Thresholds of the hard rules and the WCAG level are unchanged. |
 
 The controller also exposes `onStep(callback) → unsubscribe`, with an immediate
 current index and subsequent changed indices (`-1` before the first step).
@@ -953,6 +966,66 @@ Export manifests include `runtimeHash` (SHA-256 of sorted runtime module paths
 and contents); `inputHash` includes it, source, style, scene options, format,
 locale and rendering settings. Custom modules' arbitrary imported dependencies
 are not recursively hashed; inspect regenerated output when those change.
+
+### 11.2 Rule classes
+
+Renderer resource limits are outside this inventory: `bake` and `video` refuse
+more than 20,000 frames (`MAX_FRAMES`, `runtime/bake.mjs`), and a non-positive
+or non-finite fps, lead or hold, whatever a scene acknowledges. They are not
+canon and cannot be acknowledged.
+
+Every rule the gate, the runtime's throws, the player and the canon texts
+state, except the walks' edge limits, which stay unclassed until #95, with its class (§11.1 *Advice, not law*). **Status** says where the rule
+is enforced today: *gate* is a G-row of §11; *advice* means `checkScene`
+returns it as advice, which a scene acknowledges (`runtime/advice.mjs`);
+*throws* means the runtime refuses to build; *by construction* means no scene
+can break it; *guidance* means only the skill text states it.
+
+| Rule | Class | Status |
+|---|---|---|
+| Same `t`, same bytes (T1, T2, G1) | hard | gate |
+| No clock or randomness in `frame()` or its helpers (T1, T7, G11) | hard | gate |
+| Well-formed markup (G2) | hard | gate |
+| Numbers rounded through `num()` (T4, G3) | hard | gate |
+| No `NaN`, `undefined`, `Infinity` (G5) | hard | gate |
+| Colours only from tokens (G4, §6) | hard | gate |
+| Step frames settled (G6, §8) | hard | gate |
+| Frames after `duration` equal the final frame (G8, T3) | hard | gate |
+| Scene contract: id, title, description, steps, unique step ids, valid `acknowledge` (§1, G16) | hard | throws |
+| Drawn text pairs ≥ 4.5:1, both themes (G12, WCAG 1.4.3) | hard | gate |
+| Drawn non-text pairs ≥ 3:1 against adjacent colours (G12, WCAG 1.4.11) | hard | gate |
+| Builds for every format × locale: labels fit, no collisions, known tokens and types, exact translations (G13) | hard | throws |
+| Ids built from the instance prefix (G14, WCAG 4.1.1) | hard | gate |
+| Visibility decided on rounded opacity (T5) | hard | by construction for the helpers' own output (`el`, `fade`); custom markup follows it by contract |
+| No CSS transitions, animations or timers in a scene (T6) | hard | a hard requirement by contract: the renderer owns the clock, but a custom frame can still emit CSS animation markup or use timers, and the gate does not prove otherwise |
+| Declared label boxes do not overlap, cross stems or leave the picture (G15) | hard | gate |
+| Style data is valid: known tokens, `#rrggbb`, a CSS font list (`normalizeStyle`) | hard | throws |
+| Pause control, keyboard stepping announced (§10.2; WCAG 2.2.2, 2.1.1, 4.1.3) | hard | by construction |
+| Reduced motion shows the final frame, no autoplay (§10; the toolkit's policy, informed by WCAG 2.3.3, which is Level AAA) | hard | by construction |
+| A1 `duration`: ≤ 12 s (G9) | advice | advice |
+| A2 aim for ≤ 8 s | advice | guidance |
+| A3 `nothing-animates`: first frame ≠ last frame (G7) | advice | advice |
+| A4 `step-labels-in-frame`: every step label drawn in the final frame (G10) | advice | advice |
+| A5 No loops: an explainer plays once, a token never restarts | advice | by construction for the whole timeline (player, exporters never replay it); a repetition authored inside the timeline is guidance only, and G8 does not catch it |
+| A6 No ambient motion | advice | guidance; a scene that keeps changing after `duration` fails G8, one that repeats inside its timeline and then holds does not |
+| A7 No continuous scrubbing: page links jump between settled steps (§10.2.2) | advice | by construction (`scrollSteps`) |
+| A8 No overshoot: curves within 0–1, damped springs, no bounce or elastic (§4) | advice | throws for a curve outside 0–1 (`normalizeStyle`), guidance otherwise |
+| A9 No parallax, no `transition: all`, nothing purely decorative | advice | guidance |
+| A10 Timing budgets: entrance ≤ 600 ms, siblings 80–150 ms apart, 50 ms between beats | advice | guidance (G6 itself stays hard) |
+| A11 Type ranges: `sequence` 2–12 nodes, `hub-spoke` 2–10 spokes, `timeline` and `stack` 2–8, walks 2–8 nodes, `flowchart` 2–12 nodes (§9); the walks' edge limits (1–12 edges, 1–10 explicit path edges) are not yet classed and stay as they are until #95 | advice | throws |
+| A12 Shape styles: radius 0–24, stroke 1–4 (§11.1) | advice | throws |
+| A13 One element at a time carries `emphasis` (§6) | advice | guidance |
+| A14 `emphasis-on-accent`: ≥ 3:1 where a ring or dot touches the reached node (G12) | advice | advice |
+| A15 Shared pairs a scene does not draw | advice | warning (#79) |
+| B1 Font size ≥ 14 px at 1× (`FONT_MIN`, §3, §7) | advice | throws |
+| B2 Controls ≥ 44 × 44 px (§10.2) | guidance (no gate check) | by construction (`PLAYER_CSS`, which a page MAY override while keeping WCAG 2.5.8) |
+
+Where the status is *throws* and the class *advice* (A8's curve range, A11, A12,
+B1), the class is decided and the enforcement is not yet moved: those rules
+still refuse to build, and become advice in the follow-up
+[#95](https://github.com/liqweed/motion-kit/issues/95), because each needs a
+layout or a style to be built beyond the range and judged by eye. Until then,
+change the spec or the style, not an acknowledgement.
 
 ## 12. Discrepancies
 
