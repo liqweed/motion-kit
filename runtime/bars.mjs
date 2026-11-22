@@ -77,7 +77,7 @@ export function hatchPattern({ idPrefix, name = "hatch", stroke = "line", spacin
 	const drawnWidth = Number(num(width));
 	if (!finite(drawnSpacing) || drawnSpacing <= 0) throw new Error(`hatchPattern: spacing must remain finite and positive after SVG rounding, got ${spacing}`);
 	if (!finite(drawnWidth) || drawnWidth <= 0 || drawnWidth >= drawnSpacing) throw new Error(`hatchPattern: width must remain finite, more than 0 and less than the spacing after SVG rounding, got ${width} of ${spacing}`);
-	const id = `${safeId(idPrefix)}-hatch-${name}`; // the frame's prefix is a safe id already; the gate's own call passes the raw scene id
+	const id = `${safeId(idPrefix)}-hatch-${name}`; // normalized here so a direct call with a raw prefix (as in the tests) matches what renderSvg passes
 	// One vertical line in the middle of a square tile, turned 45° by the pattern.
 	const line = el("path", { d: `M${num(spacing / 2)} 0 V${num(spacing)}`, fill: "none", stroke: tok(stroke), "stroke-width": width });
 	const pattern = el("pattern", { id, width: spacing, height: spacing, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, line);
@@ -218,7 +218,7 @@ export function rollingValue(from, to, p) {
  * @returns {string}
  */
 export function drawValue({ x, y, to, from = 0, p, format = (v) => num(v, 0), fontSize = 16, anchor = "start", fill = "ink", weight = 600, family, opacity = 1, id }) {
-	if (![x, y, fontSize].every(renderedFinite) || fontSize <= 0 || Number(num(fontSize)) <= 0) throw new Error("drawValue: x, y and fontSize must remain finite and the size positive after SVG rounding");
+	if (![x, y, fontSize, weight].every(renderedFinite) || fontSize <= 0 || Number(num(fontSize)) <= 0) throw new Error("drawValue: x, y, fontSize and weight must remain finite and the size positive after SVG rounding");
 	if (typeof format !== "function") throw new Error("drawValue: format must be a function (number) => string");
 	const shown = format(rollingValue(from, to, p));
 	if (typeof shown !== "string") throw new Error(`drawValue: format must return a string, got ${typeof shown}`);

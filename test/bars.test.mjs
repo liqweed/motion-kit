@@ -349,9 +349,10 @@ describe("bars: review edge cases", () => {
 		const fake = { id: "x", fill: "red", markup: "" };
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: fake }), /hatchPattern/);
 	});
-	it("accepts a frozen hatch with a url(#id) fill from another runtime copy", () => {
-		const own = hatchPattern({ idPrefix: "copy" });
-		const otherCopy = Object.freeze({ ...own });
+	it("accepts a hatch made by another loaded copy of the module", async () => {
+		const copy = await import(new URL("../runtime/bars.mjs?copy", import.meta.url).href);
+		assert.notEqual(copy.hatchPattern, hatchPattern);
+		const otherCopy = copy.hatchPattern({ idPrefix: "copy" });
 		assert.match(drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: otherCopy }), /url\(#copy-hatch-hatch\)/);
 	});
 	it("reserves the picture's own id names", () => {
@@ -364,6 +365,7 @@ describe("bars: review edge cases", () => {
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: accessor }), /hatchPattern/);
 		for (const fill of ["red", "url(#a)\" onload=\"x", "url(https://example.test/a.svg#p)", 7]) assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: /** @type {*} */ (Object.freeze({ ...hatch, fill })) }), /hatchPattern/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 10, height: 4, hatch: { ...hatch } }), /hatchPattern/);
+		assert.throws(() => drawValue({ x: 0, y: 0, to: 1, p: 1, weight: 1e307 }), /weight must remain finite/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 1e307, height: 4 }), /after SVG rounding/);
 		assert.throws(() => drawTrack({ x: 0, y: 0, width: 0.004, height: 4 }), /positive after SVG rounding/);
 		assert.throws(() => barEnd({ start: 1e308, duration: 1e308 }), /end must be finite/);

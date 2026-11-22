@@ -123,7 +123,8 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
   (the style's movement curve), as a pill. The track starts first (0.3–0.4 s);
   the bar follows after about 0.25 s and may begin while the track finishes fading.
 - **Value:** rolls from its start value to its end value with the bar's own
-  eased progress, so the two arrive together, and shows exactly the end value
+  eased progress, so the raw number and the bar arrive together (a formatter
+  that rounds may show its final digits earlier), and shows exactly the end value
   once the bar has settled. Never a separate timer; never a count that finishes
   after the bar.
 - **Timing rule:** the bar has settled (`barEnd`), and the value with it, ≥ 50 ms
