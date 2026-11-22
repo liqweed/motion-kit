@@ -248,6 +248,16 @@ describe("optional token use and warnings", () => {
 			assert.ok(!paintSource(`<style>t::after{content:"var(--mk-alert)"}</style>`).includes("alert"));
 			assert.ok(paintSource(`<style>t{fill:var(--mk-alert)}</style>`).includes("alert"));
 		});
+		it("finds a <style> body after a quoted > in its attributes", () => {
+			const m = `<style data-note=">">text{fill:var(--mk-caution);font-family:"Courier"}</style>`;
+			assert.ok(paintSource(m).includes("var(--mk-caution)"));
+			assert.match(findFontLiteral(m, style) ?? "", /Courier/);
+		});
+		it("decodes style attribute entities and skips metadata subtrees", () => {
+			assert.ok(!paintSource(`<text style="content:&quot;var(--mk-caution)&quot;">x</text>`).includes("caution"));
+			assert.ok(!paintSource(`<metadata><info value="var(--mk-caution)"/></metadata>`).includes("caution"));
+			assert.ok(paintSource(`<metadata></metadata><rect fill="var(--mk-caution)"/>`).includes("caution"));
+		});
 		it("does not lose an escaped quote's string boundary", () => {
 			assert.match(findFontLiteral(`<style>text{content:"\\"";font-family:Courier} text::after{content:"x"}</style>`, style) ?? "", /Courier/);
 		});

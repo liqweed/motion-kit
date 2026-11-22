@@ -171,21 +171,61 @@ export function cssVars(style, theme = "light", markup) {
 }
 
 /**
- * The tags of a frame, read with their quoted attributes whole (a `>` inside
- * a value does not end the tag). Comments are skipped.
+ * Every tag of a frame, opening and closing, read with its quoted attributes
+ * whole (a `>` inside a value does not end the tag). Comments are skipped.
+ * `inMetadata` is true for the tags inside a `<metadata>` element: they
+ * describe the document and paint nothing. This is the one reader of tags;
+ * the other readers (`svgTags`, `styleBodies`, `paintSource`) build on it.
+ * @param {string} markup
+ * @returns {{ name: string, attrs: { name: string, raw: string }[], closing: boolean, selfClosing: boolean, inMetadata: boolean, end: number, bare: string }[]}
+ */
+function scanTags(markup) {
+	const bare = markup.replace(/<!--[\s\S]*?-->/g, "");
+	const tags = [];
+	let metadata = 0;
+	for (const m of bare.matchAll(/<(\/?)([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g)) {
+		const closing = m[1] === "/";
+		const selfClosing = !closing && m[3].endsWith("/");
+		const isMeta = m[2].toLowerCase() === "metadata";
+		if (closing && isMeta) metadata = Math.max(0, metadata - 1);
+		const attrs = [];
+		if (!closing) for (const a of m[3].matchAll(/([\w:.-]+)\s*=\s*(["'])([\s\S]*?)\2/g)) attrs.push({ name: a[1], raw: a[3] });
+		tags.push({ name: m[2], attrs, closing, selfClosing, inMetadata: metadata > 0 || (isMeta && !closing), end: m.index + m[0].length, bare });
+		if (!closing && isMeta && !selfClosing) metadata++;
+	}
+	return tags;
+}
+
+/**
+ * The opening tags of a frame, read with their quoted attributes whole (a `>`
+ * inside a value does not end the tag). Comments are skipped.
  * @param {string} markup
  * @returns {{ name: string, attrs: { name: string, raw: string }[] }[]}
  */
 export function svgTags(markup) {
-	const bare = markup.replace(/<!--[\s\S]*?-->/g, "");
-	const tags = [];
-	for (const m of bare.matchAll(/<([a-zA-Z][\w:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g)) {
-		const attrs = [];
-		for (const a of m[2].matchAll(/([\w:.-]+)\s*=\s*(["'])([\s\S]*?)\2/g)) attrs.push({ name: a[1], raw: a[3] });
-		tags.push({ name: m[1], attrs });
-	}
-	return tags;
+	return scanTags(markup).filter((t) => !t.closing);
 }
+
+/**
+ * The bodies of the frame's `<style>` elements, found with the same tag
+ * boundaries as `svgTags` (a quoted `>` in an attribute does not start the
+ * body early). Those inside `<metadata>` are left out unless `all` is set.
+ * @param {string} markup
+ * @param {boolean} [all]
+ * @returns {string[]}
+ */
+export function styleBodies(markup, all = false) {
+	const out = [];
+	for (const t of scanTags(markup)) {
+		if (t.closing || t.selfClosing || t.name.toLowerCase() !== "style" || (t.inMetadata && !all)) continue;
+		const close = /<\/style\s*>/i.exec(t.bare.slice(t.end));
+		out.push(t.bare.slice(t.end, close ? t.end + close.index : undefined));
+	}
+	return out;
+}
+
+/** Decode the five XML entities a quoted attribute value can carry. */
+export const unescapeAttr = (/** @type {string} */ v) => v.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 
 const CSS_STRING = /(["'])(?:\\[\s\S]|(?!\1)[^\\])*\1/;
 
@@ -209,15 +249,15 @@ function stripCssComments(/** @type {string} */ css) {
  * @returns {string}
  */
 export function paintSource(markup) {
-	const bare = markup.replace(/<!--[\s\S]*?-->/g, "");
 	const out = [];
-	for (const tag of svgTags(bare)) {
+	for (const tag of scanTags(markup)) {
+		if (tag.closing || tag.inMetadata) continue;
 		for (const { name, raw } of tag.attrs) {
 			if (/^(data-|aria-)|^(id|class)$/.test(name)) continue;
-			out.push(name === "style" ? maskCssStrings(stripCssComments(raw)) : raw);
+			out.push(name === "style" ? maskCssStrings(stripCssComments(unescapeAttr(raw))) : raw);
 		}
 	}
-	for (const [, css] of bare.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)) out.push(maskCssStrings(stripCssComments(css)));
+	for (const css of styleBodies(markup)) out.push(maskCssStrings(stripCssComments(css)));
 	return out.join("\n");
 }
 
