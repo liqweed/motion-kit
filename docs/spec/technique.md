@@ -51,7 +51,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
   serializable scene options, passed unchanged; option names `format`,
-  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `bars`, `code` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
+  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `bars`, `cells`, `code` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
@@ -555,6 +555,23 @@ functions; a colour is a token name (G4 applies).
   is several scenes. A deck advances it one range per click (in Slidev the first range is
   shown on arrival and each click moves to the next, so n ranges take n − 1
   clicks; one slide per step in Marp).
+
+### 4.14 Cell grids (`runtime/cells.mjs`)
+
+For custom scenes that draw a grid of rounded squares; handed to them in `kit`.
+Pure functions; a colour is a token name (G4 applies).
+
+- `cellGrid` lays out `rows × cols` square cells in a box or at a `size`;
+  `cellLighting` gives each cell's level at `t` (0 before it starts, exactly its
+  `field` value from `lighting.end` on, on the style's entrance curve);
+  `coverage` turns a signed distance into a partial alpha.
+- `drawCells` writes one `<rect>` per cell whose opacity, rounded to three
+  decimals (as `el`), is above 0; the empty grid is one `<pattern>` with id
+  `${safeId(idPrefix)}-cells-${name}`. The markup has the same groups in every
+  frame, so the player's patch changes only the lit cells.
+- **Canon.** A lighting ends at least 50 ms before its step and nothing repeats
+  (G6). The measured cost and the size at which a scene should leave SVG are in
+  the `animated-diagram` skill's `custom-scenes.md`.
 
 ## 5. Markup
 

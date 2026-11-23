@@ -133,6 +133,17 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
 - **Never** a bar or a number that keeps moving while a step rests: a value that
   updates live is footage, not part of the diagram.
 
+## Cell grids (derived)
+
+- **Lighting:** a cell reaches its end level in 0.3–0.5 s on `easeOut` (the style's
+  entrance curve); cells start one by one, a row at a time or all at once, over at
+  most about 1.5 s for a grid of tens of cells. A cell on a shape's edge ends partly lit.
+- **Timing rule:** the lighting has ended (`lighting.end`) ≥ 50 ms before the step.
+  The grid lights once per step.
+- **Letters out of an atlas:** 0.6–0.8 s on `easeStandard` along an arc, 80–150 ms apart.
+- **Never** a grid that flashes twice, a cursor that steps cell by cell for seconds or a
+  blinking text cursor beside the atlas: ambient motion. Draw a cursor static or not at all.
+
 ## Highlight band over code (derived)
 
 - **Band:** appears in 0.3 s (a fade over the first range), then moves to each
