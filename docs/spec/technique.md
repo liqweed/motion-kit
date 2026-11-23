@@ -573,7 +573,7 @@ Pure functions; a colour is a token name (G4 applies).
   positions, while `base` is present or absent alike in every frame (switching
   between `null` and a token adds or removes the `<defs>` and base rect ahead of them).
 - **Canon.** A lighting ends at least 50 ms before its step (guidance A10) and nothing
-  repeats (guidance A5). G6 checks only the settled frames around each step, so it does not detect a repeat. The measured cost and the size at which a scene should leave SVG are in
+  repeats (guidance A5). G6 probes only the step frame and the 45 ms after it, so it misses a repeat away from a step. The measured cost and the size at which a scene should leave SVG are in
   the `animated-diagram` skill's `custom-scenes.md`.
 
 ## 5. Markup

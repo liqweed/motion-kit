@@ -240,7 +240,7 @@ all at once, and an 8 × 3 glyph atlas whose letters fly out along arcs).
 | Letters that fly out | Hide the glyph in its cell from the moment it leaves (`glyph` returns `null`) and draw it with `cubic` and `tokensAlong` (`hold: true` keeps it where it lands); give each letter its own arc (control points swung to opposite sides) and start them 80–150 ms apart |
 
 A lit cell is one `<rect>`; a cell at 0 draws nothing, and the empty grid's own markup is the same size for 6 cells or 2,400 (one pattern; the first draw also prepares each cell's geometry once, so its time grows with the cells). Declare `{ fg: "accent", bg: "surface", min: 3 }` for lit cells on the empty
-grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs on the empty grid (glyphs are drawn over the lit cells too, so check the glyph token against each fill it can sit on, such as `accent`) and `{ fg: "ink", bg: "surface", min: 3 }`
+grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs on the empty grid (glyphs are drawn over the lit cells too, so check the glyph token against each fill it can sit on, such as `accent`, and, for a cell that is partly lit while it shows, against the composite of the fill over `surface` at the opacity it displays: a mid-grey glyph can match that blend even when it clears both endpoints; the same holds for an outline) and `{ fg: "ink", bg: "surface", min: 3 }`
 for an outline (`outlineFill: "ink"`) on the empty grid in `contrastPairs`; an outline is drawn inside the cell, over whatever the cell shows, so declare its token on `surface` for an empty cell and, over a lit cell, against the lit fill (`emphasis` is 2.89:1 on `surface` in the light style, which is why the pair names `ink`).
 
 **The grid lights once per step.** Each lighting ends (`lighting.end`) at least 50 ms
@@ -250,8 +250,7 @@ or cover a few cells inside one beat, or one row per step. A blinking text curso
 atlas is ambient too: draw it static, or leave it out.
 
 **Budget: SVG suffices up to about 2,400 cells; beyond that, or sooner on slow devices, split the grid or change fewer cells per beat (a Canvas renderer does not ship; see the spec's note on #88).**
-Measured with `bench/cells.scene.mjs`, a ripple that changes most cells in most frames
-for 2 s and then lights all of them (16:9), in headless Chromium at 6x CPU slowdown
+Measured with `bench/cells.scene.mjs`, a 2 s ripple (at most about 31% of the cells are mid-ramp in any sampled frame: 748 of 2,400, 240 of 600) and then a 0.5 s beat that lights all of them (16:9), in headless Chromium at 6x CPU slowdown
 (`npm run bench:player`, style and layout, no paint), as a 15 fps baked SVG and as a
 30 fps, 2x-scale MP4 (`motion-kit video`, 173 frames at 1920 × 1080; encoding alone is about 12 s):
 
