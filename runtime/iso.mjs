@@ -716,12 +716,12 @@ function behindOriented(a, b, toCam) {
 		const tol = 1e-12 * Math.max(1, Math.abs(a0), Math.abs(a1), Math.abs(b0), Math.abs(b1));
 		const aFirst = a1 <= b0 + tol; // b is on the positive side
 		const bFirst = b1 <= a0 + tol;
-		const ulp = 1e-14 * Math.max(1, Math.abs(a0), Math.abs(a1), Math.abs(b0), Math.abs(b1));
 		let first = aFirst ? (bFirst ? 0 : 1) : bFirst ? 2 : 0;
 		if (aFirst && bFirst) {
-			// both fit (flat solids in one plane): no order unless one gap is reliably positive, and then that one decides
+			// both fit (flat solids in one plane): no order unless one gap is beyond the contact tolerance, the one threshold
+			// below which a separation cannot be told from the rounding of the pose, and then that one decides
 			const [ga, gb] = [b0 - a1, a0 - b1];
-			first = ga > ulp && gb <= ulp ? 1 : gb > ulp && ga <= ulp ? 2 : 0;
+			first = ga > tol && gb <= tol ? 1 : gb > tol && ga <= tol ? 2 : 0;
 		}
 		if (first === 1) v2 = facing > 0 ? -1 : 1;
 		else if (first === 2) v2 = facing > 0 ? 1 : -1;

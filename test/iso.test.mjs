@@ -341,11 +341,18 @@ describe("oriented solids", () => {
 		assert.equal(ids(90), "ab", "input order from one side");
 		assert.equal(ids(270), "ab", "input order from the other");
 	});
-	it("puts the front of two strictly separated thin faces last, whatever the input order", () => {
+	it("puts the front of two separated thin faces last, whatever the input order, from either side", () => {
 		const f = (/** @type {string} */ id, /** @type {number} */ x, /** @type {number} */ z) => rotateSolid(box({ x, y: 0, w: 2, d: 2, h: 0, z, id }), { axis: "y", deg: 90 });
-		const [rear, front] = [f("rear", -0.5, 1), f("front", 0.5, 1 + 5e-13)];
-		const cam = camera({ azimuth: 90, elevation: 20 });
-		for (const input of [[rear, front], [front, rear]]) assert.deepEqual(orderSolids(input, cam).map((s) => s.id), ["rear", "front"]);
+		const [rear, front] = [f("rear", -0.5, 1), f("front", 0.5, 1 + 5e-12)];
+		for (const [az, want] of /** @type {const} */ ([[90, ["rear", "front"]], [270, ["front", "rear"]]])) {
+			const cam = camera({ azimuth: az, elevation: 20 });
+			for (const input of [[rear, front], [front, rear]]) assert.deepEqual(orderSolids(input, cam).map((s) => s.id), want, `azimuth ${az}`);
+		}
+	});
+	it("keeps input order for two coplanar thin faces whose positions differ only by the pose's rounding", () => {
+		const a = rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 0, z: 1.1, id: "a" }), { axis: "y", deg: 90 });
+		const b = rotateSolid(box({ x: 513.1, y: 0, w: 2, d: 2, h: 0, z: 512, id: "b" }), { axis: "y", deg: 90, about: { x: 1.1, y: 0, z: 512 } });
+		for (const az of [90, 270]) assert.deepEqual(orderSolids([a, b], camera({ azimuth: az, elevation: 20 })).map((s) => s.id), ["a", "b"], `azimuth ${az}`);
 	});
 	it("refuses a bad axis, angle or point, and a solid with content on its top", () => {
 		const b = box({ x: 0, y: 0, w: 1, d: 1, h: 1 });
