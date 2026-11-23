@@ -57,8 +57,8 @@ const count = (n) => typeof n === "number" && Number.isInteger(n) && n >= 1;
  * A grid of `rows` × `cols` square cells with `gap` between them, rounded by
  * `radius` (default 22 % of the size, never more than half). Give it a `size`
  * (the cell's edge; the grid starts at `x`, `y`) or a box (`width` × `height`:
- * the largest cell that fits, the grid centred in the box). An integer `size`
- * and `gap` keep the empty grid's pattern on the lit cells' pixels.
+ * the largest cell that fits, to a hundredth, the grid centred in the box). A `gap`
+ * of at most two decimals keeps the empty grid's pattern on the lit cells.
  * @param {{ rows: number, cols: number, x?: number, y?: number, width?: number, height?: number, size?: number, gap?: number, radius?: number }} o
  * @returns {CellGrid}
  */
@@ -72,7 +72,8 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
 	let edge;
 	if (boxed) {
 		if (!finite(width) || !finite(height) || /** @type {number} */ (width) <= 0 || /** @type {number} */ (height) <= 0) throw new Error(`cellGrid: width and height must be finite and above 0, got ${width} × ${height}`);
-		edge = Math.min((/** @type {number} */ (width) - gap * (cols - 1)) / cols, (/** @type {number} */ (height) - gap * (rows - 1)) / rows);
+		// Floored to two decimals, so the pitch is as exact as the rounding of the markup and the empty grid's pattern stays on the lit cells.
+		edge = Math.floor(Math.min((/** @type {number} */ (width) - gap * (cols - 1)) / cols, (/** @type {number} */ (height) - gap * (rows - 1)) / rows) * 100) / 100;
 	} else {
 		edge = size;
 	}
@@ -189,8 +190,9 @@ export function cellLighting(grid, { start, duration, spread = 0, order = "cells
 		level(/** @type {number} */ t, /** @type {number} */ row, /** @type {number} */ col) {
 			if (!finite(t)) throw new Error(`cellLighting: t must be finite, got ${t}`);
 			const i = grid.index(row, col);
-			const p = progress(t, start + delayOf(i), duration, curve);
-			return p >= 1 ? ends[i] : p * ends[i];
+			const from = start + delayOf(i);
+			if (t >= from + duration) return ends[i];
+			return progress(t, from, duration, curve) * ends[i];
 		},
 	});
 }
@@ -241,7 +243,7 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 	if (typeof opacity !== "function") throw new Error("drawCells: opacity must be a function (row, col, index) => number from 0 to 1");
 	if (typeof name !== "string" || !ID_PART.test(name)) throw new Error(`drawCells: name must use letters, digits and "_", got ${JSON.stringify(name)}`);
 	if (base !== null && (typeof idPrefix !== "string" || idPrefix === "")) throw new Error(`drawCells: an empty grid (base) needs the frame's idPrefix, a non-empty string, got ${JSON.stringify(idPrefix)}`);
-	if (!finite(outlineWidth) || outlineWidth <= 0 || Number(num(outlineWidth)) <= 0) throw new Error(`drawCells: outlineWidth must be a finite number above 0, got ${outlineWidth}`);
+	if (!finite(outlineWidth) || outlineWidth <= 0 || Number(num(outlineWidth)) <= 0 || outlineWidth >= grid.size) throw new Error(`drawCells: outlineWidth must be a finite number above 0 and less than the cell size (${grid.size}), got ${outlineWidth}`);
 	const gsize = glyphSize ?? grid.size * 0.6;
 	if (!finite(gsize) || gsize <= 0 || Number(num(gsize)) <= 0) throw new Error(`drawCells: glyphSize must be a finite number above 0, got ${glyphSize}`);
 	const { rows, cols } = grid;
@@ -292,6 +294,7 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 				const g = glyph(row, col);
 				if (g === null || g === undefined) continue;
 				const spec = typeof g === "string" ? { text: g } : g;
+				if (!spec || typeof spec !== "object" || Array.isArray(spec) || typeof spec.text !== "string") throw new Error(`drawCells: glyph must return a string or { text, fill?, opacity? }, got ${JSON.stringify(g)} at row ${row}, column ${col}`);
 				if (typeof spec.opacity === "number" && Math.round(spec.opacity * 1000) <= 0) continue;
 				const c = grid.at(row, col);
 				glyphs.push(

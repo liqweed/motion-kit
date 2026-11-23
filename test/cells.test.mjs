@@ -17,12 +17,12 @@ const litCount = (/** @type {string} */ svg) => (svg.match(/<g data-cells-lit=""
 describe("cellGrid", () => {
 	it("fits square cells to a box and centres the grid in it", () => {
 		const g = cellGrid({ rows: 6, cols: 12, x: 10, y: 20, width: 480, height: 300, gap: 4 });
-		const s = (480 - 11 * 4) / 12; // the width allows 36.33; the height (300 - 5·4) / 6 = 46.67
+		const s = 36.33; // the width allows 36.333…, floored to a hundredth; the height (300 - 5·4) / 6 = 46.67
 		assert.equal(g.size, s);
 		assert.equal(g.count, 72);
 		assert.equal(g.width, 12 * s + 11 * 4);
 		assert.equal(g.height, 6 * s + 5 * 4);
-		assert.equal(g.x, 10);
+		assert.equal(g.x, 10 + (480 - g.width) / 2);
 		assert.equal(g.y, 20 + (300 - g.height) / 2);
 		assert.deepEqual({ ...g.at(1, 2) }, { x: g.x + 2 * (s + 4), y: g.y + (s + 4), size: s, cx: g.x + 2 * (s + 4) + s / 2, cy: g.y + (s + 4) + s / 2 });
 		assert.equal(g.index(1, 2), 14);
@@ -111,6 +111,11 @@ describe("cellLighting", () => {
 		assert.equal(l.level(l.end + 5, 0, 2), l.level(l.end, 0, 2), "it holds");
 		assert.ok(l.level(0.2, 0, 2) <= coverage(2 - 1.7), "never above its end level");
 	});
+	it("is exactly the end level at end for every cell, however the times add up", () => {
+		const g = cellGrid({ rows: 6, cols: 12, size: 5 });
+		const l = cellLighting(g, { start: 2.1, duration: 0.3, spread: 0.3 });
+		for (let r = 0; r < 6; r++) for (let c = 0; c < 12; c++) assert.equal(l.level(l.end, r, c), 1);
+	});
 	it("takes the style's entrance curve", () => {
 		const slow = { motion: { enter: /** @type {[number, number, number, number]} */ ([0.9, 0, 1, 1]), move: /** @type {[number, number, number, number]} */ ([0.4, 0, 0.2, 1]) } };
 		const a = cellLighting(grid, { start: 0, duration: 1 });
@@ -181,6 +186,9 @@ describe("drawCells", () => {
 		assert.throws(() => drawCells(grid, { opacity: () => 1 }), /idPrefix/);
 		assert.throws(() => drawCells(grid, { ...ok, name: "a-b" }), /name/);
 		assert.throws(() => drawCells(grid, { ...ok, outlineWidth: 0 }), /outlineWidth/);
+		assert.throws(() => drawCells(grid, { ...ok, outlineWidth: 20 }), /less than the cell size/);
+		assert.throws(() => drawCells(grid, { ...ok, glyph: () => /** @type {any} */ ({ fill: "ink" }) }), /glyph must return a string/);
+		assert.throws(() => drawCells(grid, { ...ok, glyph: () => /** @type {any} */ (["A"]) }), /glyph must return a string/);
 		assert.throws(() => drawCells(grid, { ...ok, glyphSize: -1 }), /glyphSize/);
 		assert.throws(() => drawCells(grid, { ...ok, opacity: () => NaN }), /finite number, got NaN at row 0, column 0/);
 		assert.throws(() => drawCells(grid, { ...ok, outline: () => NaN }), /outline must return/);

@@ -233,7 +233,7 @@ all at once, and an 8 × 3 glyph atlas whose letters fly out along arcs).
 
 | Need | Use |
 |---|---|
-| The grid | `cellGrid({ rows, cols, x?, y?, size?, width?, height?, gap?, radius? })`: give a `size` (the grid starts at `x`, `y`) or a box (`width` × `height`: the largest square cell that fits, centred). `grid.at(row, col)` is a cell's `{ x, y, size, cx, cy }`. An integer `size` and `gap` keep the empty grid's pattern on the lit cells' pixels |
+| The grid | `cellGrid({ rows, cols, x?, y?, size?, width?, height?, gap?, radius? })`: give a `size` (the grid starts at `x`, `y`) or a box (`width` × `height`: the largest square cell that fits, centred). `grid.at(row, col)` is a cell's `{ x, y, size, cx, cy }`. A box rounds the size down to a hundredth, and a `gap` of at most two decimals keeps the empty grid's pattern on the lit cells |
 | When cells light | `cellLighting(grid, { start, duration, spread?, order?, field?, style? })`: `order` is `"cells"` (one by one, the default), `"rows"`, `"columns"`, `"all"` or a function `(row, col) => number` (lowest first: a ripple out of a centre is the distance to it); `spread` is the seconds between the first cell's start and the last's. `lighting.level(t, row, col)` is 0 to 1 and exactly the cell's end level from `lighting.end` on |
 | Lighting by a field | `field: (row, col) => 0..1` is each cell's end level: `coverage(d, softness?)` turns a signed distance (negative inside, in cells) into a partial alpha, so the cells on a shape's edge end partly lit. It is read once per cell. The alpha is rounded to three decimals like every opacity |
 | Drawing | `drawCells(grid, { opacity, fill?, base?, idPrefix, name?, outline?, glyph?, glyphSize?, family? })`: `opacity(row, col)` is the number the scene computes per cell and frame (usually `lighting.level`, or the `Math.max` of two lightings for two beats); `fill` is a token (or `(row, col) => token`); `base` is the empty grid's token (default `surface`), drawn as one `<pattern>` whose id is `${safeId(idPrefix)}-cells-${name}`, so pass the frame's `idPrefix` and give each grid of a scene its own `name`; `outline(row, col)` highlights a cell (`true` or an opacity, in the token `outlineFill`, default `emphasis`); `glyph(row, col)` is a cell's content, a string or `{ text, fill, opacity }`, centred (`family: style.mono` keeps columns even) |
@@ -258,11 +258,11 @@ for 2 s and then lights all of them (16:9), in headless Chromium at 6x CPU slowd
 
 | Cells | Live player, patch: median / p90 | innerHTML: median / p90 | Peak frame | Baked SVG (gzip) | Video render |
 |---|---|---|---|---|---|
-| 100 (10 × 10) | 0.1 / 1.3–2.7 ms | 1.9–2.0 / 4.5–4.8 ms | 10 KB | 194 KB (6 KB) | 13 s |
+| 100 (10 × 10) | 0.1 / 1.3–2.7 ms | 1.7–2.0 / 3.8–4.8 ms | 10 KB | 194 KB (6 KB) | 13 s |
 | 600 (24 × 25) | 1.3–1.4 / 11.2–11.9 ms | 12.3–13.8 / 21–25 ms | 59 KB | 975 KB (49 KB) | 12 s |
-| 2,400 (40 × 60) | 2.3–4.3 / 31–64 ms | 30–31 / 71–109 ms | 237 KB | 3.1 MB (146 KB) | 23 s |
+| 2,400 (40 × 60) | 2.3–4.3 / 31–64 ms | 30–33 / 71–109 ms | 237 KB | 3.1 MB (146 KB) | 23 s |
 
-- **Live player.** The in-place patch keeps 600 cells under the 16.7 ms of a 60 fps frame even
+- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the ripple numbers below include that cost. The in-place patch keeps 600 cells under the 16.7 ms of a 60 fps frame even
   where every cell changes, at 6x slowdown. At 2,400 cells the median is a few ms, but the
   frames where most cells change at once (the ripple) cost 31–64 ms at 6x, about a sixth of that
   without the slowdown (an estimate; paint is not measured). Draw a grid of 2,400 cells that changes
