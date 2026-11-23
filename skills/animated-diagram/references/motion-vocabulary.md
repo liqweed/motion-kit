@@ -138,7 +138,7 @@ Use 50–100 ms lag. Draw the shape from `trail` to `lead`.
 - **Lighting:** a cell reaches its end level in 0.3–0.5 s on `easeOut` (the style's
   entrance curve); cells start one by one, a row at a time or all at once, over at
   most about 1.5 s for a grid of tens of cells. A cell on a shape's edge ends partly lit.
-- **Timing rule:** the lighting has ended (`lighting.end`) ≥ 50 ms before the step.
+- **Timing rule:** the lighting has ended (`lighting.end`) ≥ 50 ms before the step, and the next one starts ≥ 50 ms after it.
   The grid lights once per step.
 - **Letters out of an atlas:** 0.6–0.8 s on `easeStandard` along an arc, 80–150 ms apart.
 - **Never** a grid that flashes twice, a cursor that steps cell by cell for seconds or a

@@ -234,18 +234,17 @@ all at once, and an 8 × 3 glyph atlas whose letters fly out along arcs).
 | Need | Use |
 |---|---|
 | The grid | `cellGrid({ rows, cols, x?, y?, size?, width?, height?, gap?, radius? })`: give a `size` (the grid starts at `x`, `y`) or a box (`width` × `height`: the largest square cell that fits, centred). `grid.at(row, col)` is a cell's `{ x, y, size, cx, cy }`. A box rounds the size down to a hundredth, and a `gap` of at most two decimals keeps the empty grid's pattern on the lit cells |
-| When cells light | `cellLighting(grid, { start, duration, spread?, order?, field?, style? })`: `order` is `"cells"` (one by one, the default), `"rows"`, `"columns"`, `"all"` or a function `(row, col) => number` (lowest first: a ripple out of a centre is the distance to it); `spread` is the seconds between the first cell's start and the last's. `lighting.level(t, row, col)` is 0 to 1 and exactly the cell's end level from `lighting.end` on |
+| When cells light | `cellLighting(grid, { start, duration, spread?, order?, field?, style? })`: `order` is `"cells"` (one by one, the default), `"rows"`, `"columns"`, `"all"` or a function `(row, col) => number` (lowest first: a ripple out of a centre is the distance to it); `spread` is the window the starts are spread over: the seconds between the first and last start of cells with distinct ranks (`"all"`, equal ranks, or a single row or column under `"rows"`/`"columns"` collapse it to 0). `lighting.level(t, row, col)` is 0 to 1 and exactly the cell's end level from `lighting.end` on |
 | Lighting by a field | `field: (row, col) => 0..1` is each cell's end level: `coverage(d, softness?)` turns a signed distance (negative inside, in cells) into a partial alpha, so the cells on a shape's edge end partly lit. It is read once per cell. The alpha is rounded to three decimals like every opacity |
-| Drawing | `drawCells(grid, { opacity, fill?, base?, idPrefix, name?, outline?, glyph?, glyphSize?, family? })`: `opacity(row, col)` is the number the scene computes per cell and frame (usually `lighting.level`, or the `Math.max` of two lightings for two beats); `fill` is a token (or `(row, col) => token`); `base` is the empty grid's token (default `surface`), drawn as one `<pattern>` whose id is `${safeId(idPrefix)}-cells-${name}`, so pass the frame's `idPrefix` and give each grid of a scene its own `name`; `outline(row, col)` highlights a cell (`true` or an opacity, in the token `outlineFill`, default `emphasis`); `glyph(row, col)` is a cell's content, a string or `{ text, fill, opacity }`, centred (`family: style.mono` keeps columns even) |
+| Drawing | `drawCells(grid, { opacity, fill?, base?, idPrefix, name?, outline?, glyph?, glyphSize?, family? })`: `opacity(row, col)` is the number the scene computes per cell and frame (usually `lighting.level`, or the `Math.max` of two lightings for two beats); `fill` is a token (or `(row, col) => token`); `base` is the empty grid's token (default `surface`), drawn as one `<pattern>` whose id is `${safeId(idPrefix)}-cells-${name}`, so pass the frame's `idPrefix` and give each grid of a scene its own `name`; `outline(row, col)` highlights a cell (`true` or an opacity, in the token `outlineFill`, default `emphasis`, which is below 3:1 on `surface` in the light style); `glyph(row, col)` is a cell's content, a string or `{ text, fill, opacity }`, centred (`family: style.mono` keeps columns even) |
 | Letters that fly out | Hide the glyph in its cell from the moment it leaves (`glyph` returns `null`) and draw it with `cubic` and `tokensAlong` (`hold: true` keeps it where it lands); give each letter its own arc (control points swung to opposite sides) and start them 80–150 ms apart |
 
-A lit cell is one `<rect>`; a cell at 0 draws nothing, and the empty grid costs the
-same for 6 cells or 2,400. Declare `{ fg: "accent", bg: "surface", min: 3 }` for lit cells on the empty
+A lit cell is one `<rect>`; a cell at 0 draws nothing, and the empty grid's own markup is the same size for 6 cells or 2,400 (one pattern; the first draw also prepares each cell's geometry once, so its time grows with the cells). Declare `{ fg: "accent", bg: "surface", min: 3 }` for lit cells on the empty
 grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs and `{ fg: "emphasis", bg: "bg", min: 3 }`
-for an outline in `contrastPairs`.
+for an outline in `contrastPairs`; an outline is drawn inside the cell, so declare its token on `surface` (`emphasis` is 2.89:1 there in the light style: use `outlineFill: "ink"`).
 
 **The grid lights once per step.** Each lighting ends (`lighting.end`) at least 50 ms
-before its step, and the next one starts after it: a pixel grid that flashes twice, or a
+before its step, and the next one starts at least 50 ms after it: a pixel grid that flashes twice, or a
 cursor that steps cell by cell for many seconds, is ambient motion. Light it once per step,
 or cover a few cells inside one beat, or one row per step. A blinking text cursor beside an
 atlas is ambient too: draw it static, or leave it out.
@@ -262,14 +261,13 @@ for 2 s and then lights all of them (16:9), in headless Chromium at 6x CPU slowd
 | 600 (24 × 25) | 1.3–1.4 / 11.2–11.9 ms | 12.3–13.8 / 21–25 ms | 59 KB | 975 KB (49 KB) | 12 s |
 | 2,400 (40 × 60) | 2.3–4.3 / 31–64 ms | 30–33 / 71–109 ms | 237 KB | 3.1 MB (146 KB) | 23 s |
 
-- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the ripple numbers below include that cost. The in-place patch keeps 600 cells under the 16.7 ms of a 60 fps frame even
-  where every cell changes, at 6x slowdown. At 2,400 cells the median is a few ms, but the
+- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the ripple numbers below include that cost. The in-place patch keeps 600 cells under the 16.7 ms of a 60 fps frame in the measured ripple (about 400 cells ramping at once), at 6x slowdown; the percentiles span the whole timeline, holds included, and no paint is measured. At 2,400 cells the median is a few ms, but the
   frames where most cells change at once (the ripple) cost 31–64 ms at 6x, about a sixth of that
   without the slowdown (an estimate; paint is not measured). Draw a grid of 2,400 cells that changes
   every frame only where that is acceptable, and use Canvas for more than that, or for slow
   devices. Always use the patched player, never innerHTML: it costs 4 to 14 times more.
 - **Baked SVG.** Its size grows with the cells that change between frames: 3.1 MB for 2,400 cells over
-  3.9 s at 15 fps (146 KB gzipped). Prefer the live player, or fewer frames (lower `--fps`), for a grid this size.
+  4.0 s at 15 fps (146 KB gzipped). Prefer the live player, or fewer frames (lower `--fps`), for a grid this size.
 - **Video.** 2,400 cells cost about 10 s more than 100 over 173 frames: not a reason for Canvas.
 
 ## Advice and acknowledgements

@@ -5,6 +5,7 @@ import { checkScene } from "../lib/check.mjs";
 import { loadScene } from "../lib/load.mjs";
 import { MAX_CELLS, cellGrid, cellLighting, coverage, drawCells } from "../runtime/cells.mjs";
 import { KIT } from "../runtime/kit.mjs";
+import { num } from "../runtime/svg.mjs";
 import { renderSvg } from "../runtime/scene.mjs";
 import { el } from "../runtime/svg.mjs";
 
@@ -185,11 +186,17 @@ describe("drawCells", () => {
 		assert.throws(() => drawCells(grid, /** @type {any} */ ({ idPrefix: "p" })), /opacity must be a function/);
 		assert.throws(() => drawCells(grid, { opacity: () => 1 }), /idPrefix/);
 		assert.throws(() => drawCells(grid, { ...ok, name: "a-b" }), /name/);
-		assert.throws(() => drawCells(grid, { ...ok, outlineWidth: 0 }), /outlineWidth/);
-		assert.throws(() => drawCells(grid, { ...ok, outlineWidth: 20 }), /less than the cell size/);
+		assert.throws(() => drawCells(grid, { ...ok, outline: () => true, outlineWidth: 0 }), /outlineWidth/);
+		assert.throws(() => drawCells(grid, { ...ok, outline: () => true, outlineWidth: 20 }), /less than the cell size/);
 		assert.throws(() => drawCells(grid, { ...ok, glyph: () => /** @type {any} */ ({ fill: "ink" }) }), /glyph must return a string/);
 		assert.throws(() => drawCells(grid, { ...ok, glyph: () => /** @type {any} */ (["A"]) }), /glyph must return a string/);
-		assert.throws(() => drawCells(grid, { ...ok, glyphSize: -1 }), /glyphSize/);
+		assert.throws(() => drawCells(grid, { ...ok, glyph: () => "A", glyphSize: -1 }), /glyphSize/);
+		assert.throws(() => drawCells(grid, { ...ok, glyph: () => ({ text: "A", opacity: /** @type {any} */ ("opaque") }) }), /glyph's opacity/);
+		assert.throws(() => drawCells(grid, { ...ok, glyph: () => ({ text: "A", opacity: Infinity }) }), /glyph's opacity/);
+		assert.equal(drawCells(cellGrid({ rows: 1, cols: 1, size: 1 }), { ...ok }).includes("<rect"), true, "a 1 × 1 grid of size 1 draws without outline or glyph");
+		assert.equal(drawCells(cellGrid({ rows: 1, cols: 1, size: 0.005 }), { ...ok }).includes("<rect"), true);
+		assert.throws(() => cellGrid({ rows: 2, cols: 2, size: 1e308 }), /finite/);
+		assert.throws(() => cellLighting(grid, { start: 0, duration: 1, ease: /** @type {any} */ (3) }), /ease must be a function/);
 		assert.throws(() => drawCells(grid, { ...ok, opacity: () => NaN }), /finite number, got NaN at row 0, column 0/);
 		assert.throws(() => drawCells(grid, { ...ok, outline: () => NaN }), /outline must return/);
 		assert.throws(() => drawCells(grid, { ...ok, fill: "#ff0000" }), /unknown style token/);
@@ -234,7 +241,12 @@ describe("a grid's frame", () => {
 		const edge = coverage(0.123456789, 1.37);
 		assert.ok(/\.\d{5,}/.test(String(edge)), "the raw level has many decimals");
 		const svg = frame(lighting.end);
-		for (const m of svg.matchAll(/opacity="([\d.]+)"/g)) assert.ok(m[1].split(".")[1]?.length <= 3, m[1]);
+		const alphas = [...svg.matchAll(/opacity="([\d.]+)"/g)].map((m) => m[1]);
+		assert.ok(alphas.length > 0, "settled partial-alpha cells exist");
+		for (const a of alphas) assert.ok(a.split(".")[1]?.length <= 3, a);
+		// Passed through the renderer: the long fraction comes out as its exact three-decimal opacity.
+		const one = drawCells(cellGrid({ rows: 1, cols: 1, size: 8 }), { idPrefix: "q", base: null, opacity: () => edge });
+		assert.ok(one.includes(`opacity="${(Math.round(edge * 1000) / 1000).toString()}"`), one);
 	});
 	it("is settled from the lighting's end on, and a lit cell holds its end level", () => {
 		const { frame, lighting } = make();
@@ -253,6 +265,7 @@ describe("a grid's frame", () => {
 		const grid = cellGrid({ rows: 40, cols: 60, x: 0, y: 0, size: 10, gap: 2 });
 		const svg = drawCells(grid, { idPrefix: "d", opacity: (r, c) => coverage(Math.hypot(r - 20, c - 30) - 15) });
 		assert.ok(litCount(svg) > 600 && litCount(svg) <= 2400);
+		assert.equal(litCount(drawCells(grid, { idPrefix: "d", opacity: () => 1 })), 2400, "a fully lit grid draws every cell");
 	});
 });
 
@@ -267,7 +280,7 @@ describe("examples/cell-grid.scene.mjs", () => {
 		for (const format of ["16:9", "4:3", "1:1", "9:16", "wide", "tall"]) {
 			for (const locale of ["en", "nl"]) {
 				const { scene } = await loadScene(EXAMPLE, { format, locale });
-				const r = checkScene(scene);
+				const r = checkScene(scene, { strict: true });
 				assert.deepEqual(r.problems, [], `${format} ${locale}`);
 			}
 		}
@@ -309,13 +322,39 @@ describe("examples/cell-grid.scene.mjs", () => {
 	it("has no blinking cursor: nothing changes between the last step and the end", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9" });
 		const last = scene.steps[2].at;
-		assert.equal(renderSvg(scene, last, { idPrefix: "x" }), renderSvg(scene, scene.duration, { idPrefix: "x" }));
+		const settled = renderSvg(scene, last, { idPrefix: "x" });
+		for (let i = 1; i <= 20; i++) assert.equal(renderSvg(scene, last + ((scene.duration - last) * i) / 20, { idPrefix: "x" }), settled, `unchanged at ${i}/20 of the hold`);
 	});
 	it("keeps two instances on one page apart", async () => {
 		const { scene } = await loadScene(EXAMPLE, { format: "16:9" });
 		const a = idsOf(renderSvg(scene, 1, { idPrefix: "a" }));
 		const b = idsOf(renderSvg(scene, 1, { idPrefix: "b" }));
 		assert.ok(a.length >= 3);
+		assert.equal(new Set(a).size, a.length, "no id twice within one instance");
 		assert.ok(a.every((id) => !b.includes(id)));
+	});
+});
+
+describe("review fixes", () => {
+	it("keeps the box size exact when the largest fitting square is a whole hundredth", () => {
+		assert.equal(cellGrid({ rows: 1, cols: 1, width: 0.29, height: 0.29 }).size, 0.29);
+	});
+	it("keeps the pattern pitch equal to the lit cells' pitch for a size with many decimals", () => {
+		const g = cellGrid({ rows: 1, cols: 60, size: 10.004, gap: 0 });
+		assert.equal(g.at(0, 59).x, 59 * g.size);
+		assert.equal(num(g.at(0, 59).x), num(59 * (g.size + g.gap)));
+	});
+	it("delays ranks near the float limits without NaN, and the last cell starts at the spread", () => {
+		const g = cellGrid({ rows: 1, cols: 3, size: 4 });
+		const l = cellLighting(g, { start: 0, duration: 1, spread: 0.3, order: (_r, c) => [-1e308, 0, 1e308][c] });
+		assert.deepEqual([0, 1, 2].map((c) => l.delay(0, c)), [0, 0.15, 0.3]);
+		assert.equal(l.level(l.end, 0, 2), 1);
+		const m = cellLighting(g, { start: 0, duration: 1, spread: 0.003, order: "cells" });
+		assert.ok(m.delay(0, 2) <= 0.003);
+	});
+	it("keeps a level within its end level whatever the curve returns", () => {
+		const g = cellGrid({ rows: 1, cols: 1, size: 4 });
+		const l = cellLighting(g, { start: 0, duration: 1, ease: () => 2, field: () => 0.5 });
+		assert.equal(l.level(0.5, 0, 0), 0.5);
 	});
 });

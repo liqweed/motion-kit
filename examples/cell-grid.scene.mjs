@@ -120,6 +120,7 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 				name: "atlas",
 				opacity: () => 0,
 				outline: (row, col) => (isFlyer(row, col) >= 0 ? ring : 0),
+				outlineFill: "ink", // inside the cell, so on `surface`: emphasis is 2.89:1 there
 				glyph: (row, col) => (flown(row, col) ? null : ATLAS[row][col]),
 				glyphSize,
 				family,
@@ -142,8 +143,8 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 		description: localize(COPY.description, locale),
 		// Narrative steps: the frame shows the grids, not the step labels.
 		stepLabelsInFrame: false,
-		// The pairs this scene draws: captions on the canvas, lit cells on the empty grid, letters on the atlas's cells, the outline on the canvas.
-		contrastPairs: [...sharedPairs("ink/bg", "muted/bg"), { fg: "accent", bg: "surface", min: 3, use: "a lit cell on the empty grid" }, { fg: "ink", bg: "surface", min: 4.5, use: "a letter on its atlas cell" }, { fg: "emphasis", bg: "bg", min: 3, use: "the outline of a cell" }],
+		// The pairs this scene draws: captions on the canvas, lit cells on the empty grid, letters on the atlas's cells, the outline on the cell.
+		contrastPairs: [...sharedPairs("ink/bg", "muted/bg"), { fg: "accent", bg: "surface", min: 3, use: "a lit cell on the empty grid" }, { fg: "ink", bg: "surface", min: 4.5, use: "a letter on its atlas cell" }, { fg: "ink", bg: "surface", min: 3, use: "the outline of a cell, inside the cell on the empty grid" }],
 		steps,
 		frame,
 	};

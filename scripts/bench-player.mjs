@@ -96,8 +96,11 @@ globalThis.bench = (which, spec) => {
 	// Correctness: each patched frame equals the HTML parser's reading of it.
 	const ref = document.createElement("div");
 	let mismatches = 0;
+	let peak = 0; // bytes of the largest frame, tracked while verifying
+	const bytes = new TextEncoder();
 	for (const t of [...times, ...times.slice().reverse()]) {
 		const markup = render(t);
+		peak = Math.max(peak, bytes.encode(markup).length);
 		patchMarkup(host, markup);
 		ref.innerHTML = markup;
 		const same = host.childNodes.length === ref.childNodes.length && [...host.childNodes].every((n, i) => n.isEqualNode(ref.childNodes[i]));
@@ -111,7 +114,7 @@ globalThis.bench = (which, spec) => {
 		innerHTML: (t) => { host.innerHTML = render(t); },
 		patch: (t) => { patchMarkup(host, render(t)); },
 	};
-	const result = { frames: times.length, kb: render(scene.duration / 2).length / 1024, peak: Math.max(...times.map((t) => render(t).length)) / 1024, mismatches };
+	const result = { frames: times.length, kb: bytes.encode(render(scene.duration / 2)).length / 1024, peak: peak / 1024, mismatches };
 	for (const [name, draw] of Object.entries(paths)) {
 		host.innerHTML = "";
 		const cost = [];

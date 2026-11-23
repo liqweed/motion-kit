@@ -568,7 +568,8 @@ Pure functions; a colour is a token name (G4 applies).
 - `drawCells` writes one `<rect>` per cell whose opacity, rounded to three
   decimals (as `el`), is above 0; the empty grid is one `<pattern>` with id
   `${safeId(idPrefix)}-cells-${name}`. The markup has the same groups in every
-  frame, so the player's patch changes only the lit cells.
+  frame, so the player's patch changes within each layer (the lit cells, the
+  outlines, the glyphs) and the sibling groups keep their positions.
 - **Canon.** A lighting ends at least 50 ms before its step and nothing repeats
   (G6). The measured cost and the size at which a scene should leave SVG are in
   the `animated-diagram` skill's `custom-scenes.md`.

@@ -67,21 +67,23 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
 	if (rows * cols > MAX_CELLS) throw new Error(`cellGrid: ${rows * cols} cells; the limit is ${MAX_CELLS}`);
 	if (!finite(x) || !finite(y)) throw new Error(`cellGrid: x and y must be finite numbers, got ${x}, ${y}`);
 	if (!finite(gap) || gap < 0) throw new Error(`cellGrid: gap must be a finite number of 0 or more, got ${gap}`);
+	gap = Number(num(gap));
 	const boxed = width !== undefined || height !== undefined;
 	if (boxed && size !== undefined) throw new Error("cellGrid: give a size or a box (width and height), not both");
 	let edge;
 	if (boxed) {
 		if (!finite(width) || !finite(height) || /** @type {number} */ (width) <= 0 || /** @type {number} */ (height) <= 0) throw new Error(`cellGrid: width and height must be finite and above 0, got ${width} × ${height}`);
-		// Floored to two decimals, so the pitch is as exact as the rounding of the markup and the empty grid's pattern stays on the lit cells.
-		edge = Math.floor(Math.min((/** @type {number} */ (width) - gap * (cols - 1)) / cols, (/** @type {number} */ (height) - gap * (rows - 1)) / rows) * 100) / 100;
+		// Floored to two decimals (with a margin for 0.29 * 100 = 28.999…), so the pitch is as exact as the rounding of the markup and the empty grid's pattern stays on the lit cells.
+		edge = Math.floor(Math.min((/** @type {number} */ (width) - gap * (cols - 1)) / cols, (/** @type {number} */ (height) - gap * (rows - 1)) / rows) * 100 + 1e-7) / 100;
 	} else {
 		edge = size;
 	}
 	if (!finite(edge) || /** @type {number} */ (edge) <= 0 || Number(num(/** @type {number} */ (edge))) <= 0) throw new Error(`cellGrid: the cell size must be finite and above 0 after SVG rounding, got ${edge}${boxed ? " (the box is too small for its cells and gaps)" : ""}`);
-	const s = /** @type {number} */ (edge);
+	const s = Number(num(/** @type {number} */ (edge)));
 	const r = radius ?? s * 0.22;
 	if (!finite(r) || r < 0) throw new Error(`cellGrid: radius must be a finite number of 0 or more, got ${radius}`);
 	const gw = cols * s + (cols - 1) * gap;
+	if (!finite(gw) || !finite(cols * (s + gap)) || !finite(rows * (s + gap)) || !finite(x + gw) || !finite(y + rows * (s + gap))) throw new Error(`cellGrid: the grid's extent is not finite (size ${s}, gap ${gap}, ${rows} × ${cols})`);
 	const gh = rows * s + (rows - 1) * gap;
 	const gx = boxed ? x + (/** @type {number} */ (width) - gw) / 2 : x;
 	const gy = boxed ? y + (/** @type {number} */ (height) - gh) / 2 : y;
@@ -115,8 +117,8 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
  * How much of a cell a shape covers, from its signed distance: `d` is the
  * distance from the cell's centre to the shape's edge, negative inside, in the
  * same unit as `softness` (cells, for a field computed in cell units). 1 well
- * inside, 0 well outside, and 0.5 on the edge, falling off over `softness`
- * either side: the partial alpha of the cells along an edge.
+ * inside, 0 well outside, and 0.5 on the edge, falling off over `softness / 2`
+ * on either side (`softness` is the full width of the fall-off): the partial alpha of the cells along an edge.
  * @param {number} d
  * @param {number} [softness] the width of the edge's fall-off (default 1)
  * @returns {number} 0 to 1
@@ -159,6 +161,7 @@ export function cellLighting(grid, { start, duration, spread = 0, order = "cells
 	if (!finite(spread) || spread < 0) throw new Error(`cellLighting: spread must be a finite number of 0 or more, got ${spread}`);
 	if (order !== "all" && order !== "cells" && order !== "rows" && order !== "columns" && typeof order !== "function") throw new Error(`cellLighting: order must be "all", "cells", "rows", "columns" or a function, got ${JSON.stringify(order)}`);
 	if (field !== undefined && typeof field !== "function") throw new Error("cellLighting: field must be a function (row, col) => number from 0 to 1");
+	if (ease !== undefined && typeof ease !== "function") throw new Error("cellLighting: ease must be a function (p) => number");
 	const curve = ease ?? easings(style?.motion).easeOut;
 	const { rows, cols } = grid;
 	const ranks = new Float64Array(rows * cols);
@@ -178,12 +181,12 @@ export function cellLighting(grid, { start, duration, spread = 0, order = "cells
 			if (rank > hi) hi = rank;
 		}
 	}
-	const span = hi - lo;
 	/** @param {number} i */
-	const delayOf = (i) => (span > 0 ? (spread * (ranks[i] - lo)) / span : 0);
+	const half = hi / 2 - lo / 2; // halved first, so ranks near ±1e308 do not overflow
+	const delayOf = (i) => (half > 0 ? spread * Math.min(1, (ranks[i] / 2 - lo / 2) / half) : 0);
 	return Object.freeze({
 		start,
-		end: start + (span > 0 ? spread : 0) + duration,
+		end: start + (half > 0 ? spread : 0) + duration,
 		delay(/** @type {number} */ row, /** @type {number} */ col) {
 			return delayOf(grid.index(row, col));
 		},
@@ -192,7 +195,7 @@ export function cellLighting(grid, { start, duration, spread = 0, order = "cells
 			const i = grid.index(row, col);
 			const from = start + delayOf(i);
 			if (t >= from + duration) return ends[i];
-			return progress(t, from, duration, curve) * ends[i];
+			return clamp01(progress(t, from, duration, curve)) * ends[i];
 		},
 	});
 }
@@ -233,7 +236,7 @@ function openings(grid) {
  *   `outlineFill` (default `emphasis`) `outlineWidth` wide (default 2), inside the cell's edge.
  * - `glyph(row, col)`: a string, or `{ text, fill, opacity }`, for the content of a cell, centred, in the token `fill`
  *   (default `ink`) at `glyphSize` (default 60 % of the cell), set in `family` (a monospace face keeps columns even);
- *   `null` for none.
+ *   `null` for none. A glyph is one character or short mark: the caller fits `text` and `glyphSize` to the cell, nothing clips or shrinks it.
  *
  * @param {CellGrid} grid
  * @param {{ opacity: (row: number, col: number, index: number) => number, fill?: string | ((row: number, col: number) => string), base?: string | null, idPrefix?: string, name?: string, outline?: (row: number, col: number) => boolean | number | null, outlineFill?: string, outlineWidth?: number, glyph?: (row: number, col: number) => Glyph | null, glyphSize?: number, family?: string }} o
@@ -243,9 +246,9 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 	if (typeof opacity !== "function") throw new Error("drawCells: opacity must be a function (row, col, index) => number from 0 to 1");
 	if (typeof name !== "string" || !ID_PART.test(name)) throw new Error(`drawCells: name must use letters, digits and "_", got ${JSON.stringify(name)}`);
 	if (base !== null && (typeof idPrefix !== "string" || idPrefix === "")) throw new Error(`drawCells: an empty grid (base) needs the frame's idPrefix, a non-empty string, got ${JSON.stringify(idPrefix)}`);
-	if (!finite(outlineWidth) || outlineWidth <= 0 || Number(num(outlineWidth)) <= 0 || outlineWidth >= grid.size) throw new Error(`drawCells: outlineWidth must be a finite number above 0 and less than the cell size (${grid.size}), got ${outlineWidth}`);
+	if (outline && (!finite(outlineWidth) || outlineWidth <= 0 || Number(num(outlineWidth)) <= 0 || Number(num(grid.size - outlineWidth)) <= 0)) throw new Error(`drawCells: outlineWidth must be a finite number above 0 and less than the cell size (${grid.size}), got ${outlineWidth}`);
 	const gsize = glyphSize ?? grid.size * 0.6;
-	if (!finite(gsize) || gsize <= 0 || Number(num(gsize)) <= 0) throw new Error(`drawCells: glyphSize must be a finite number above 0, got ${glyphSize}`);
+	if (glyph && (!finite(gsize) || gsize <= 0 || Number(num(gsize)) <= 0)) throw new Error(`drawCells: glyphSize must be a finite number above 0, got ${glyphSize}`);
 	const { rows, cols } = grid;
 	const pitch = grid.size + grid.gap;
 
@@ -295,6 +298,7 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 				if (g === null || g === undefined) continue;
 				const spec = typeof g === "string" ? { text: g } : g;
 				if (!spec || typeof spec !== "object" || Array.isArray(spec) || typeof spec.text !== "string") throw new Error(`drawCells: glyph must return a string or { text, fill?, opacity? }, got ${JSON.stringify(g)} at row ${row}, column ${col}`);
+				if (spec.opacity !== undefined && !finite(spec.opacity)) throw new Error(`drawCells: a glyph's opacity must be a finite number, got ${JSON.stringify(spec.opacity)} at row ${row}, column ${col}`);
 				if (typeof spec.opacity === "number" && Math.round(spec.opacity * 1000) <= 0) continue;
 				const c = grid.at(row, col);
 				glyphs.push(
