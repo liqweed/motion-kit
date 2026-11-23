@@ -338,7 +338,14 @@ describe("oriented solids", () => {
 	it("keeps input order for coincident flat solids from either side", () => {
 		const flat = (/** @type {string} */ id) => rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 0, id }), { axis: "y", deg: 90 });
 		const ids = (/** @type {number} */ az) => orderSolids([flat("a"), flat("b")], camera({ azimuth: az, elevation: 20 })).map((s) => s.id).join("");
-		assert.equal(ids(90), ids(270));
+		assert.equal(ids(90), "ab", "input order from one side");
+		assert.equal(ids(270), "ab", "input order from the other");
+	});
+	it("puts the front of two strictly separated thin faces last, whatever the input order", () => {
+		const f = (/** @type {string} */ id, /** @type {number} */ x, /** @type {number} */ z) => rotateSolid(box({ x, y: 0, w: 2, d: 2, h: 0, z, id }), { axis: "y", deg: 90 });
+		const [rear, front] = [f("rear", -0.5, 1), f("front", 0.5, 1 + 5e-13)];
+		const cam = camera({ azimuth: 90, elevation: 20 });
+		for (const input of [[rear, front], [front, rear]]) assert.deepEqual(orderSolids(input, cam).map((s) => s.id), ["rear", "front"]);
 	});
 	it("refuses a bad axis, angle or point, and a solid with content on its top", () => {
 		const b = box({ x: 0, y: 0, w: 1, d: 1, h: 1 });
@@ -352,6 +359,8 @@ describe("oriented solids", () => {
 		assert.throws(() => rotateSolid(withTop, { axis: "x", deg: 0 }), /top/);
 		assert.throws(() => rotateSolid(b, { axis: /** @type {any} */ ("w"), deg: 0 }), /axis/);
 		assert.throws(() => rotateSolid(b, { axis: "x", deg: 0, about: { x: 0, y: Infinity, z: 0 } }), /about/);
+		assert.throws(() => rotateSolid(b, { axis: { x: 0, y: 0, z: 0 }, deg: 0 }), /no direction/);
+		assert.throws(() => rotateSolid(b, { axis: "x", deg: 0, about: { x: 0, y: 0, z: Infinity } }), /about/);
 	});
 });
 
