@@ -401,6 +401,12 @@ describe("depth order of oriented solids", () => {
 		expectFront(lie(0, "y", "low"), lie(4, "x", "high"), Z, "crossing bars");
 		assert.deepEqual(orderSolids([lie(4, "x", "high"), lie(0, "y", "low")], CAMERA_PLAN).map((s) => s.id), ["low", "high"]);
 	});
+	it("keeps an arm that rests on a thin slab in front of it where their silhouettes overlap", () => {
+		const base = box({ x: 0, y: 0, w: 16, d: 4, h: 0.1, id: "slab" });
+		const arm = rotateSolid(box({ x: 0, y: 0, w: 0.6, d: 0.6, h: 6, z: 0.1, id: "arm" }), { axis: "y", deg: 50, about: { x: 0.3, y: 0, z: 0.1 } });
+		const cam = camera({ azimuth: 270, elevation: 20 });
+		for (const input of [[base, arm], [arm, base]]) assert.deepEqual(orderSolids(input, cam).map((s) => s.id), ["slab", "arm"]);
+	});
 	it("orders an oriented solid against the slab it stands over, and puts unrelated solids by how near their centres are", () => {
 		const floor = slab({ x: 0, y: 0, w: 10, d: 10, id: "floor" });
 		const arm = rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 3, z: 0.25, id: "arm" }), { axis: "x", deg: 45, about: { x: 0, y: -0.5, z: 0.25 } });
