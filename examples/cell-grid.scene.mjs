@@ -98,7 +98,7 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 		const path = cubic({ x: a.cx, y: a.cy }, { x: a.cx + swing, y: a.cy + (b.cy - a.cy) * 0.35 }, { x: b.cx + swing * 0.5, y: a.cy + (b.cy - a.cy) * 0.85 }, { x: b.cx, y: b.cy });
 		return { start: FLY.start + i * FLY.each, duration: FLY.duration, path, hold: true };
 	});
-	const glyphSize = Math.round(size * 0.6);
+	const glyphSize = Math.max(14, Math.round(size * 0.6));
 	const fixedAt = FLY.start + (FLYERS.length - 1) * FLY.each + FLY.duration;
 
 	/** @param {number} t @param {{ idPrefix: string, style?: any }} ctx */

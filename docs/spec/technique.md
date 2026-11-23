@@ -572,8 +572,8 @@ Pure functions; a colour is a token name (G4 applies).
   player's patch changes within a layer and the sibling groups keep their
   positions, while `base` is present or absent alike in every frame (switching
   between `null` and a token adds or removes the `<defs>` and base rect ahead of them).
-- **Canon.** A lighting ends at least 50 ms before its step and nothing repeats
-  (guidance A10; G6 only checks the settled frames around each step). The measured cost and the size at which a scene should leave SVG are in
+- **Canon.** A lighting ends at least 50 ms before its step (guidance A10) and nothing
+  repeats (guidance A5). G6 checks only the settled frames around each step, so it does not detect a repeat. The measured cost and the size at which a scene should leave SVG are in
   the `animated-diagram` skill's `custom-scenes.md`.
 
 ## 5. Markup

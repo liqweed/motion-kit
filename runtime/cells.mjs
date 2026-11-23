@@ -292,7 +292,7 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 	/** @type {string[]} */
 	const glyphs = [];
 	// Whole hundredths for the inset and twice it for the stroke, so the painted ring ends on the cell's edge after rounding.
-	const inset = Number(num(outlineWidth / 2));
+	const inset = outline ? Number(num(outlineWidth / 2)) : 0;
 	const ow = inset * 2;
 	const ringRadius = Math.max(0, grid.radius - inset);
 	for (let row = 0; row < rows; row++) {

@@ -240,7 +240,7 @@ all at once, and an 8 × 3 glyph atlas whose letters fly out along arcs).
 | Letters that fly out | Hide the glyph in its cell from the moment it leaves (`glyph` returns `null`) and draw it with `cubic` and `tokensAlong` (`hold: true` keeps it where it lands); give each letter its own arc (control points swung to opposite sides) and start them 80–150 ms apart |
 
 A lit cell is one `<rect>`; a cell at 0 draws nothing, and the empty grid's own markup is the same size for 6 cells or 2,400 (one pattern; the first draw also prepares each cell's geometry once, so its time grows with the cells). Declare `{ fg: "accent", bg: "surface", min: 3 }` for lit cells on the empty
-grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs and `{ fg: "ink", bg: "surface", min: 3 }`
+grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs on the empty grid (glyphs are drawn over the lit cells too, so check the glyph token against each fill it can sit on, such as `accent`) and `{ fg: "ink", bg: "surface", min: 3 }`
 for an outline (`outlineFill: "ink"`) on the empty grid in `contrastPairs`; an outline is drawn inside the cell, over whatever the cell shows, so declare its token on `surface` for an empty cell and, over a lit cell, against the lit fill (`emphasis` is 2.89:1 on `surface` in the light style, which is why the pair names `ink`).
 
 **The grid lights once per step.** Each lighting ends (`lighting.end`) at least 50 ms
@@ -261,12 +261,11 @@ for 2 s and then lights all of them (16:9), in headless Chromium at 6x CPU slowd
 | 600 (24 × 25) | 1.3–1.4 / 11.2–11.9 ms | 12.3–13.8 / 21–25 ms | 59 | 975 KB (49 KB) | 12 s |
 | 2,400 (40 × 60) | 2.3–4.3 / 31–64 ms | 30–33 / 71–109 ms | 237 | 3.1 MB (146 KB) | 23 s |
 
-- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the ripple numbers below include that cost. At 600 cells the patch's median is 1.3–1.4 ms and its p90 11–12 ms at 6x slowdown, both under the 16.7 ms of a 60 fps frame; these are percentiles over the whole timeline, holds included, so they do not bound the worst frame of the ripple, and no paint is measured and no unthrottled run was made. At 2,400 cells the median is a few ms, but the
-  frames where most cells change at once (the ripple) cost 31–64 ms at 6x, about a sixth of that
-  without the slowdown (an estimate; paint is not measured). Draw a grid of 2,400 cells that changes
+- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the whole-timeline numbers below include that cost. At 600 cells the patch's median is 1.3–1.4 ms and its p90 11–12 ms at 6x slowdown, both under the 16.7 ms of a 60 fps frame; these are percentiles over the whole timeline, holds included, so they do not bound the worst frame of the ripple, and no paint is measured and no unthrottled run was made. At 2,400 cells the median is a few ms and the whole-timeline p90 is 31–64 ms at 6x, about a sixth of that
+  without the slowdown (an estimate; paint is not measured). Ripple-phase frames are not timed on their own, so no per-frame budget follows from these figures. Draw a grid of 2,400 cells that changes
   every frame only where that is acceptable; for more, or for slow devices, split the grid or
   animate fewer cells per beat. Always use the patched player, never innerHTML: its median is about 7 to 20 times the patch's in the table (median ratios: 17–20 at 100 cells, 9–11 at 600, 7–14 at 2,400).
-- **Baked SVG.** Identical consecutive frames are merged and every remaining frame is serialised in full, so its size is the full-frame payload times the number of distinct consecutive frames (one changing cell still writes the whole lit grid again): 3.1 MB for 2,400 cells over
+- **Baked SVG.** Identical consecutive frames are merged and every remaining frame is serialised in full, so its uncompressed size is the sum of the retained frames' payloads plus the markup around them (a frame holds only its lit cells, so a long sparse entrance is smaller than the same count of full frames; one changing cell still writes the whole lit grid again): 3.1 MB for 2,400 cells over
   4.0 s at 15 fps (146 KB gzipped). Prefer the live player, or fewer frames (lower `--fps`), for a grid this size.
 - **Video.** 2,400 cells cost about 10 s more than 100 over 173 frames: not a reason for Canvas.
 
