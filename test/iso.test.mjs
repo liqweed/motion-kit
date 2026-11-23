@@ -330,7 +330,9 @@ describe("oriented solids", () => {
 		const both = /** @type {any} */ (rotateSolid(rotateSolid(b, { axis: "x", deg: 90 }), { axis: "y", deg: 90, about: { x: 1, y: 0, z: 0 } }));
 		assert.deepEqual(m(both), [0, 1, 0, 0, 0, -1, -1, 0, 0]);
 		assert.deepEqual([both.pose.t.x, both.pose.t.y, both.pose.t.z], [1, 0, 1]);
-		assert.doesNotThrow(() => drawSolid(rotateSolid(b, { axis: "z", deg: 1e308 }), CAMERA_ISOMETRIC));
+		assert.equal(drawSolid(rotateSolid(b, { axis: "z", deg: 1e308 }), CAMERA_ISOMETRIC), drawSolid(rotateSolid(b, { axis: "z", deg: 296 }), CAMERA_ISOMETRIC), "1e308 % 360 is 296");
+		assert.notEqual(drawSolid(rotateSolid(b, { axis: "z", deg: 1e308 }), CAMERA_ISOMETRIC), drawSolid(b, CAMERA_ISOMETRIC));
+		assert.notDeepEqual(/** @type {any} */ (rotateSolid(b, { axis: "y", deg: 1e-14 })).pose.m.map((v) => v + 0), [1, 0, 0, 0, 1, 0, 0, 0, 1]);
 		assert.throws(() => rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 1 }), { axis: "z", deg: 180, about: { x: 1e308, y: 0 } }), /overflow/);
 	});
 	it("refuses a bad axis, angle or point, and a solid with content on its top", () => {

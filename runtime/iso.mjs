@@ -50,8 +50,8 @@ export const ISO_ELEVATION = (Math.atan(Math.SQRT1_2) * 180) / Math.PI;
  * @returns {[number, number]} [sin, cos]
  */
 function sincos(deg) {
-	const r = ((deg % 360) + 360) % 360;
-	if (r % 90 === 0) return /** @type {[number, number]} */ ([[0, 1], [1, 0], [0, -1], [-1, 0]][r / 90]);
+	const r = deg % 360; // signed: a tiny angle must not round to zero, and an in-range one keeps its old radians
+	if (r % 90 === 0) return /** @type {[number, number]} */ ([[0, 1], [1, 0], [0, -1], [-1, 0]][(((r / 90) % 4) + 4) % 4]);
 	const rad = (r * Math.PI) / 180; // the reduced angle: deg itself may overflow the product
 	return [Math.sin(rad), Math.cos(rad)];
 }
@@ -712,8 +712,10 @@ function behindOriented(a, b, toCam) {
 		const [b0, b1] = range(b.corners);
 		/** @type {-1 | 1 | 0} */
 		let v2 = 0;
-		if (a1 <= b0) v2 = facing > 0 ? -1 : 1; // b is on the positive side (no allowance: a false separator must not veto a real one)
-		else if (b1 <= a0) v2 = facing > 0 ? 1 : -1;
+		// a contact that rounds across the plane (by a few ulps of the coordinates) is still a contact
+		const tol = 1e-12 * Math.max(1, Math.abs(a0), Math.abs(a1), Math.abs(b0), Math.abs(b1));
+		if (a1 <= b0 + tol) v2 = facing > 0 ? -1 : 1; // b is on the positive side
+		else if (b1 <= a0 + tol) v2 = facing > 0 ? 1 : -1;
 		if (v2 === 0) return;
 		if (vote !== 0 && vote !== v2) conflict = true;
 		vote = v2;
@@ -726,9 +728,10 @@ function behindOriented(a, b, toCam) {
 }
 
 /**
- * The solids in drawing order, farthest first, for `cam`. Two solids are
- * ordered by the axes that separate them (footprint edges and height), only
- * when they overlap on the screen; the rest is a topological sort, ties and
+ * The solids in drawing order, farthest first, for `cam`. Two upright solids
+ * are ordered by the axes that separate them (footprint edges and height); a
+ * pair with a tilted solid by its face normals and the cross products of edge
+ * directions. Either way only when they overlap on the screen; the rest is a topological sort, ties and
  * cycles broken by how near each solid's centre is, then by input order. The
  * same input always gives the same order.
  * @template {Solid} S
