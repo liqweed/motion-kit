@@ -1,0 +1,114 @@
+# Review-triage decline ladder for motion-kit, read by the jig plugin's
+# resolve-review-comments skill (scripts/triage-ladder.ts) and by drive-pr's
+# defect-escape.ts --ladder-only. Field reference: CONFIGURATION.md, "The
+# review-triage file", in the installed jig plugin. Without this file the
+# ladder is off and every finding the rubric accepts is fixed, however late.
+#
+# Why it is here: every pushed fix summons the reviewer for another full
+# round. PRs #96-#101 ran 14 to 17 rounds, and in the 2026-11 contention
+# investigation 95 of 156 review threads arrived at reviewer round 6 or later,
+# mostly medium findings with diminishing returns. `drive.max_rounds: 6` in
+# .config/jig.yaml stops a drive for a person; this ladder keeps the rounds
+# before that stop (and any round a person runs by hand after it) from
+# spending themselves on polish.
+#
+# The ladder only turns an accepted finding into a decline. A declined finding
+# that is obligatory is deferred with a tracked follow-up, never dropped.
+# Retuning is an edit to this file; the rubric prose deliberately restates
+# none of these numbers.
+#
+# Tier (the rubric's own ranking, passed to triage-ladder.ts as --tier):
+#   1 CI pipelines and quality gates (here: lib/check.mjs, the scene gate,
+#     .github/workflows, a test that cannot fail), 2 production code,
+#   3 docs, 4 tests.
+
+version: 1
+
+severity_order: [low, medium, high, blocker]
+
+# The reviewer's own `category:` tag vocabulary. A category clause can only
+# admit a finding, so a finding with no tag (`unknown`) is never declined
+# because of it.
+categories:
+  - correctness
+  - data-integrity
+  - security
+  - compliance
+  - ux
+  - performance
+  - tests
+  - docs
+  - drift
+  - style
+
+fail_open:
+  # With no readable severity there is no ladder (stance stays `accepted`).
+  # With an unmeasured self-inflicted anchor, a regression from this PR's own
+  # earlier round could be declined, so that case is inert too. `category` is
+  # left off so a reviewer comment without the tag does not switch the ladder
+  # off for the finding.
+  inert_when_unknown: [severity, self_inflicted]
+
+bands:
+  # Rounds 1-2: fix everything the rubric accepts. A small library's early
+  # rounds are cheap and catch most real defects.
+  - id: boy-scout
+    from_round: 1
+    through_round: 2
+    minimal_diff: false
+    accept_if:
+      unconditional: true
+
+  # Rounds 3-4: keep high-severity findings, any finding tagged correctness,
+  # security or compliance (determinism, the runtime's no-node-imports rule and
+  # WCAG AA live under these), and regressions from this PR's own earlier
+  # round. Medium docs, drift, style, tests, ux and performance findings are
+  # declined here; the fixes that stay are the smallest that resolve them.
+  - id: escalated
+    from_round: 3
+    through_round: 4
+    minimal_diff: true
+    accept_if:
+      min_severity: high
+      categories: [correctness, security, compliance]
+      self_inflicted: true
+
+  # Round 5 on (a drive stops for a person after round 6): only a blocker, a
+  # security finding, a quality-gate defect (tier 1) or a regression this PR's
+  # own earlier round introduced.
+  - id: late
+    from_round: 5
+    through_round: null
+    minimal_diff: true
+    accept_if:
+      min_severity: blocker
+      categories: [security]
+      max_tier: 1
+      self_inflicted: true
+
+reply:
+  # Identifier on the last line of every decline; defect-escape.ts --ladder-only
+  # finds the ladder's own declines by it. Changing it orphans the old sample.
+  marker: "review-triage ladder"
+  wont_fix: >-
+    **wont-fix** — valid, declined by the {marker} ({config}, band `{band}`,
+    round {round}): a {severity}/{category} finding at tier {tier} clears none
+    of this band's accept clauses ({clauses}). Not obligatory, so no follow-up
+    is filed.
+
+    <!-- {marker} -->
+  deferred: >-
+    **deferred** — valid and obligatory, but declined for THIS PR by the
+    {marker} ({config}, band `{band}`, round {round}): a {severity}/{category}
+    finding at tier {tier} clears none of this band's accept clauses
+    ({clauses}).
+
+    <!-- {marker} -->
+
+calibration:
+  # Monthly, over the ladder's own declines (see the rubric's "Calibrating the
+  # ladder"): defect-escape.ts --since <date> --until <date> --ladder-only
+  # --json. A decline that returns as a re-found accepted thread in a later PR
+  # is an escape: loosen the band that declined it here (lower a min_severity,
+  # widen a categories list, move a through_round).
+  cadence: monthly

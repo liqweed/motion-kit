@@ -22,22 +22,22 @@ const lazy = new IntersectionObserver(
 
 /**
  * @param {import("./catalog.mjs").LiveExample} entry
- * @param {{ format: string, locale?: string, style?: string, surface?: boolean, pin?: { pressed: () => boolean, toggle: () => void } }} o
+ * @param {{ format: string, locale?: string, style?: string, pin?: { pressed: () => boolean, toggle: () => void } }} o
  */
-export function liveCard(entry, { format, locale = "en", style = "studio", surface = false, pin }) {
+export function liveCard(entry, { format, locale = "en", style = "studio", pin }) {
 	const box = h("div", { class: "player-box" });
 	const pinBtn = pin
-		? h("button", { type: "button", class: "btn-sm", "data-pin": entry.id, "aria-pressed": String(pin.pressed()), onClick: () => {
+		? h("button", { type: "button", class: "btn line sm", "data-pin": entry.id, "aria-pressed": String(pin.pressed()), onClick: () => {
 				pin.toggle();
 				/** @type {HTMLElement | null} */ (document.querySelector(`[data-pin="${entry.id}"]`))?.focus(); // render() rebuilt the card; keep keyboard focus on its control
 			} }, pin.pressed() ? "Pinned to compare" : "Compare")
 		: null;
 	const card = h(
 		"article",
-		{ class: `card${surface ? " surface-card" : ""}`, "data-id": entry.id },
+		{ class: "card", "data-id": entry.id },
 		box,
 		h("div", { class: "meta" }, h("h3", null, entry.title), h("span", { class: "type" }, entry.type), h("span", { class: "badge" }, "built")),
-		h("div", { class: "actions" }, h("a", { class: "btn-sm", href: `/examples/${entry.id}/?format=${format}` }, "Open", h("span", { class: "sr" }, ` ${entry.title}`)), pinBtn),
+		h("div", { class: "actions" }, h("a", { class: "btn line sm", href: `/examples/${entry.id}/?format=${format}` }, "Open", h("span", { class: "sr" }, ` ${entry.title}`)), pinBtn),
 	);
 	box.addEventListener(
 		"mk-visible",
@@ -58,12 +58,12 @@ export function liveCard(entry, { format, locale = "en", style = "studio", surfa
 export function plannedCard(entry) {
 	return h(
 		"article",
-		{ class: "card", "data-id": entry.id },
+		{ class: "card needs", "data-id": entry.id },
 		h("div", { class: "storyboard" }, h("b", null, `type: ${entry.type}`), h("span", null, "Storyboard only: not built yet")),
 		h("div", { class: "meta" }, h("h3", null, entry.title), h("span", { class: "type" }, entry.type), h("span", { class: "badge needs" }, `needs: ${entry.type}`)),
 		h("p", { class: "story-line" }, entry.story),
-		h("div", { class: "actions" }, h("a", { class: "btn-sm", href: `/examples/${entry.id}/` }, "Open", h("span", { class: "sr" }, ` ${entry.title}`)), entry.issue
-				? h("a", { href: `${REPO}/issues/${entry.issue}`, style: "font-size:14px" }, `Issue #${entry.issue}`)
-				: h("a", { href: `${REPO}/blob/main/docs/roadmap.md#suggestions-with-no-issue-yet`, style: "font-size:14px" }, "On the roadmap")),
+		h("div", { class: "actions" }, h("a", { class: "btn line sm", href: `/examples/${entry.id}/` }, "Open", h("span", { class: "sr" }, ` ${entry.title}`)), entry.issue
+				? h("a", { href: `${REPO}/issues/${entry.issue}`}, `Issue #${entry.issue}`)
+				: h("a", { href: `${REPO}/blob/main/docs/roadmap.md#suggestions-with-no-issue-yet`}, "On the roadmap")),
 	);
 }

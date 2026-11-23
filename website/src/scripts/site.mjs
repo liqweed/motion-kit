@@ -11,9 +11,7 @@
 import { mountPlayer } from "../../../runtime/player.mjs";
 import { createScene } from "../../../runtime/types/index.mjs";
 import { renderSvg, stepIndexAt } from "../../../runtime/scene.mjs";
-import { normalizeStyle } from "../../../runtime/style.mjs";
 import { KIT } from "./kit.mjs";
-import { STYLES } from "./catalog.mjs";
 import * as scene from "../../../runtime/scene.mjs";
 import * as style from "../../../runtime/style.mjs";
 
@@ -88,11 +86,7 @@ export async function loadScene(entry, { format = "wide", locale = "en" } = {}) 
 	return scene.validateScene(mod.default({ format, locale, kit: KIT }));
 }
 
-/** A site style as a runtime style object. @param {string} name */
-export function styleFor(name) {
-	const s = STYLES[name] ?? STYLES.studio;
-	return normalizeStyle({ name: s.name, font: s.fontStack, motion: s.motion, light: s.light, dark: s.dark });
-}
+export { styleFor } from "./site-style.mjs";
 
 /**
  * Standalone SVG markup of one settled frame (what a slide would get).
@@ -163,10 +157,10 @@ export async function copyText(text) {
 /**
  * Every copyable command on the site: one style, one copy button.
  * @param {string} cmd
- * @param {{ label?: string, variant?: "dark" | "hero" | "" }} [o]
+ * @param {{ label?: string }} [o]
  */
-export function commandBlock(cmd, { label = "Copy", variant = "" } = {}) {
-	const btn = h("button", { type: "button", "aria-label": label }, "Copy");
+export function commandBlock(cmd, { label = "Copy" } = {}) {
+	const btn = h("button", { type: "button", class: "copy", "aria-label": label }, "Copy");
 	let timer = 0;
 	btn.addEventListener("click", async () => {
 		const ok = await copyText(cmd);
@@ -174,7 +168,7 @@ export function commandBlock(cmd, { label = "Copy", variant = "" } = {}) {
 		clearTimeout(timer);
 		timer = window.setTimeout(() => (btn.textContent = "Copy"), 1600);
 	});
-	return h("div", { class: `cmd ${variant}`.trim() }, h("pre", { tabindex: "0" }, h("code", null, cmd)), btn);
+	return h("div", { class: "cmd" }, h("pre", { tabindex: "0" }, h("code", null, cmd)), btn);
 }
 
 /**
@@ -212,6 +206,105 @@ export function chipGroup({ label, options, value, onChange, className = "chip",
 	});
 	paint(value);
 	return Object.assign(root, { set: (/** @type {string} */ v) => { value = v; paint(v); } });
+}
+
+/* ----------------------------------------------------------------- figures */
+
+/**
+ * The step squares in a plate's header: done, now, still to come.
+ * @param {Element | null} el the `[data-progress]` element
+ * @param {number} index current step, -1 before the first
+ * @param {number} total
+ */
+export function paintProgress(el, index, total) {
+	if (!el) return;
+	el.replaceChildren(...Array.from({ length: total }, (_, i) => h("i", { class: i < index ? "done" : i === index ? "now" : "" })));
+}
+
+/**
+ * Number the controls under a mounted player, as the Module design numbers a
+ * figure: a square per control (leader down from it), keyed to a legend. The
+ * leaders draw once, one at a time, after the scene has settled (the design's one
+ * motion moment); under reduced motion, or without scripts, they are simply there.
+ * @param {HTMLElement} root the player container
+ * @param {any} controller
+ * @param {{ legend: HTMLElement, callouts: HTMLElement, plate: HTMLElement }} into
+ * @returns {() => void} stop
+ */
+export function keyControls(root, controller, { legend, callouts, plate }) {
+	const visible = (/** @type {Element | null} */ e) => !!e && /** @type {HTMLElement} */ (e).offsetParent !== null;
+	const play = root.querySelector(".mk-play");
+	const steps = [...root.querySelectorAll(".mk-btn:not(.mk-play)")];
+	const caption = root.querySelector(".mk-caption");
+	/** @type {{ label: string, els: Element[] }[]} */
+	const parts = [
+		{ label: "Play and pause", els: visible(play) && play ? [play] : [] },
+		{ label: "Steps, one button each", els: steps },
+		{ label: "Caption", els: caption ? [caption] : [] },
+	].filter((p) => p.els.length);
+	legend.replaceChildren(...parts.map((p, i) => h("li", null, h("span", { class: "mark", "aria-hidden": "true" }, String(i + 1)), p.label)));
+	// The callouts are built once, so a resize or a late font never replaces an element mid-transition; place() only moves them.
+	const marks = parts.map((p, i) => h("div", { class: "callout", style: `--n:${i}` }, h("span", { class: "leader" }), h("span", { class: "mark" }, String(i + 1))));
+	callouts.replaceChildren(...marks);
+	const place = () => {
+		const box = callouts.getBoundingClientRect();
+		parts.forEach((p, i) => {
+			const rects = p.els.map((e) => e.getBoundingClientRect());
+			const left = Math.min(...rects.map((r) => r.left));
+			const right = Math.max(...rects.map((r) => r.right));
+			// The caption spans the row, so its marker sits three quarters along, clear of the steps'.
+			const at = p.els[0] === caption ? left + (right - left) * 0.75 : (left + right) / 2;
+			const x = Math.min(Math.max(at - box.left, 12), box.width - 12);
+			marks[i].style.left = `${Math.round(x * 100) / 100}px`;
+		});
+	};
+	place();
+	const ro = typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
+	ro?.observe(callouts);
+	ro?.observe(root); // the controls' own boxes supply the coordinates, so a reflow of the player moves the leaders too
+	// A late web font changes button widths and row wrapping without resizing the strip.
+	document.fonts?.ready.then(() => !off.signal.aborted && place());
+	let timer = 0;
+	let raf = 0;
+	// The leaders belong to the layout that shows them: a hidden one neither arms nor draws them.
+	let drawn = !visible(callouts);
+	const draw = () => {
+		if (drawn) return;
+		drawn = true;
+		cancelAnimationFrame(raf);
+		plate.classList.add("leaders-draw");
+	};
+	const off = new AbortController();
+	// A shared plate may still carry the armed class from a layout that was torn down, so reduced motion shows the final state outright.
+	// A player restored already settled (a handoff after the scene finished) has nothing left to wait for either.
+	const settled = !controller.playing && !controller.autoplayPending && controller.time >= controller.scene.duration - 0.02;
+	if (!drawn && reducedMotion()) draw();
+	if (!drawn && !reducedMotion() && !plate.classList.contains("leaders-draw")) {
+		plate.classList.add("leaders-armed");
+		// The player rests on its final frame until autoplay starts, so only a playback that has begun can end.
+		// Seeded from the state at mount: a replacement player's own first tick may already have ended playback before the first watch().
+		let started = controller.playing || controller.time < controller.scene.duration - 0.02;
+		const watch = () => {
+			if (drawn) return;
+			const end = controller.scene.duration - 0.02;
+			if (!started && (controller.playing || controller.time < end)) started = true;
+			if (started && controller.time >= end) return draw();
+			raf = requestAnimationFrame(watch);
+		};
+		// A player restored already settled has nothing to wait for: draw on the second frame, so the armed state is painted first and the leaders still animate.
+		raf = requestAnimationFrame(settled ? () => (raf = requestAnimationFrame(draw)) : watch);
+		timer = window.setTimeout(draw, (controller.scene.duration + 4) * 1000); // a paused or hidden player still gets its leaders
+		// Turning reduced motion on later shows the leaders at once rather than leaving them hidden.
+		matchMedia("(prefers-reduced-motion: reduce)").addEventListener("change", (e) => e.matches && draw(), { signal: off.signal });
+		root.addEventListener("pointerdown", draw, { once: true, signal: off.signal });
+		root.addEventListener("keydown", draw, { once: true, signal: off.signal });
+	}
+	return () => {
+		off.abort();
+		ro?.disconnect();
+		cancelAnimationFrame(raf);
+		clearTimeout(timer);
+	};
 }
 
 /* ------------------------------------------------------------ page setup */

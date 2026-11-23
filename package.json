@@ -1,6 +1,6 @@
 {
 	"name": "@liqweed/motion-kit",
-	"version": "0.17.0",
+	"version": "0.18.0",
 	"description": "Deterministic animated diagrams: scenes as pure functions of time, for live pages, slides, baked SVG and video.",
 	"keywords": [
 		"animation",
@@ -57,7 +57,7 @@
 		"bench:player": "node scripts/bench-player.mjs",
 		"snapshots:update": "node scripts/update-snapshots.mjs",
 		"gate:core": "npm run -s typecheck && npm run -s versions && npm test && npm run -s check && npm run -s media:check",
-		"gate": "npm run -s gate:core && npm run -s site",
+		"gate": "npm run -s gate:core && npm run -s site && SITE_DIST_REQUIRED=1 node --test test/site-build.test.mjs",
 		"skills:design": "DISABLE_TELEMETRY=1 npx -y skills@1.9.0 experimental_install --frozen-lockfile -a claude-code -a codex"
 	},
 	"optionalDependencies": {
