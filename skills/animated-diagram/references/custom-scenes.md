@@ -240,8 +240,8 @@ all at once, and an 8 × 3 glyph atlas whose letters fly out along arcs).
 | Letters that fly out | Hide the glyph in its cell from the moment it leaves (`glyph` returns `null`) and draw it with `cubic` and `tokensAlong` (`hold: true` keeps it where it lands); give each letter its own arc (control points swung to opposite sides) and start them 80–150 ms apart |
 
 A lit cell is one `<rect>`; a cell at 0 draws nothing, and the empty grid's own markup is the same size for 6 cells or 2,400 (one pattern; the first draw also prepares each cell's geometry once, so its time grows with the cells). Declare `{ fg: "accent", bg: "surface", min: 3 }` for lit cells on the empty
-grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs and `{ fg: "emphasis", bg: "bg", min: 3 }`
-for an outline in `contrastPairs`; an outline is drawn inside the cell, so declare its token on `surface` (`emphasis` is 2.89:1 there in the light style: use `outlineFill: "ink"`).
+grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs and `{ fg: "ink", bg: "surface", min: 3 }`
+for an outline (`outlineFill: "ink"`) on the empty grid in `contrastPairs`; an outline is drawn inside the cell, over whatever the cell shows, so declare its token on `surface` for an empty cell and, over a lit cell, against the lit fill (`emphasis` is 2.89:1 on `surface` in the light style, which is why the pair names `ink`).
 
 **The grid lights once per step.** Each lighting ends (`lighting.end`) at least 50 ms
 before its step, and the next one starts at least 50 ms after it: a pixel grid that flashes twice, or a
@@ -249,24 +249,24 @@ cursor that steps cell by cell for many seconds, is ambient motion. Light it onc
 or cover a few cells inside one beat, or one row per step. A blinking text cursor beside an
 atlas is ambient too: draw it static, or leave it out.
 
-**Budget: SVG suffices up to about 2,400 cells; use the Canvas path beyond it, or sooner on slow devices.**
+**Budget: SVG suffices up to about 2,400 cells; beyond that, or sooner on slow devices, split the grid or change fewer cells per beat (a Canvas renderer does not ship; see the spec's note on #88).**
 Measured with `bench/cells.scene.mjs`, a ripple that changes most cells in most frames
 for 2 s and then lights all of them (16:9), in headless Chromium at 6x CPU slowdown
 (`npm run bench:player`, style and layout, no paint), as a 15 fps baked SVG and as a
 30 fps, 2x-scale MP4 (`motion-kit video`, 173 frames at 1920 × 1080; encoding alone is about 12 s):
 
-| Cells | Live player, patch: median / p90 | innerHTML: median / p90 | Peak frame | Baked SVG (gzip) | Video render |
+| Cells | Live player, patch: median / p90 | innerHTML: median / p90 | Peak frame (KiB) | Baked SVG (gzip) | Video render |
 |---|---|---|---|---|---|
-| 100 (10 × 10) | 0.1 / 1.3–2.7 ms | 1.7–2.0 / 3.8–4.8 ms | 10 KB | 194 KB (6 KB) | 13 s |
-| 600 (24 × 25) | 1.3–1.4 / 11.2–11.9 ms | 12.3–13.8 / 21–25 ms | 59 KB | 975 KB (49 KB) | 12 s |
-| 2,400 (40 × 60) | 2.3–4.3 / 31–64 ms | 30–33 / 71–109 ms | 237 KB | 3.1 MB (146 KB) | 23 s |
+| 100 (10 × 10) | 0.1 / 1.3–2.7 ms | 1.7–2.0 / 3.8–4.8 ms | 10 | 194 KB (6 KB) | 13 s |
+| 600 (24 × 25) | 1.3–1.4 / 11.2–11.9 ms | 12.3–13.8 / 21–25 ms | 59 | 975 KB (49 KB) | 12 s |
+| 2,400 (40 × 60) | 2.3–4.3 / 31–64 ms | 30–33 / 71–109 ms | 237 | 3.1 MB (146 KB) | 23 s |
 
-- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the ripple numbers below include that cost. The in-place patch keeps 600 cells under the 16.7 ms of a 60 fps frame in the measured ripple (about 400 cells ramping at once), at 6x slowdown; the percentiles span the whole timeline, holds included, and no paint is measured. At 2,400 cells the median is a few ms, but the
+- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the ripple numbers below include that cost. At 600 cells the patch's median is 1.3–1.4 ms and its p90 11–12 ms at 6x slowdown, both under the 16.7 ms of a 60 fps frame; these are percentiles over the whole timeline, holds included, so they do not bound the worst frame of the ripple, and no paint is measured and no unthrottled run was made. At 2,400 cells the median is a few ms, but the
   frames where most cells change at once (the ripple) cost 31–64 ms at 6x, about a sixth of that
   without the slowdown (an estimate; paint is not measured). Draw a grid of 2,400 cells that changes
-  every frame only where that is acceptable, and use Canvas for more than that, or for slow
-  devices. Always use the patched player, never innerHTML: it costs 4 to 14 times more.
-- **Baked SVG.** Its size grows with the cells that change between frames: 3.1 MB for 2,400 cells over
+  every frame only where that is acceptable; for more, or for slow devices, split the grid or
+  animate fewer cells per beat. Always use the patched player, never innerHTML: its median is about 7 to 20 times the patch's in the table (median ratios: 17–20 at 100 cells, 9–11 at 600, 7–14 at 2,400).
+- **Baked SVG.** Identical consecutive frames are merged and every remaining frame is serialised in full, so its size is the full-frame payload times the number of distinct consecutive frames (one changing cell still writes the whole lit grid again): 3.1 MB for 2,400 cells over
   4.0 s at 15 fps (146 KB gzipped). Prefer the live player, or fewer frames (lower `--fps`), for a grid this size.
 - **Video.** 2,400 cells cost about 10 s more than 100 over 173 frames: not a reason for Canvas.
 

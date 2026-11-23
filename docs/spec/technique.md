@@ -567,11 +567,13 @@ Pure functions; a colour is a token name (G4 applies).
   `coverage` turns a signed distance into a partial alpha.
 - `drawCells` writes one `<rect>` per cell whose opacity, rounded to three
   decimals (as `el`), is above 0; the empty grid is one `<pattern>` with id
-  `${safeId(idPrefix)}-cells-${name}`. The markup has the same groups in every
-  frame, so the player's patch changes within each layer (the lit cells, the
-  outlines, the glyphs) and the sibling groups keep their positions.
+  `${safeId(idPrefix)}-cells-${name}`. The three layer groups (the lit cells, the
+  outlines, the glyphs) are present in every frame, in the same order, so the
+  player's patch changes within a layer and the sibling groups keep their
+  positions, while `base` is present or absent alike in every frame (switching
+  between `null` and a token adds or removes the `<defs>` and base rect ahead of them).
 - **Canon.** A lighting ends at least 50 ms before its step and nothing repeats
-  (G6). The measured cost and the size at which a scene should leave SVG are in
+  (guidance A10; G6 only checks the settled frames around each step). The measured cost and the size at which a scene should leave SVG are in
   the `animated-diagram` skill's `custom-scenes.md`.
 
 ## 5. Markup

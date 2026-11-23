@@ -23,8 +23,8 @@ describe("cellGrid", () => {
 		assert.equal(g.count, 72);
 		assert.equal(g.width, 12 * s + 11 * 4);
 		assert.equal(g.height, 6 * s + 5 * 4);
-		assert.equal(g.x, 10 + (480 - g.width) / 2);
-		assert.equal(g.y, 20 + (300 - g.height) / 2);
+		assert.equal(g.x, Number(num(10 + (480 - g.width) / 2)));
+		assert.equal(g.y, Number(num(20 + (300 - g.height) / 2)));
 		assert.deepEqual({ ...g.at(1, 2) }, { x: g.x + 2 * (s + 4), y: g.y + (s + 4), size: s, cx: g.x + 2 * (s + 4) + s / 2, cy: g.y + (s + 4) + s / 2 });
 		assert.equal(g.index(1, 2), 14);
 	});
@@ -350,11 +350,51 @@ describe("review fixes", () => {
 		assert.deepEqual([0, 1, 2].map((c) => l.delay(0, c)), [0, 0.15, 0.3]);
 		assert.equal(l.level(l.end, 0, 2), 1);
 		const m = cellLighting(g, { start: 0, duration: 1, spread: 0.003, order: "cells" });
-		assert.ok(m.delay(0, 2) <= 0.003);
+		assert.equal(m.delay(0, 2), 0.003);
 	});
 	it("keeps a level within its end level whatever the curve returns", () => {
 		const g = cellGrid({ rows: 1, cols: 1, size: 4 });
 		const l = cellLighting(g, { start: 0, duration: 1, ease: () => 2, field: () => 0.5 });
 		assert.equal(l.level(0.5, 0, 0), 0.5);
+	});
+	it("draws the pattern on the same origin and pitch as the lit cells, for a fractional origin and rounded sizes", () => {
+		const g = cellGrid({ rows: 1, cols: 3, x: 1.005, y: 0.005, size: 1.004, gap: 0.01 });
+		const svg = drawCells(g, { opacity: () => 1, idPrefix: "t" });
+		const pat = /<pattern[^>]*x="([^"]+)"[^>]*width="([^"]+)"/.exec(svg);
+		const xs = [...svg.matchAll(/<rect x="([^"]+)" y="[^"]+" width="[^"]+" height="[^"]+" rx/g)].map((m) => Number(m[1]));
+		assert.equal(xs.length, 3);
+		assert.equal(Number(pat?.[1]), xs[0]);
+		assert.equal(num(xs[1] - xs[0]), pat?.[2]);
+		assert.equal(num(xs[2] - xs[1]), pat?.[2]);
+	});
+	it("does not let a box round up past its dimensions", () => {
+		assert.equal(cellGrid({ rows: 1, cols: 1, width: 0.2899999995, height: 1 }).size, 0.28);
+	});
+	it("keeps a tiny rank difference", () => {
+		const g = cellGrid({ rows: 1, cols: 2, size: 4 });
+		const l = cellLighting(g, { start: 0, duration: 1, spread: 1, order: (_r, c) => [0, Number.MIN_VALUE][c] });
+		assert.equal(l.delay(0, 1), 1);
+		assert.equal(l.end, 2);
+	});
+	it("lights nothing before the start and rejects a curve that is not a number", () => {
+		const g = cellGrid({ rows: 1, cols: 1, size: 4 });
+		assert.equal(cellLighting(g, { start: 1, duration: 1, ease: () => 0.5 }).level(0.5, 0, 0), 0);
+		assert.throws(() => cellLighting(g, { start: 0, duration: 1, ease: () => Number.NaN }).level(0.5, 0, 0), /ease must return a finite number/);
+	});
+	it("rejects a schedule whose end is not finite or is lost in the start", () => {
+		const g = cellGrid({ rows: 1, cols: 1, size: 4 });
+		assert.throws(() => cellLighting(g, { start: 1e308, duration: 1e308 }), /finite, advancing schedule/);
+		assert.throws(() => cellLighting(g, { start: 1e17, duration: 1 }), /finite, advancing schedule/);
+	});
+	it("keeps the outline inside the cell after rounding, and rejects an outline that is not a boolean, number or null", () => {
+		const g = cellGrid({ rows: 1, cols: 1, size: 0.03, gap: 0, radius: 0 });
+		const svg = drawCells(g, { opacity: () => 0, base: null, outline: () => true, outlineWidth: 0.015 });
+		const m = /x="([^"]+)" y="[^"]+" width="([^"]+)" height="[^"]+" rx="[^"]+" fill="none" stroke="[^"]+" stroke-width="([^"]+)"/.exec(svg);
+		assert.ok(m);
+		assert.ok(Number(m[1]) + Number(m[2]) + Number(m[3]) / 2 <= 0.03 + 1e-9);
+		assert.throws(() => drawCells(g, { opacity: () => 0, base: null, outline: /** @type {any} */ (() => "yes"), outlineWidth: 0.01 }), /outline must return/);
+	});
+	it("rejects geometry beyond what the markup can print", () => {
+		assert.throws(() => cellGrid({ rows: 1, cols: 1, x: 1e307, size: 1 }), /extent is not finite/);
 	});
 });

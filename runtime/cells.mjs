@@ -37,6 +37,9 @@ const finite = (n) => typeof n === "number" && Number.isFinite(n);
 /** What may stand in an id: the characters `safeId` leaves. */
 const ID_PART = /^[A-Za-z0-9_]+$/;
 /** @param {unknown} n */
+/** Geometry beyond this overflows `num()`, which multiplies by 100 before rounding. */
+const COORD_LIMIT = 1e300;
+
 const count = (n) => typeof n === "number" && Number.isInteger(n) && n >= 1;
 
 /**
@@ -78,15 +81,21 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
 	} else {
 		edge = size;
 	}
+	if (boxed && finite(edge)) {
+		// The floor above carries a margin for 0.29 * 100 = 28.999…; step down while the cell still does not fit the box.
+		const fits = (/** @type {number} */ e) => e * cols + gap * (cols - 1) <= /** @type {number} */ (width) * (1 + 1e-12) && e * rows + gap * (rows - 1) <= /** @type {number} */ (height) * (1 + 1e-12);
+		while (edge > 0 && !fits(edge)) edge = Math.round(edge * 100 - 1) / 100;
+	}
 	if (!finite(edge) || /** @type {number} */ (edge) <= 0 || Number(num(/** @type {number} */ (edge))) <= 0) throw new Error(`cellGrid: the cell size must be finite and above 0 after SVG rounding, got ${edge}${boxed ? " (the box is too small for its cells and gaps)" : ""}`);
 	const s = Number(num(/** @type {number} */ (edge)));
 	const r = radius ?? s * 0.22;
 	if (!finite(r) || r < 0) throw new Error(`cellGrid: radius must be a finite number of 0 or more, got ${radius}`);
 	const gw = cols * s + (cols - 1) * gap;
-	if (!finite(gw) || !finite(cols * (s + gap)) || !finite(rows * (s + gap)) || !finite(x + gw) || !finite(y + rows * (s + gap))) throw new Error(`cellGrid: the grid's extent is not finite (size ${s}, gap ${gap}, ${rows} × ${cols})`);
+	if (!finite(gw) || !finite(cols * (s + gap)) || !finite(rows * (s + gap)) || !finite(x + gw) || !finite(y + rows * (s + gap)) || Math.abs(x) + gw > COORD_LIMIT || Math.abs(y) + rows * (s + gap) > COORD_LIMIT) throw new Error(`cellGrid: the grid's extent is not finite (size ${s}, gap ${gap}, ${rows} × ${cols})`);
 	const gh = rows * s + (rows - 1) * gap;
-	const gx = boxed ? x + (/** @type {number} */ (width) - gw) / 2 : x;
-	const gy = boxed ? y + (/** @type {number} */ (height) - gh) / 2 : y;
+	// On the markup's own rounding, so the empty grid's pattern and every lit cell round the same origin and pitch.
+	const gx = Number(num(boxed ? x + (/** @type {number} */ (width) - gw) / 2 : x));
+	const gy = Number(num(boxed ? y + (/** @type {number} */ (height) - gh) / 2 : y));
 	/** @param {number} row @param {number} col */
 	const inRange = (row, col) => Number.isInteger(row) && Number.isInteger(col) && row >= 0 && col >= 0 && row < rows && col < cols;
 	return Object.freeze({
@@ -162,6 +171,8 @@ export function cellLighting(grid, { start, duration, spread = 0, order = "cells
 	if (order !== "all" && order !== "cells" && order !== "rows" && order !== "columns" && typeof order !== "function") throw new Error(`cellLighting: order must be "all", "cells", "rows", "columns" or a function, got ${JSON.stringify(order)}`);
 	if (field !== undefined && typeof field !== "function") throw new Error("cellLighting: field must be a function (row, col) => number from 0 to 1");
 	if (ease !== undefined && typeof ease !== "function") throw new Error("cellLighting: ease must be a function (p) => number");
+	const last = start + spread + duration;
+	if (!finite(last) || !(start + duration > start) || !(last > start + spread)) throw new Error(`cellLighting: start ${start}, spread ${spread} and duration ${duration} do not make a finite, advancing schedule`);
 	const curve = ease ?? easings(style?.motion).easeOut;
 	const { rows, cols } = grid;
 	const ranks = new Float64Array(rows * cols);
@@ -181,12 +192,14 @@ export function cellLighting(grid, { start, duration, spread = 0, order = "cells
 			if (rank > hi) hi = rank;
 		}
 	}
+	// The exact span; halved first only when it would overflow (ranks near ±1e308), so a tiny span is not erased.
+	const exact = finite(hi - lo);
+	const half = exact ? hi - lo : hi / 2 - lo / 2;
 	/** @param {number} i */
-	const half = hi / 2 - lo / 2; // halved first, so ranks near ±1e308 do not overflow
-	const delayOf = (i) => (half > 0 ? spread * Math.min(1, (ranks[i] / 2 - lo / 2) / half) : 0);
+	const delayOf = (i) => (half > 0 ? spread * Math.min(1, (exact ? ranks[i] - lo : ranks[i] / 2 - lo / 2) / half) : 0);
 	return Object.freeze({
 		start,
-		end: start + (half > 0 ? spread : 0) + duration,
+		end: half > 0 ? last : start + duration,
 		delay(/** @type {number} */ row, /** @type {number} */ col) {
 			return delayOf(grid.index(row, col));
 		},
@@ -194,8 +207,11 @@ export function cellLighting(grid, { start, duration, spread = 0, order = "cells
 			if (!finite(t)) throw new Error(`cellLighting: t must be finite, got ${t}`);
 			const i = grid.index(row, col);
 			const from = start + delayOf(i);
+			if (t < from) return 0;
 			if (t >= from + duration) return ends[i];
-			return clamp01(progress(t, from, duration, curve)) * ends[i];
+			const p = progress(t, from, duration, curve);
+			if (!finite(p)) throw new Error(`cellLighting: ease must return a finite number, got ${p} at row ${row}, column ${col}`);
+			return clamp01(p) * ends[i];
 		},
 	});
 }
@@ -246,9 +262,9 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 	if (typeof opacity !== "function") throw new Error("drawCells: opacity must be a function (row, col, index) => number from 0 to 1");
 	if (typeof name !== "string" || !ID_PART.test(name)) throw new Error(`drawCells: name must use letters, digits and "_", got ${JSON.stringify(name)}`);
 	if (base !== null && (typeof idPrefix !== "string" || idPrefix === "")) throw new Error(`drawCells: an empty grid (base) needs the frame's idPrefix, a non-empty string, got ${JSON.stringify(idPrefix)}`);
-	if (outline && (!finite(outlineWidth) || outlineWidth <= 0 || Number(num(outlineWidth)) <= 0 || Number(num(grid.size - outlineWidth)) <= 0)) throw new Error(`drawCells: outlineWidth must be a finite number above 0 and less than the cell size (${grid.size}), got ${outlineWidth}`);
+	if (outline && (!finite(outlineWidth) || outlineWidth <= 0 || Number(num(outlineWidth)) <= 0 || Number(num(grid.size - 2 * Number(num(outlineWidth / 2)))) <= 0 || 2 * Number(num(outlineWidth / 2)) <= 0)) throw new Error(`drawCells: outlineWidth must be a finite number above 0 and less than the cell size (${grid.size}), got ${outlineWidth}`);
 	const gsize = glyphSize ?? grid.size * 0.6;
-	if (glyph && (!finite(gsize) || gsize <= 0 || Number(num(gsize)) <= 0)) throw new Error(`drawCells: glyphSize must be a finite number above 0, got ${glyphSize}`);
+	if (glyph && (!finite(gsize) || gsize <= 0 || gsize > COORD_LIMIT || Number(num(gsize)) <= 0)) throw new Error(`drawCells: glyphSize must be a finite number above 0, got ${glyphSize}`);
 	const { rows, cols } = grid;
 	const pitch = grid.size + grid.gap;
 
@@ -275,7 +291,9 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 	const rings = [];
 	/** @type {string[]} */
 	const glyphs = [];
-	const inset = outlineWidth / 2;
+	// Whole hundredths for the inset and twice it for the stroke, so the painted ring ends on the cell's edge after rounding.
+	const inset = Number(num(outlineWidth / 2));
+	const ow = inset * 2;
 	const ringRadius = Math.max(0, grid.radius - inset);
 	for (let row = 0; row < rows; row++) {
 		for (let col = 0; col < cols; col++) {
@@ -287,10 +305,10 @@ export function drawCells(grid, { opacity, fill = "accent", base = "surface", id
 			if (outline) {
 				const v = outline(row, col);
 				const ro = v === true ? 1 : typeof v === "number" ? v : 0;
-				if (typeof v === "number" && !finite(v)) throw new Error(`drawCells: outline must return a boolean or a number from 0 to 1, got ${v} at row ${row}, column ${col}`);
+				if (v !== null && v !== undefined && typeof v !== "boolean" && !(typeof v === "number" && finite(v))) throw new Error(`drawCells: outline must return a boolean, a number from 0 to 1 or null, got ${JSON.stringify(v)} at row ${row}, column ${col}`);
 				if (ro > 0) {
 					const c = grid.at(row, col);
-					rings.push(el("rect", { x: c.x + inset, y: c.y + inset, width: c.size - outlineWidth, height: c.size - outlineWidth, rx: ringRadius, fill: "none", stroke: tok(outlineFill), "stroke-width": outlineWidth, opacity: clamp01(ro) }));
+					rings.push(el("rect", { x: c.x + inset, y: c.y + inset, width: c.size - ow, height: c.size - ow, rx: ringRadius, fill: "none", stroke: tok(outlineFill), "stroke-width": ow, opacity: clamp01(ro) }));
 				}
 			}
 			if (glyph) {

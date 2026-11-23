@@ -114,7 +114,7 @@ globalThis.bench = (which, spec) => {
 		innerHTML: (t) => { host.innerHTML = render(t); },
 		patch: (t) => { patchMarkup(host, render(t)); },
 	};
-	const result = { frames: times.length, kb: bytes.encode(render(scene.duration / 2)).length / 1024, peak: peak / 1024, mismatches };
+	const result = { frames: times.length, kib: bytes.encode(render(scene.duration / 2)).length / 1024, peak: peak / 1024, mismatches };
 	for (const [name, draw] of Object.entries(paths)) {
 		host.innerHTML = "";
 		const cost = [];
@@ -172,12 +172,12 @@ try {
 	const spec = readFileSync(join(ROOT, "examples/smart-home.json"), "utf8");
 	const ms = (/** @type {number} */ v) => v.toFixed(2).padStart(6);
 	console.log(`live player frame cost, headless Chromium at ${RATE}x CPU slowdown (${chrome.split("/").pop()})`);
-	console.log("scene                     KB/frame  peak KB  frames   render only     innerHTML median / p90   patch median / p90   median ratio");
+	console.log("scene                     mid KiB  peak KiB  frames   render only     innerHTML median / p90   patch median / p90   median ratio");
 	let failed = false;
 	for (const [label, which] of [["bench/fleet.scene.mjs", "fleet"], ["smart-home 16:9", "smart-home"], ["isometric-swivel 16:9", "isometric"], ["text-reveal 16:9", "reveal"], ["cells 10x10 (100)", "cells:10x10"], ["cells 24x25 (600)", "cells:24x25"], ["cells 40x60 (2,400)", "cells:40x60"]]) {
 		const r = await evaluate(`bench(${JSON.stringify(which)}, ${JSON.stringify(spec)})`);
 		console.log(
-			`${label.padEnd(26)}${r.kb.toFixed(1).padStart(8)}${r.peak.toFixed(1).padStart(9)}${String(r.frames).padStart(8)}   ${ms(r.render.median)} ms       ${ms(r.innerHTML.median)} / ${ms(r.innerHTML.p90)} ms     ${ms(r.patch.median)} / ${ms(r.patch.p90)} ms    ${(r.patch.median / r.innerHTML.median).toFixed(2)}`,
+			`${label.padEnd(26)}${r.kib.toFixed(1).padStart(8)}${r.peak.toFixed(1).padStart(10)}${String(r.frames).padStart(8)}   ${ms(r.render.median)} ms       ${ms(r.innerHTML.median)} / ${ms(r.innerHTML.p90)} ms     ${ms(r.patch.median)} / ${ms(r.patch.p90)} ms    ${(r.patch.median / r.innerHTML.median).toFixed(2)}`,
 		);
 		if (r.mismatches) {
 			console.error(`${label}: ${r.mismatches} patched frames differ from a fresh innerHTML parse`);
