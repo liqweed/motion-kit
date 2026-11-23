@@ -714,8 +714,11 @@ function behindOriented(a, b, toCam) {
 		let v2 = 0;
 		// a contact that rounds across the plane (by a few ulps of the coordinates) is still a contact
 		const tol = 1e-12 * Math.max(1, Math.abs(a0), Math.abs(a1), Math.abs(b0), Math.abs(b1));
-		if (a1 <= b0 + tol) v2 = facing > 0 ? -1 : 1; // b is on the positive side
-		else if (b1 <= a0 + tol) v2 = facing > 0 ? 1 : -1;
+		const aFirst = a1 <= b0 + tol; // b is on the positive side
+		const bFirst = b1 <= a0 + tol;
+		if (aFirst && bFirst) return; // both fit (flat solids in one plane): no order, leave it to the tie-break
+		if (aFirst) v2 = facing > 0 ? -1 : 1;
+		else if (bFirst) v2 = facing > 0 ? 1 : -1;
 		if (v2 === 0) return;
 		if (vote !== 0 && vote !== v2) conflict = true;
 		vote = v2;

@@ -335,6 +335,11 @@ describe("oriented solids", () => {
 		assert.notDeepEqual(/** @type {any} */ (rotateSolid(b, { axis: "y", deg: 1e-14 })).pose.m.map((v) => v + 0), [1, 0, 0, 0, 1, 0, 0, 0, 1]);
 		assert.throws(() => rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 1 }), { axis: "z", deg: 180, about: { x: 1e308, y: 0 } }), /overflow/);
 	});
+	it("keeps input order for coincident flat solids from either side", () => {
+		const flat = (/** @type {string} */ id) => rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 0, id }), { axis: "y", deg: 90 });
+		const ids = (/** @type {number} */ az) => orderSolids([flat("a"), flat("b")], camera({ azimuth: az, elevation: 20 })).map((s) => s.id).join("");
+		assert.equal(ids(90), ids(270));
+	});
 	it("refuses a bad axis, angle or point, and a solid with content on its top", () => {
 		const b = box({ x: 0, y: 0, w: 1, d: 1, h: 1 });
 		assert.throws(() => rotateSolid(b, { axis: /** @type {any} */ ("w"), deg: 10 }), /axis/);
@@ -343,6 +348,10 @@ describe("oriented solids", () => {
 		assert.throws(() => rotateSolid(b, { axis: "x", deg: 10, about: { x: 0, y: Infinity, z: 0 } }), /about/);
 		const withTop = box({ x: 0, y: 0, w: 1, d: 1, h: 1, top: { markup: "", view: { width: 1, height: 1 } } });
 		assert.throws(() => rotateSolid(withTop, { axis: "x", deg: 10 }), /top/);
+		// the same validation holds at 0°
+		assert.throws(() => rotateSolid(withTop, { axis: "x", deg: 0 }), /top/);
+		assert.throws(() => rotateSolid(b, { axis: /** @type {any} */ ("w"), deg: 0 }), /axis/);
+		assert.throws(() => rotateSolid(b, { axis: "x", deg: 0, about: { x: 0, y: Infinity, z: 0 } }), /about/);
 	});
 });
 
