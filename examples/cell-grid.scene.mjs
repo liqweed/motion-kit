@@ -88,6 +88,10 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 
 	const one = cellLighting(grid, { ...ONE, order: "cells", field: (row, col) => coverage(ellipse(row, col)) });
 	const all = cellLighting(grid, { ...ALL, order: "all" });
+	const edge = (/** @type {number} */ row, /** @type {number} */ col) => {
+		const v = coverage(ellipse(row, col));
+		return v > 0 && v < 1;
+	};
 	const ringAt = cellLighting(atlas, { ...RING, order: "all" }); // the outline's own beat
 	const isFlyer = (/** @type {number} */ row, /** @type {number} */ col) => FLYERS.findIndex(([r, c]) => r === row && c === col);
 	// Each letter's arc, from its atlas cell to its slot in the word: the control points swing sideways, to opposite sides in turn.
@@ -112,7 +116,14 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 		};
 		return [
 			caption(captions[0], top),
-			drawCells(grid, { idPrefix, name: "pixels", opacity: (row, col) => Math.max(one.level(t, row, col), all.level(t, row, col)) }),
+			drawCells(grid, {
+				idPrefix,
+				name: "pixels",
+				opacity: (row, col) => Math.max(one.level(t, row, col), all.level(t, row, col)),
+				// A cue beside the partial alpha: the cells on the ellipse's edge get an outline, which the second beat takes away again.
+				outline: (row, col) => (edge(row, col) ? one.level(t, row, col) * (1 - all.level(t, row, col)) : 0),
+				outlineFill: "ink",
+			}),
 			drawCells(word, { idPrefix, name: "word", opacity: () => 0 }),
 			caption(captions[1], y3 - capH),
 			drawCells(atlas, {

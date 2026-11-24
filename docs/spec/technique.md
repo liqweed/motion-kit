@@ -573,7 +573,7 @@ Pure functions; a colour is a token name (G4 applies).
   positions, while `base` is present or absent alike in every frame (switching
   between `null` and a token adds or removes the `<defs>` and base rect ahead of them).
 - **Canon.** A lighting ends at least 50 ms before its step (guidance A10) and nothing
-  repeats (guidance A5). G6 (defined, with its clamping, in the rule table and §8) compares the step frame with the frame 1 ms before it (the look-back is clamped at time 0, so a step earlier than 1 ms compares its own time with time 0, and a step at `at: 0` compares time 0 with itself) and with probes at 1, 15, 30 and 45 ms after it (only before the next step; a probe past `duration` renders the final frame and compares the step with it, so a scene that changes in the last milliseconds before `duration` can fail it where the earlier probes pass), so motion that ends exactly at a step can fail it and it misses a repeat away from a step. The measured cost and the size at which a scene should leave SVG are in
+  repeats (guidance A5). G6 (defined, with its clamping, in the rule table and §8) compares the step frame with the frame 1 ms before it (the look-back is clamped at time 0, so a step earlier than 1 ms compares its own time with time 0, and a step at `at: 0` compares time 0 with itself) and with probes at 1, 15, 30 and 45 ms after it (only before the next step; a probe past `duration` renders the final frame and compares the step with it, so a scene that changes in the last milliseconds before `duration` can fail it where the earlier probes pass), so motion that ends exactly at a step can fail it, and a repeat that lights the cells again only after the 45 ms probes, away from a step, goes unseen. The measured cost and the size at which a scene should leave SVG are in
   the `animated-diagram` skill's `custom-scenes.md`.
 
 ## 5. Markup
@@ -700,11 +700,11 @@ Pure functions; a colour is a token name (G4 applies).
   (`frame(at − 1 ms) === frame(at)`), and nothing MAY change in the 50 ms
   after it (`frame(at + δ) === frame(at)` for δ = 1, 15, 30 and 45 ms, up to
   the next step; `SETTLE_AFTER` in `lib/check.mjs`). Every time is clamped to
-  `[0, duration]` as `renderSvg()` does, so `at: 0` compares time 0 with itself
+  `[0, duration]` as `renderSvg()` does, so the look-back at `at: 0` compares time 0 with itself (the forward probes still render later frames and can fail the step; §4.14)
   and a probe past `duration` renders the final frame (G6 table). The look-ahead is what
   catches slow motion passing through `at`, which rounding hides over 1 ms.
-- Authoring rule: the next motion MUST NOT start earlier than 50 ms after
-  `at` (the "pause between beats" in
+- Authoring rule: the next motion should not start earlier than 50 ms after
+  `at`; G6 enforces only the probes up to 45 ms, so a beat at 46 ms passes the gate but is still advice-level against A10 (the "pause between beats" in
   [`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)),
   and anything that fades out by a step (a travelling dot) MUST reach 0 by
   `at`. Scene types satisfy this by construction: `PERIOD = HOP + FILL + 0.05`

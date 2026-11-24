@@ -398,3 +398,15 @@ describe("review fixes", () => {
 		assert.throws(() => cellGrid({ rows: 1, cols: 1, x: 1e307, size: 1 }), /extent is not finite/);
 	});
 });
+
+describe("cellGrid box fit after origin rounding", () => {
+	it("keeps the rounded grid inside an offset box", () => {
+		const g = cellGrid({ rows: 1, cols: 1, x: 0.006, y: 0.006, width: 1, height: 1, gap: 0 });
+		assert.ok(g.x >= 0.006 - 1e-9 && g.x + g.width <= 1.006 + 1e-9);
+		assert.ok(g.y >= 0.006 - 1e-9 && g.y + g.height <= 1.006 + 1e-9);
+	});
+	it("refuses a centred origin that overflows num()", () => {
+		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1e308, height: 1, gap: 0 }), /not finite/);
+		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1, height: 1e308, gap: 0 }), /not finite/);
+	});
+});

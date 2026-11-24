@@ -87,15 +87,30 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
 		while (edge > 0 && !fits(edge)) edge = Math.round(edge * 100 - 1) / 100;
 	}
 	if (!finite(edge) || /** @type {number} */ (edge) <= 0 || Number(num(/** @type {number} */ (edge))) <= 0) throw new Error(`cellGrid: the cell size must be finite and above 0 after SVG rounding, got ${edge}${boxed ? " (the box is too small for its cells and gaps)" : ""}`);
-	const s = Number(num(/** @type {number} */ (edge)));
+	let s = Number(num(/** @type {number} */ (edge)));
+	/** The grid's extent and rounded origin at cell size `e`; null when it is not finite or too large for `num()`. */
+	const layout = (/** @type {number} */ e) => {
+		const w = cols * e + (cols - 1) * gap;
+		const h = rows * e + (rows - 1) * gap;
+		const ox = boxed ? x + (/** @type {number} */ (width) - w) / 2 : x;
+		const oy = boxed ? y + (/** @type {number} */ (height) - h) / 2 : y;
+		if (![w, h, ox, oy, cols * (e + gap), rows * (e + gap), ox + w, oy + h].every(finite) || Math.max(Math.abs(ox) + w, Math.abs(ox), Math.abs(oy) + h, Math.abs(oy)) > COORD_LIMIT) return null;
+		return { gw: w, gh: h, gx: Number(num(ox)), gy: Number(num(oy)) };
+	};
+	let lay = layout(s);
+	if (boxed) {
+		// The origin is rounded to the markup's hundredth after the size was fitted; step the size down until the rounded grid still lies inside the requested box.
+		const inside = (/** @type {NonNullable<ReturnType<typeof layout>>} */ l) => l.gx >= x - 1e-9 && l.gy >= y - 1e-9 && l.gx + l.gw <= x + /** @type {number} */ (width) + 1e-9 && l.gy + l.gh <= y + /** @type {number} */ (height) + 1e-9;
+		while (lay && !inside(lay) && s > 0.01) {
+			s = Math.round(s * 100 - 1) / 100;
+			lay = layout(s);
+		}
+		if (lay && !inside(lay)) throw new Error("cellGrid: the box is too small for its cells and gaps after SVG rounding");
+	}
+	if (!lay) throw new Error(`cellGrid: the grid's extent is not finite (size ${s}, gap ${gap}, ${rows} × ${cols})`);
 	const r = radius ?? s * 0.22;
 	if (!finite(r) || r < 0) throw new Error(`cellGrid: radius must be a finite number of 0 or more, got ${radius}`);
-	const gw = cols * s + (cols - 1) * gap;
-	if (!finite(gw) || !finite(cols * (s + gap)) || !finite(rows * (s + gap)) || !finite(x + gw) || !finite(y + rows * (s + gap)) || Math.abs(x) + gw > COORD_LIMIT || Math.abs(y) + rows * (s + gap) > COORD_LIMIT) throw new Error(`cellGrid: the grid's extent is not finite (size ${s}, gap ${gap}, ${rows} × ${cols})`);
-	const gh = rows * s + (rows - 1) * gap;
-	// On the markup's own rounding, so the empty grid's pattern and every lit cell round the same origin and pitch.
-	const gx = Number(num(boxed ? x + (/** @type {number} */ (width) - gw) / 2 : x));
-	const gy = Number(num(boxed ? y + (/** @type {number} */ (height) - gh) / 2 : y));
+	const { gw, gh, gx, gy } = lay;
 	/** @param {number} row @param {number} col */
 	const inRange = (row, col) => Number.isInteger(row) && Number.isInteger(col) && row >= 0 && col >= 0 && row < rows && col < cols;
 	return Object.freeze({
