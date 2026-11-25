@@ -563,7 +563,7 @@ Pure functions; a colour is a token name (G4 applies).
 
 - `cellGrid` lays out `rows × cols` square cells in a box or at a `size`;
   `cellLighting` gives each cell's level at `t` (0 before it starts, exactly its
-  `field` value from `lighting.end` on, on the style's entrance curve);
+  `field` value from `lighting.end` on, on the curve it is given: a caller-supplied `ease`, else the supplied `style`'s entrance curve, else the neutral default);
   `coverage` turns a signed distance into a partial alpha.
 - `drawCells` writes one `<rect>` per cell whose opacity, rounded to three
   decimals (as `el`), is above 0; the empty grid is one `<pattern>` with id

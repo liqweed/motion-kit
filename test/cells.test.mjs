@@ -412,16 +412,15 @@ describe("cellGrid box fit after origin rounding", () => {
 	it("refuses a box with no fitting origin on the hundredth grid", () => {
 		assert.throws(() => cellGrid({ rows: 1, cols: 1, x: 0.0100000005, width: 0.01, height: 0.01, gap: 0 }), /too small/);
 	});
-	it("terminates when the size step cannot advance at huge magnitudes", () => {
-		// Either a fitted grid or a refusal is fine; hanging is not.
-		try {
-			cellGrid({ rows: 1, cols: 1, gap: 0, x: 1000000000000002, width: 125000000000000, height: 125000000000000 });
-		} catch (e) {
-			assert.match(String(e instanceof Error ? e.message : e), /too small|not finite/);
+	it("refuses a box whose coordinates are too large for hundredth precision", () => {
+		for (const box of [{ x: 1000000000000002, width: 125000000000000, height: 125000000000000 }, { x: 10000000000000.004, width: 0.01, height: 0.01 }, { x: 0.004, width: 1e15, height: 1e15 }]) {
+			assert.throws(() => cellGrid({ rows: 1, cols: 1, gap: 0, ...box }), /within ±1000000000/);
 		}
+		// Just inside the limit still fits.
+		assert.ok(cellGrid({ rows: 1, cols: 1, gap: 0, x: 999999999, width: 0.5, height: 0.5 }).size > 0);
 	});
 	it("refuses a centred origin that overflows num()", () => {
-		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1e308, height: 1, gap: 0 }), /not finite/);
-		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1, height: 1e308, gap: 0 }), /not finite/);
+		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1e308, height: 1, gap: 0 }), /within ±1000000000/);
+		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1, height: 1e308, gap: 0 }), /within ±1000000000/);
 	});
 });

@@ -39,6 +39,8 @@ const ID_PART = /^[A-Za-z0-9_]+$/;
 /** @param {unknown} n */
 /** Geometry beyond this overflows `num()`, which multiplies by 100 before rounding. */
 const COORD_LIMIT = 1e300;
+/** Largest coordinate a boxed grid may touch: well inside the range where a hundredth is many ulps wide. */
+const BOX_LIMIT = 1e9;
 
 const count = (n) => typeof n === "number" && Number.isInteger(n) && n >= 1;
 
@@ -76,6 +78,8 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
 	let edge;
 	if (boxed) {
 		if (!finite(width) || !finite(height) || /** @type {number} */ (width) <= 0 || /** @type {number} */ (height) <= 0) throw new Error(`cellGrid: width and height must be finite and above 0, got ${width} × ${height}`);
+		// The fit is checked on the markup's hundredth grid; past this magnitude a double cannot tell a hundredth apart from its own rounding noise, so a box there is refused rather than fitted approximately.
+		if (![x + /** @type {number} */ (width), y + /** @type {number} */ (height), x, y].every((v) => Math.abs(v) <= BOX_LIMIT)) throw new Error(`cellGrid: a box must lie within ±${BOX_LIMIT} on both axes, got x ${x}, y ${y}, ${width} × ${height}`);
 		// Floored to two decimals (with a margin for 0.29 * 100 = 28.999…), so the pitch is as exact as the rounding of the markup and the empty grid's pattern stays on the lit cells.
 		edge = Math.floor(Math.min((/** @type {number} */ (width) - gap * (cols - 1)) / cols, (/** @type {number} */ (height) - gap * (rows - 1)) / rows) * 100 + 1e-7) / 100;
 	} else {
