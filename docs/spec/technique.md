@@ -257,6 +257,18 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   far the face turns from screen left. Faces are `<path>`s outlined with
   `stroke`; only faces that face the camera are drawn (the top when elevation
   > 0, a side when its outward normal faces the camera and elevation < 90°).
+- **Oriented solids.** `rotateSolid(solid, {axis, deg, about})` returns `solid`
+  turned `deg` degrees about `axis` (`"x"`, `"y"`, `"z"` or a direction
+  `{x, y, z}`; right-handed, in the world's frame) through the point `about`
+  (default the origin); turning an oriented solid again composes (`deg` 0
+  returns the solid itself, after the same checks as any turn: a solid with
+  `top` throws at 0° too). `deg` MUST be finite, `axis` a non-zero direction
+  and `about` a finite point, and a solid with `top` cannot be turned [throws]; `about` and the solid's position MUST be small enough that the turned position is finite [throws].
+  An oriented solid takes the same `fill`, `sides`, `shade` and `stroke` and the
+  same faces as a `prism`, drawn when their outward normal faces the camera: the
+  top cap (its own +z) is `fill`, every other face, the bottom cap included, is
+  `sides` shaded by how far its normal turns from screen left. Colours are
+  tokens as before.
 - **Rounded solids.** `roundedBox({x, y, w, d, h, radius, segments = 8, …})`
   and `roundedSlab` (default `h` 0.25) are a box whose four vertical corners
   are arcs of `radius` sampled in `segments` straight pieces. `radius` MUST be
@@ -301,7 +313,9 @@ functions; a colour is a token name, resolved with `tok()` (G4 applies).
   is ambient motion, which the canon excludes: a scene plays once and holds (§2, §8).
 - **Depth order.** `orderSolids(solids, cam)` returns the solids far to near.
   Two solids whose projections overlap are ordered by the axes that separate
-  them (a footprint edge, or height when seen from above); where the axes
+  them (a footprint edge, or height when seen from above; for a pair with an
+  oriented solid, any separating plane along a face of one or an edge of each,
+  so solids touching at a pivot are ordered by their contact); where the axes
   disagree, or none separates them, they are not ordered. The result is a
   topological sort, ties and cycles broken by the nearer centre, then by input
   order: the same solids always give the same order. `drawSolids` draws in it.

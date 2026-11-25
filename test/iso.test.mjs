@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import { checkScene, findColourLiteral } from "../lib/check.mjs";
 import { loadScene } from "../lib/load.mjs";
-import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawGrid, drawOnPlane, drawSolid, drawSolids, fitCamera, labelAnchor, labelPill, labelProblems, lerpCamera, orderSolids, path3, planeMatrix, prism, project, projector, regularPolygon, roundedBox, roundedSlab, slab } from "../runtime/iso.mjs";
+import { CAMERA_ISOMETRIC, CAMERA_PLAN, ISO_ELEVATION, box, camera, drawGrid, drawOnPlane, drawSolid, drawSolids, fitCamera, labelAnchor, labelPill, labelProblems, lerpCamera, orderSolids, path3, planeMatrix, prism, project, projector, regularPolygon, rotateSolid, roundedBox, roundedSlab, slab } from "../runtime/iso.mjs";
 import { KIT, sceneFromModule } from "../runtime/kit.mjs";
 import { FORMATS, validateScene } from "../runtime/scene.mjs";
 import { estimateWidth } from "../runtime/wrap.mjs";
@@ -223,6 +223,224 @@ describe("depth order", () => {
 		const once = ids(orderSolids(pinwheel, CAMERA_ISOMETRIC));
 		assert.deepEqual([...once].sort(), ["0", "1", "2", "3"]);
 		assert.deepEqual(ids(orderSolids(pinwheel, CAMERA_ISOMETRIC)), once);
+	});
+});
+
+/** The polygons drawn for a solid, as screen points, in drawing order (the shade layers left out: they carry no stroke, the faces do). */
+const polygons = (/** @type {import("../runtime/iso.mjs").Solid} */ solid, /** @type {import("../runtime/iso.mjs").Camera} */ cam) =>
+	[...drawSolid(solid, cam).matchAll(/<path d="([^"]+)" fill="var\(--mk-[a-z]+\)" stroke=/g)].map((m) => [...m[1].matchAll(/[ML]([-\d.]+) ([-\d.]+)/g)].map((q) => [Number(q[1]), Number(q[2])]));
+
+/** Whether two solids cover a common area of the screen: some point of a half-pixel grid lies inside a drawn face of each. */
+function coverCommonArea(/** @type {import("../runtime/iso.mjs").Solid} */ a, /** @type {import("../runtime/iso.mjs").Solid} */ b, /** @type {import("../runtime/iso.mjs").Camera} */ cam) {
+	const [pa, pb] = [polygons(a, cam), polygons(b, cam)];
+	const inside = (/** @type {number} */ x, /** @type {number} */ y, /** @type {number[][]} */ poly) => {
+		let hit = false;
+		for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+			if (poly[i][1] > y !== poly[j][1] > y && x < ((poly[j][0] - poly[i][0]) * (y - poly[i][1])) / (poly[j][1] - poly[i][1]) + poly[i][0]) hit = !hit;
+		}
+		return hit;
+	};
+	const all = [...pa.flat(), ...pb.flat()];
+	const [x0, x1, y0, y1] = [Math.min(...all.map((q) => q[0])), Math.max(...all.map((q) => q[0])), Math.min(...all.map((q) => q[1])), Math.max(...all.map((q) => q[1]))];
+	for (let x = x0 + 0.25; x < x1; x += 0.5) {
+		for (let y = y0 + 0.25; y < y1; y += 0.5) if (pa.some((f) => inside(x, y, f)) && pb.some((f) => inside(x, y, f))) return true;
+	}
+	return false;
+}
+
+describe("oriented solids", () => {
+	const sameShape = (/** @type {number[][][]} */ got, /** @type {number[][][]} */ want, /** @type {string} */ what) => {
+		assert.equal(got.length, want.length, `${what}: ${got.length} faces, expected ${want.length}`);
+		for (const [i, face] of want.entries()) {
+			assert.equal(got[i].length, face.length, `${what}: face ${i}`);
+			for (const [j, pt] of face.entries()) {
+				assert.ok(Math.abs(got[i][j][0] - pt[0]) <= 0.011 && Math.abs(got[i][j][1] - pt[1]) <= 0.011, `${what}: face ${i} corner ${j} is ${got[i][j]}, expected ${pt}`);
+			}
+		}
+	};
+	// A 2 × 2 × 1 box centred on the origin, pitched about the y axis through the origin: a point (x, y, z) goes
+	// to x' = x·cos θ + z·sin θ, z' = −x·sin θ + z·cos θ (positive turns up toward east).
+	const pitched = (/** @type {number} */ deg) => rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 1 }), { axis: "y", deg });
+	const PLAN = camera({ azimuth: 0, elevation: 90, zoom: 100 });
+
+	it("pitched 0°, 30°, 60° and 90°, shows in plan the faces that turn up, at hand-computed corners", () => {
+		const c30 = Math.sqrt(3) / 2;
+		// Plan: screen x = 100·x', screen y = −100·y. The faces drawn are the -x side (once it turns up) and the top (until it is edge on).
+		// −x side corners (−1, 1, 0), (−1, −1, 0), (−1, −1, 1), (−1, 1, 1); top corners (−1, −1, 1), (1, −1, 1), (1, 1, 1), (−1, 1, 1).
+		sameShape(polygons(pitched(0), PLAN), [[[-100, 100], [100, 100], [100, -100], [-100, -100]]], "0°");
+		sameShape(
+			polygons(pitched(30), PLAN),
+			[
+				[[-100 * c30, -100], [-100 * c30, 100], [-100 * c30 + 50, 100], [-100 * c30 + 50, -100]],
+				[[-100 * c30 + 50, 100], [100 * c30 + 50, 100], [100 * c30 + 50, -100], [-100 * c30 + 50, -100]],
+			],
+			"30°",
+		);
+		sameShape(
+			polygons(pitched(60), PLAN),
+			[
+				[[-50, -100], [-50, 100], [-50 + 100 * c30, 100], [-50 + 100 * c30, -100]],
+				[[-50 + 100 * c30, 100], [50 + 100 * c30, 100], [50 + 100 * c30, -100], [-50 + 100 * c30, -100]],
+			],
+			"60°",
+		);
+		// At 90° the top is edge on and the −x side lies flat, facing up: x' = z, so it spans east from 0 to 1.
+		sameShape(polygons(pitched(90), PLAN), [[[0, -100], [0, 100], [100, 100], [100, -100]]], "90°");
+	});
+	it("pitched 90°, draws in isometric the top, the −x side and the −y side at hand-computed corners", () => {
+		// (x, y, z) → world (z, y, −x). In isometric (zoom 100): screen x = 100·(X + Y)/√2, screen y = −100·((Y − X) + 2Z)/√6.
+		const to = (/** @type {number[]} */ [X, Y, Z]) => [(100 * (X + Y)) / Math.SQRT2, (-100 * (Y - X + 2 * Z)) / Math.sqrt(6)];
+		const world = [
+			[[0, -1, 1], [0, -1, -1], [1, -1, -1], [1, -1, 1]], // the −y side
+			[[0, 1, 1], [0, -1, 1], [1, -1, 1], [1, 1, 1]], // the −x side
+			[[1, -1, 1], [1, -1, -1], [1, 1, -1], [1, 1, 1]], // the top
+		];
+		sameShape(polygons(pitched(90), camera({ zoom: 100 })), world.map((f) => f.map(to)), "isometric 90°");
+	});
+	it("shows the cap at the bottom, as a side, once the solid is upside down", () => {
+		const up = polygons(rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 1, fill: "accent", sides: "surface" }), { axis: "y", deg: 180 }), PLAN);
+		assert.equal(up.length, 1);
+		const svg = drawSolid(rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 1, fill: "accent", sides: "surface" }), { axis: "y", deg: 180 }), PLAN);
+		assert.match(svg, /fill="var\(--mk-surface\)"/, "the side token");
+		assert.doesNotMatch(svg, /fill="var\(--mk-accent\)"/, "not the top's");
+	});
+	it("is the plain solid at 0°, and the same bytes for the same input, with token colours", () => {
+		const b = box({ x: 1, y: 2, w: 2, d: 1, h: 3, fill: "accent" });
+		assert.equal(rotateSolid(b, { axis: "x", deg: 0 }), b);
+		const make = () => drawSolids([rotateSolid(b, { axis: { x: 1, y: 1, z: 0 }, deg: 37, about: { x: 1, y: 2, z: 0 } }), slab({ x: 0, y: 0, w: 8, d: 8 })], lerpCamera(CAMERA_PLAN, CAMERA_ISOMETRIC, 0.37));
+		assert.equal(make(), make());
+		assert.equal(findColourLiteral(make()), null);
+	});
+	it("turns about a point, composes turns and is exact at multiples of 90°", () => {
+		const b = box({ x: 1, y: 0, w: 1, d: 1, h: 1 });
+		// About (1, 0, 0) a quarter turn about y: that point stays put.
+		const q = /** @type {NonNullable<import("../runtime/iso.mjs").Solid["pose"]>} */ (rotateSolid(b, { axis: "y", deg: 90, about: { x: 1, y: 0, z: 0 } }).pose);
+		assert.deepEqual([...q.m], [0, 0, 1, 0, 1, 0, -1, 0, 0]);
+		assert.deepEqual([q.t.x, q.t.y, q.t.z], [1, 0, 1]); // t = p − R·p = (1,0,0) − (0,0,−1)
+		const half = /** @type {NonNullable<import("../runtime/iso.mjs").Solid["pose"]>} */ (rotateSolid(rotateSolid(b, { axis: "z", deg: 90 }), { axis: "z", deg: 90 }).pose);
+		assert.deepEqual(half.m.map((v) => v + 0), [-1, 0, 0, 0, -1, 0, 0, 0, 1]);
+	});
+	it("reads a direction as an axis whatever its length, and composes turns about different axes and pivots", () => {
+		const b = box({ x: 1, y: 0, w: 1, d: 1, h: 1 });
+		const m = (/** @type {any} */ s) => [...s.pose.m].map((v) => v + 0);
+		assert.deepEqual(m(rotateSolid(b, { axis: { x: 0, y: 3, z: 0 }, deg: 90 })), m(rotateSolid(b, { axis: "y", deg: 90 })));
+		assert.deepEqual(m(rotateSolid(b, { axis: { x: 1e-12, y: 0, z: 0 }, deg: 90 })), m(rotateSolid(b, { axis: "x", deg: 90 })));
+		near(m(rotateSolid(b, { axis: { x: 1.5e308, y: 1.5e308, z: 0 }, deg: 180 }))[1], 1);
+		// A quarter turn about x through the origin, then one about y through (1, 0, 0): world = Ry·Rx.
+		const both = /** @type {any} */ (rotateSolid(rotateSolid(b, { axis: "x", deg: 90 }), { axis: "y", deg: 90, about: { x: 1, y: 0, z: 0 } }));
+		assert.deepEqual(m(both), [0, 1, 0, 0, 0, -1, -1, 0, 0]);
+		assert.deepEqual([both.pose.t.x, both.pose.t.y, both.pose.t.z], [1, 0, 1]);
+		assert.equal(drawSolid(rotateSolid(b, { axis: "z", deg: 1e308 }), CAMERA_ISOMETRIC), drawSolid(rotateSolid(b, { axis: "z", deg: 296 }), CAMERA_ISOMETRIC), "1e308 % 360 is 296");
+		assert.notEqual(drawSolid(rotateSolid(b, { axis: "z", deg: 1e308 }), CAMERA_ISOMETRIC), drawSolid(b, CAMERA_ISOMETRIC));
+		assert.notDeepEqual(/** @type {any} */ (rotateSolid(b, { axis: "y", deg: 1e-14 })).pose.m.map((v) => v + 0), [1, 0, 0, 0, 1, 0, 0, 0, 1]);
+		assert.throws(() => rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 1 }), { axis: "z", deg: 180, about: { x: 1e308, y: 0 } }), /overflow/);
+	});
+	it("keeps input order for coincident flat solids from either side", () => {
+		const flat = (/** @type {string} */ id) => rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 0, id }), { axis: "y", deg: 90 });
+		const ids = (/** @type {number} */ az) => orderSolids([flat("a"), flat("b")], camera({ azimuth: az, elevation: 20 })).map((s) => s.id).join("");
+		assert.equal(ids(90), "ab", "input order from one side");
+		assert.equal(ids(270), "ab", "input order from the other");
+	});
+	it("puts the front of two separated thin faces last, whatever the input order, from either side", () => {
+		const f = (/** @type {string} */ id, /** @type {number} */ x, /** @type {number} */ z) => rotateSolid(box({ x, y: 0, w: 2, d: 2, h: 0, z, id }), { axis: "y", deg: 90 });
+		const [rear, front] = [f("rear", -0.5, 1), f("front", 0.5, 1 + 5e-12)];
+		for (const [az, want] of /** @type {const} */ ([[90, ["rear", "front"]], [270, ["front", "rear"]]])) {
+			const cam = camera({ azimuth: az, elevation: 20 });
+			for (const input of [[rear, front], [front, rear]]) assert.deepEqual(orderSolids(input, cam).map((s) => s.id), want, `azimuth ${az}`);
+		}
+	});
+	it("keeps input order for two coplanar thin faces whose positions differ only by the pose's rounding", () => {
+		const a = rotateSolid(box({ x: 0, y: 0, w: 2, d: 2, h: 0, z: 1.1, id: "a" }), { axis: "y", deg: 90 });
+		const b = rotateSolid(box({ x: 513.1, y: 0, w: 2, d: 2, h: 0, z: 512, id: "b" }), { axis: "y", deg: 90, about: { x: 1.1, y: 0, z: 512 } });
+		for (const az of [90, 270]) assert.deepEqual(orderSolids([a, b], camera({ azimuth: az, elevation: 20 })).map((s) => s.id), ["a", "b"], `azimuth ${az}`);
+	});
+	it("refuses a bad axis, angle or point, and a solid with content on its top", () => {
+		const b = box({ x: 0, y: 0, w: 1, d: 1, h: 1 });
+		assert.throws(() => rotateSolid(b, { axis: /** @type {any} */ ("w"), deg: 10 }), /axis/);
+		assert.throws(() => rotateSolid(b, { axis: { x: 0, y: 0, z: 0 }, deg: 10 }), /no direction/);
+		assert.throws(() => rotateSolid(b, { axis: "x", deg: NaN }), /deg/);
+		assert.throws(() => rotateSolid(b, { axis: "x", deg: 10, about: { x: 0, y: Infinity, z: 0 } }), /about/);
+		const withTop = box({ x: 0, y: 0, w: 1, d: 1, h: 1, top: { markup: "", view: { width: 1, height: 1 } } });
+		assert.throws(() => rotateSolid(withTop, { axis: "x", deg: 10 }), /top/);
+		// the same validation holds at 0°
+		assert.throws(() => rotateSolid(withTop, { axis: "x", deg: 0 }), /top/);
+		assert.throws(() => rotateSolid(b, { axis: /** @type {any} */ ("w"), deg: 0 }), /axis/);
+		assert.throws(() => rotateSolid(b, { axis: "x", deg: 0, about: { x: 0, y: Infinity, z: 0 } }), /about/);
+		assert.throws(() => rotateSolid(b, { axis: { x: 0, y: 0, z: 0 }, deg: 0 }), /no direction/);
+		assert.throws(() => rotateSolid(b, { axis: "x", deg: 0, about: { x: 0, y: 0, z: Infinity } }), /about/);
+	});
+});
+
+describe("depth order of oriented solids", () => {
+	/** The direction from the world to the camera. */
+	const toCam = (/** @type {import("../runtime/iso.mjs").Camera} */ cam) => {
+		const [az, el] = [(cam.azimuth * Math.PI) / 180, (cam.elevation * Math.PI) / 180];
+		return { x: Math.sin(az) * Math.cos(el), y: -Math.cos(az) * Math.cos(el), z: Math.sin(el) };
+	};
+	/** The camera `p` of the way along a swivel from the plan view to isometric, and one from behind. */
+	const CAMERAS = [
+		...[0, 0.25, 0.5, 0.75, 1].map((p) => lerpCamera(CAMERA_PLAN, CAMERA_ISOMETRIC, p)),
+		camera({ azimuth: 225, elevation: ISO_ELEVATION }),
+		camera({ azimuth: 100, elevation: 20 }),
+	];
+	/**
+	 * `behind` and `front` are separated by a plane with unit normal `n`, `front` on its positive side: from a camera
+	 * that looks at that plane edge on there is nothing to order; from any other, the solid on the camera's side is drawn last,
+	 * wherever the two cover a common area of the screen (where they do not, either order draws the same picture).
+	 */
+	const expectFront = (/** @type {import("../runtime/iso.mjs").Solid & { id?: string }} */ behind, /** @type {import("../runtime/iso.mjs").Solid & { id?: string }} */ front, /** @type {{ x: number, y: number, z: number }} */ n, what = "") => {
+		let checked = 0;
+		for (const cam of CAMERAS) {
+			const facing = n.x * toCam(cam).x + n.y * toCam(cam).y + n.z * toCam(cam).z;
+			if (Math.abs(facing) < 1e-6 || !coverCommonArea(behind, front, cam)) continue;
+			const [first, last] = facing > 0 ? [behind, front] : [front, behind];
+			checked++;
+			const label = `${what} at azimuth ${cam.azimuth}, elevation ${cam.elevation}`;
+			assert.deepEqual(orderSolids([behind, front], cam).map((s) => s.id), [first.id, last.id], label);
+			assert.deepEqual(orderSolids([front, behind], cam).map((s) => s.id), [first.id, last.id], `${label}, input reversed`);
+		}
+		assert.ok(checked > 0, `${what}: no camera orders this pair, so nothing was checked`);
+	};
+	const X = { x: 1, y: 0, z: 0 };
+	const Z = { x: 0, y: 0, z: 1 };
+
+	it("orders a tilted link against an upright box, and two tilted links, by the plane between them", () => {
+		const upright = box({ x: -2, y: 0, w: 2, d: 2, h: 6, id: "box" });
+		const link = (/** @type {number} */ x, /** @type {number} */ deg, /** @type {string} */ id) => rotateSolid(box({ x, y: 0, w: 0.6, d: 0.6, h: 3, id }), { axis: "y", deg, about: { x, y: 0, z: 0 } });
+		// The box is at x ≤ −1, the link leans east from x = 2: the plane x = 0 separates them.
+		expectFront(upright, link(2, 30, "link"), X, "link against box");
+		// The two lean toward each other, from −1.5 and 1.5, and stay on their own sides of x = 0.
+		expectFront(link(-1.5, 15, "west"), link(1.5, -15, "east"), X, "two links");
+	});
+	it("orders links that meet at a pivot, at every angle of the joint, with nothing to flicker", () => {
+		// A post up to z = 2, and a lever turned about the edge of its base that rests on the post's top: they touch along that edge.
+		const post = box({ x: 0, y: 0, w: 0.6, d: 0.6, h: 2, id: "post" });
+		for (let deg = 0; deg <= 90; deg += 10) {
+			const lever = rotateSolid(box({ x: 0, y: 0, w: 0.6, d: 0.6, h: 2, z: 2, id: "lever" }), { axis: "y", deg, about: { x: 0.3, y: 0, z: 2 } });
+			expectFront(post, lever, Z, `lever at ${deg}°`);
+		}
+	});
+	it("orders two bars that cross in plan and are apart in height, in plan and isometric", () => {
+		const lie = (/** @type {number} */ z, /** @type {"x" | "y"} */ axis, /** @type {string} */ id) => rotateSolid(box({ x: 0, y: 0, w: 0.6, d: 0.6, h: 6, z, id }), { axis, deg: 90, about: { x: 0, y: 0, z: z + 3 } });
+		// One lies along x at z ≈ 3, the other along y at z ≈ 7: they cross in plan.
+		expectFront(lie(0, "y", "low"), lie(4, "x", "high"), Z, "crossing bars");
+		assert.deepEqual(orderSolids([lie(4, "x", "high"), lie(0, "y", "low")], CAMERA_PLAN).map((s) => s.id), ["low", "high"]);
+	});
+	it("keeps an arm that rests on a thin slab in front of it where their silhouettes overlap", () => {
+		const base = box({ x: 0, y: 0, w: 16, d: 4, h: 0.1, id: "slab" });
+		const arm = rotateSolid(box({ x: 0, y: 0, w: 0.6, d: 0.6, h: 6, z: 0.1, id: "arm" }), { axis: "y", deg: 50, about: { x: 0.3, y: 0, z: 0.1 } });
+		const cam = camera({ azimuth: 270, elevation: 20 });
+		for (const input of [[base, arm], [arm, base]]) assert.deepEqual(orderSolids(input, cam).map((s) => s.id), ["slab", "arm"]);
+	});
+	it("orders an oriented solid against the slab it stands over, and puts unrelated solids by how near their centres are", () => {
+		const floor = slab({ x: 0, y: 0, w: 10, d: 10, id: "floor" });
+		const arm = rotateSolid(box({ x: 0, y: 0, w: 1, d: 1, h: 3, z: 0.25, id: "arm" }), { axis: "x", deg: 45, about: { x: 0, y: -0.5, z: 0.25 } });
+		expectFront(floor, arm, Z, "arm over floor");
+		const far = box({ x: 20, y: 20, w: 1, d: 1, h: 1, id: "far" });
+		const ids = (/** @type {{ id?: string }[]} */ list) => list.map((x) => x.id);
+		// Not separated on the screen: the nearer centre comes last (north-east is away from an isometric camera), whatever the input order.
+		assert.deepEqual(ids(orderSolids([far, arm], CAMERA_ISOMETRIC)), ["far", "arm"]);
+		assert.deepEqual(ids(orderSolids([arm, far], CAMERA_ISOMETRIC)), ["far", "arm"]);
 	});
 });
 
