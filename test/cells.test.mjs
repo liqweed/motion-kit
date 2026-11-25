@@ -417,7 +417,12 @@ describe("cellGrid box fit after origin rounding", () => {
 			assert.throws(() => cellGrid({ rows: 1, cols: 1, gap: 0, ...box }), /within ±1000000000/);
 		}
 		// Just inside the limit still fits.
-		assert.ok(cellGrid({ rows: 1, cols: 1, gap: 0, x: 999999999, width: 0.5, height: 0.5 }).size > 0);
+		assert.equal(cellGrid({ rows: 1, cols: 1, gap: 0, x: 999999999, width: 0.5, height: 0.5 }).size, 0.5);
+	});
+	it("refuses an explicit size whose pitch the origin's precision swallows", () => {
+		assert.throws(() => cellGrid({ rows: 1, cols: 2, size: 0.01, gap: 0, x: 1e15 }), /too large to tell/);
+		assert.throws(() => cellGrid({ rows: 2, cols: 1, size: 0.01, gap: 0, y: 1e15 }), /too large to tell/);
+		assert.ok(cellGrid({ rows: 1, cols: 2, size: 0.01, gap: 0, x: 1e6 }).at(0, 1).x > 1e6);
 	});
 	it("refuses a centred origin that overflows num()", () => {
 		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1e308, height: 1, gap: 0 }), /within ±1000000000/);

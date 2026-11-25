@@ -121,6 +121,8 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
 		if (lay && !inside(lay)) throw new Error("cellGrid: the box is too small for its cells and gaps after SVG rounding");
 	}
 	if (!lay) throw new Error(`cellGrid: the grid's extent is not finite (size ${s}, gap ${gap}, ${rows} × ${cols})`);
+	// A pitch that the origin's precision swallows would stack neighbouring cells on one coordinate while the base pattern keeps the real pitch.
+	if ((cols > 1 && Number(num(lay.gx + s + gap)) <= lay.gx) || (rows > 1 && Number(num(lay.gy + s + gap)) <= lay.gy)) throw new Error(`cellGrid: the origin ${lay.gx}, ${lay.gy} is too large to tell neighbouring cells apart at pitch ${s + gap}`);
 	const r = radius ?? s * 0.22;
 	if (!finite(r) || r < 0) throw new Error(`cellGrid: radius must be a finite number of 0 or more, got ${radius}`);
 	const { gw, gh, gx, gy } = lay;

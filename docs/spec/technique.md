@@ -572,7 +572,7 @@ Pure functions; a colour is a token name (G4 applies).
   player's patch changes within a layer and the sibling groups keep their
   positions, while `base` is present or absent alike in every frame (switching
   between `null` and a token adds or removes the `<defs>` and base rect ahead of them).
-- **Canon.** A lighting ends at least 50 ms before its step (guidance A10) and nothing
+- **Canon.** A lighting ends at least 50 ms before its step (guidance A10; the cell-grid recipe asks for a margin on each side of a step, which A10's 50 ms between beats does not require) and nothing
   repeats (guidance A5). G6 (defined, with its clamping, in the rule table and §8) compares the step frame with the frame 1 ms before it (the look-back is clamped at time 0, so a step earlier than 1 ms compares its own time with time 0, and a step at `at: 0` compares time 0 with itself) and with probes at 1, 15, 30 and 45 ms after it (only before the next step; a probe past `duration` renders the final frame and compares the step with it, so a scene that changes in the last milliseconds before `duration` can fail it where the earlier probes pass), so motion that ends exactly at a step can fail it, and a repeat that lights the cells again only after the 45 ms probes, away from a step, goes unseen. The measured cost and the size at which a scene should leave SVG are in
   the `animated-diagram` skill's `custom-scenes.md`.
 
@@ -704,7 +704,7 @@ Pure functions; a colour is a token name (G4 applies).
   and a probe past `duration` renders the final frame (G6 table). The look-ahead is what
   catches slow motion passing through `at`, which rounding hides over 1 ms.
 - Authoring advice (not a hard requirement): the full 50 ms pause; the next motion should not start earlier than 50 ms after
-  `at`; G6 enforces only the probes up to 45 ms, so a beat at 46 ms passes the gate but is still advice-level against A10 (the "pause between beats" in
+  `at`; G6 enforces only each step's own forward probes up to 45 ms (the next step's probes, including its 1 ms look-back, are separate), so a beat at 46 ms passes the gate but is still advice-level against A10 (the "pause between beats" in
   [`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)),
   and anything that fades out by a step (a travelling dot) MUST reach 0 by
   `at`. Scene types satisfy this by construction: `PERIOD = HOP + FILL + 0.05`
