@@ -80,8 +80,11 @@ const PAGE = String.raw`
 globalThis.bench = (which, spec) => {
 	// Each custom scene is bundled with its own copy of the runtime, under its own global.
 	const { createScene, sceneFromModule, renderSvg, normalizeStyle, cssVars, patchMarkup } = MotionKit;
-	const modules = { fleet: MotionKit.default, isometric: globalThis.MotionKitIso?.default, reveal: globalThis.MotionKitReveal?.default };
-	const scene = which in modules ? sceneFromModule(modules[which], { format: "16:9" }) : createScene(JSON.parse(spec), { format: "16:9" });
+	const modules = { fleet: MotionKit.default, isometric: globalThis.MotionKitIso?.default, reveal: globalThis.MotionKitReveal?.default, cells: globalThis.MotionKitCells?.default };
+	// "cells:RxC" is the cell-grid bench scene at R rows and C columns.
+	const [name, size] = which.split(":");
+	const options = size ? { rows: Number(size.split("x")[0]), cols: Number(size.split("x")[1]) } : undefined;
+	const scene = name in modules ? sceneFromModule(modules[name], { format: "16:9", options }) : createScene(JSON.parse(spec), { format: "16:9" });
 	const style = normalizeStyle();
 	const render = (t) => renderSvg(scene, t, { style, idPrefix: "b", live: true });
 	const times = [];
@@ -93,8 +96,11 @@ globalThis.bench = (which, spec) => {
 	// Correctness: each patched frame equals the HTML parser's reading of it.
 	const ref = document.createElement("div");
 	let mismatches = 0;
+	let peak = 0; // bytes of the largest frame, tracked while verifying
+	const bytes = new TextEncoder();
 	for (const t of [...times, ...times.slice().reverse()]) {
 		const markup = render(t);
+		peak = Math.max(peak, bytes.encode(markup).length);
 		patchMarkup(host, markup);
 		ref.innerHTML = markup;
 		const same = host.childNodes.length === ref.childNodes.length && [...host.childNodes].every((n, i) => n.isEqualNode(ref.childNodes[i]));
@@ -108,7 +114,7 @@ globalThis.bench = (which, spec) => {
 		innerHTML: (t) => { host.innerHTML = render(t); },
 		patch: (t) => { patchMarkup(host, render(t)); },
 	};
-	const result = { frames: times.length, kb: render(scene.duration / 2).length / 1024, mismatches };
+	const result = { frames: times.length, kib: bytes.encode(render(scene.duration / 2)).length / 1024, peak: peak / 1024, mismatches };
 	for (const [name, draw] of Object.entries(paths)) {
 		host.innerHTML = "";
 		const cost = [];
@@ -159,18 +165,19 @@ try {
 	await evaluate(bundle([...runtime, join(ROOT, "bench/fleet.scene.mjs")]));
 	await evaluate(bundle([...runtime, join(ROOT, "examples/isometric-swivel.scene.mjs")], { globalName: "MotionKitIso" }));
 	await evaluate(bundle([...runtime, join(ROOT, "examples/text-reveal.scene.mjs")], { globalName: "MotionKitReveal" }));
+	await evaluate(bundle([...runtime, join(ROOT, "bench/cells.scene.mjs")], { globalName: "MotionKitCells" }));
 	await evaluate(PAGE);
 	await cdp.send("Emulation.setCPUThrottlingRate", { rate: RATE }, sessionId);
 
 	const spec = readFileSync(join(ROOT, "examples/smart-home.json"), "utf8");
 	const ms = (/** @type {number} */ v) => v.toFixed(2).padStart(6);
 	console.log(`live player frame cost, headless Chromium at ${RATE}x CPU slowdown (${chrome.split("/").pop()})`);
-	console.log("scene                     KB/frame  frames   render only     innerHTML median / p90   patch median / p90   median ratio");
+	console.log("scene                     mid KiB  peak KiB  frames   render only     innerHTML median / p90   patch median / p90   median ratio");
 	let failed = false;
-	for (const [label, which] of [["bench/fleet.scene.mjs", "fleet"], ["smart-home 16:9", "smart-home"], ["isometric-swivel 16:9", "isometric"], ["text-reveal 16:9", "reveal"]]) {
+	for (const [label, which] of [["bench/fleet.scene.mjs", "fleet"], ["smart-home 16:9", "smart-home"], ["isometric-swivel 16:9", "isometric"], ["text-reveal 16:9", "reveal"], ["cells 10x10 (100)", "cells:10x10"], ["cells 24x25 (600)", "cells:24x25"], ["cells 40x60 (2,400)", "cells:40x60"]]) {
 		const r = await evaluate(`bench(${JSON.stringify(which)}, ${JSON.stringify(spec)})`);
 		console.log(
-			`${label.padEnd(26)}${r.kb.toFixed(1).padStart(8)}${String(r.frames).padStart(8)}   ${ms(r.render.median)} ms       ${ms(r.innerHTML.median)} / ${ms(r.innerHTML.p90)} ms     ${ms(r.patch.median)} / ${ms(r.patch.p90)} ms    ${(r.patch.median / r.innerHTML.median).toFixed(2)}`,
+			`${label.padEnd(26)}${r.kib.toFixed(1).padStart(8)}${r.peak.toFixed(1).padStart(10)}${String(r.frames).padStart(8)}   ${ms(r.render.median)} ms       ${ms(r.innerHTML.median)} / ${ms(r.innerHTML.p90)} ms     ${ms(r.patch.median)} / ${ms(r.patch.p90)} ms    ${(r.patch.median / r.innerHTML.median).toFixed(2)}`,
 		);
 		if (r.mismatches) {
 			console.error(`${label}: ${r.mismatches} patched frames differ from a fresh innerHTML parse`);

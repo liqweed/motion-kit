@@ -225,6 +225,49 @@ gate then holds. A value that keeps updating beside live footage is not this
 part, and a bar that grows again or pulses while a step rests is ambient motion,
 which the canon advises against.
 
+## Cell grids: pixel grids and glyph atlases
+
+`kit` also draws a grid of small rounded squares (`runtime/cells.mjs`). Template:
+`examples/cell-grid.scene.mjs` (a 12 × 6 pixel grid that lights one by one, then
+all at once, and an 8 × 3 glyph atlas whose letters fly out along arcs).
+
+| Need | Use |
+|---|---|
+| The grid | `cellGrid({ rows, cols, x?, y?, size?, width?, height?, gap?, radius? })`: give a `size` (the grid starts at `x`, `y`) or a box (`width` × `height`: the largest square cell that fits, centred). `grid.at(row, col)` is a cell's `{ x, y, size, cx, cy }`. A box rounds the size down to a hundredth, and a `gap` of at most two decimals keeps the empty grid's pattern on the lit cells |
+| When cells light | `cellLighting(grid, { start, duration, spread?, order?, field?, style? })`: `order` is `"cells"` (one by one, the default), `"rows"`, `"columns"`, `"all"` or a function `(row, col) => number` (lowest first: a ripple out of a centre is the distance to it); `spread` is the window the starts are spread over: the seconds between the first and last start of cells with distinct ranks (`"all"`, equal ranks, or a single row or column under `"rows"`/`"columns"` collapse it to 0). `lighting.level(t, row, col)` is 0 to 1 and exactly the cell's end level from `lighting.end` on |
+| Lighting by a field | `field: (row, col) => 0..1` is each cell's end level: `coverage(d, softness?)` turns a signed distance (negative inside, in cells) into a partial alpha, so the cells on a shape's edge end partly lit. It is read once per cell. The alpha is rounded to three decimals like every opacity |
+| Drawing | `drawCells(grid, { opacity, fill?, base?, idPrefix, name?, outline?, glyph?, glyphSize?, family? })`: `opacity(row, col)` is the number the scene computes per cell and frame (usually `lighting.level`, or the `Math.max` of two lightings for two beats); `fill` is a token (or `(row, col) => token`); `base` is the empty grid's token (default `surface`), drawn as one `<pattern>` whose id is `${safeId(idPrefix)}-cells-${name}`, so pass the frame's `idPrefix` and give each grid of a scene its own `name`; `outline(row, col)` highlights a cell (`true` or an opacity, in the token `outlineFill`, default `emphasis`, which is below 3:1 on `surface` in the light style); `glyph(row, col)` is a cell's content, a string or `{ text, fill, opacity }`, centred (`family: style.mono` keeps columns even) |
+| Letters that fly out | Hide the glyph in its cell from the moment it leaves (`glyph` returns `null`) and draw it with `cubic` and `tokensAlong` (`hold: true` keeps it where it lands); give each letter its own arc (control points swung to opposite sides) and start them 80–150 ms apart |
+
+A lit cell is one `<rect>`; a cell at 0 draws nothing, and the empty grid's own markup is the same size for 6 cells or 2,400 (one pattern; the first draw also prepares each cell's geometry once, so its time grows with the cells). Declare `{ fg: "accent", bg: "surface", min: 3 }` for lit cells on the empty
+grid, `{ fg: "ink", bg: "surface", min: 4.5 }` for glyphs on the empty grid (glyphs and outlines are drawn after the lit fill, over the cell as it is painted, so check the glyph token against each fill it can sit on, such as `accent`, and, for a cell that is partly lit while it shows, against the fill composited over what is behind it at the opacity it displays: a mid-grey glyph can match that blend even when it clears both endpoints (check each intermediate fill the cell shows for a beat or more, not only the two tokens). What is behind the fill is `tok(base)` when a `base` is given and whatever the scene draws behind the grid for `base: null`. A glyph or outline with its own `opacity` is itself translucent: composite it over the cell as painted, not over the base alone, since `contrastPairs` compares opaque tokens (in the neutral dark style, `ink` at 50% is 4.72:1 over the empty surface but 2.27:1 over a fully lit `accent`; the opaque pair is 4.70:1). The same holds for an outline. A partly lit fill that carries information is checked the same way, as the emitted colour against the adjacent empty cells (`accent` at 50% over `surface` is 1.71:1, below the 3:1 that the opaque pair above declares): use a separate cue when the partial alpha has to be told apart) and `{ fg: "ink", bg: "surface", min: 3 }`
+for an outline (`outlineFill: "ink"`) on the empty grid in `contrastPairs`; an outline is drawn inside the cell, over whatever the cell shows, so declare its token on `surface` for an empty cell and, over a lit cell, against the lit fill (`emphasis` is 2.89:1 on `surface` in the light style, which is why the pair names `ink`).
+
+**The grid lights once per step.** Each lighting ends (`lighting.end`) at least 50 ms
+before its step, and the next one starts at least 50 ms after it: a pixel grid that flashes twice, or a
+cursor that steps cell by cell for many seconds, is ambient motion. Light it once per step,
+or cover a few cells inside one beat, or one row per step. A blinking text cursor beside an
+atlas is ambient too: draw it static, or leave it out.
+
+**Budget: SVG suffices up to about 2,400 cells; beyond that, or sooner on slow devices, split the grid or change fewer cells per beat (a Canvas renderer does not ship; see the spec's note on #88).**
+Measured with `bench/cells.scene.mjs`, a ripple scheduled over a 2 s spread (the spread covers every cell, even those whose field is 0; the emitted opacities of the 2,400-cell grid change between about 0.2 s and 1.7 s at the harness's 60 Hz samples, counting differences as small as 0.001, which says when the markup changes and not when a viewer can see it, since the harness forces layout without painting; a sampled frame changes at most 44% of its cells: 44 of the 100, 240 of the 600, 748 (31%) of the 2,400) and then a 0.5 s beat that lights all of them (these counts are not measured by `bench:player`; they come from comparing each cell's rounded opacity in `bench/cells.scene.mjs` with its value at the preceding 60 Hz sample, an omitted cell counting as 0 and an omitted opacity attribute on a lit rect as 1) (16:9; 952 of the 2,400 are already fully lit by then, and the beat changes up to 1,448 opacities in a frame, because the two levels combine with `Math.max`), in headless Chromium at 6x CPU slowdown
+(`npm run bench:player`, style and layout, no paint), as a 15 fps baked SVG and as a
+30 fps, 2x-scale MP4 (`motion-kit video`, 173 frames at 1920 × 1080; encoding alone is about 12 s):
+
+| Cells | Live player, patch: median / p90 | innerHTML: median / p90 | Peak frame (KiB) | Baked SVG (gzip) | Video render |
+|---|---|---|---|---|---|
+| 100 (10 × 10) | 0.1 / 1.3–2.7 ms | 1.7–2.0 / 3.8–4.8 ms | 10 | 194 KB (6 KB) | 13 s |
+| 600 (24 × 25) | 1.3–1.4 / 11.2–11.9 ms | 12.3–13.8 / 21–25 ms | 59 | 975 KB (49 KB) | 12 s |
+| 2,400 (40 × 60) | 2.3–4.3 / 31–64 ms | 30–33 / 71–109 ms | 237 | 3.1 MB (146 KB) | 23 s |
+
+- **Live player.** Cells that light in an order other than reading order (a ripple) are inserted among the lit rects, and the patch, which matches children by position, rewrites the ones after them: the whole-timeline numbers below include that cost. At 600 cells the patch's median is 1.3–1.4 ms and its p90 11–12 ms at 6x slowdown, both under the 16.7 ms of a 60 fps frame; these are percentiles over the whole timeline, holds included, so they do not bound the worst frame of the ripple, and no paint is measured and no unthrottled run was made. At 2,400 cells the median is a few ms and the whole-timeline p90 is 31–64 ms at 6x, about a sixth of that
+  without the slowdown (an estimate; paint is not measured). Ripple-phase frames are not timed on their own and the harness excludes paint, so these figures describe this workload only: measure a sustained dense update before using them as a general live-player budget. Draw a grid of 2,400 cells that changes
+  every frame only where that is acceptable; for more, or for slow devices, split the grid or
+  animate fewer cells per beat. Always use the patched player, never innerHTML: its median is about 7 to 20 times the patch's in the table (median ratios: 17–20 at 100 cells, 9–11 at 600, 7–14 at 2,400).
+- **Baked SVG.** Identical consecutive frames are merged and every remaining frame is serialised in full, so its uncompressed size is the sum of the retained frames' payloads plus the markup around them (a frame holds only its lit cells, so a long sparse entrance is smaller than the same count of full frames; one changing cell still writes the whole lit grid again): 3.1 MB for 2,400 cells over
+  4.0 s at 15 fps (146 KB gzipped). Prefer the live player, or fewer frames (lower `--fps`), for a grid this size.
+- **Video.** 2,400 cells cost about 10 s more than 100 over 173 frames: not a reason for Canvas.
+
 ## Advice and acknowledgements
 
 The gate fails a scene only for hard rules (determinism, markup, settled steps,

@@ -51,7 +51,7 @@ A scene is a plain object (`runtime/scene.mjs:1-18`).
   `sceneFromModule` (`runtime/kit.mjs`) with
   `opts = { ...options, format, locale, kit }`. `options` are the caller's
   serializable scene options, passed unchanged; option names `format`,
-  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `bars`, `code` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
+  `locale` and `kit` throw. `kit` is the flat exports of the `motion`, `svg`, `iso`, `style`, `scene`, `connectors`, `bars`, `cells`, `code` and `wrap` runtime modules (`KIT`); it has no `createScene`, scene types or player. Both paths
   run `validateScene`. The CLI (`--options`), the vendored gate and the Astro
   adapter call `sceneFromModule`, so one module with the same options, format
   and locale gives the same scene everywhere. A `build` page calls the factory
@@ -556,6 +556,26 @@ functions; a colour is a token name (G4 applies).
   shown on arrival and each click moves to the next, so n ranges take n − 1
   clicks; one slide per step in Marp).
 
+### 4.14 Cell grids (`runtime/cells.mjs`)
+
+For custom scenes that draw a grid of rounded squares; handed to them in `kit`.
+Pure functions; a colour is a token name (G4 applies).
+
+- `cellGrid` lays out `rows × cols` square cells in a box or at a `size`;
+  `cellLighting` gives each cell's level at `t` (0 before it starts, exactly its
+  `field` value from `lighting.end` on, on the curve it is given: a caller-supplied `ease`, else the supplied `style`'s entrance curve, else the neutral default);
+  `coverage` turns a signed distance into a partial alpha.
+- `drawCells` writes one `<rect>` per cell whose opacity, rounded to three
+  decimals (as `el`), is above 0; the empty grid is one `<pattern>` with id
+  `${safeId(idPrefix)}-cells-${name}`. The three layer groups (the lit cells, the
+  outlines, the glyphs) are present in every frame, in the same order, so the
+  player's patch changes within a layer and the sibling groups keep their
+  positions, while `base` is present or absent alike in every frame (switching
+  between `null` and a token adds or removes the `<defs>` and base rect ahead of them).
+- **Canon.** A lighting ends at least 50 ms before its step (guidance A10; the cell-grid recipe asks for a margin on each side of a step, which A10's 50 ms between beats does not require) and nothing
+  repeats (guidance A5). G6 (defined, with its clamping, in the rule table and §8) compares the step frame with the frame 1 ms before it (the look-back is clamped at time 0, so a step earlier than 1 ms compares its own time with time 0, and a step at `at: 0` compares time 0 with itself) and with probes at 1, 15, 30 and 45 ms after it (only before the next step; a probe past `duration` renders the final frame and compares the step with it, so a scene that changes in the last milliseconds before `duration` can fail it where the earlier probes pass), so motion that ends exactly at a step can fail it, and a repeat that lights the cells again only after the 45 ms probes, away from a step, goes unseen. The measured cost and the size at which a scene should leave SVG are in
+  the `animated-diagram` skill's `custom-scenes.md`.
+
 ## 5. Markup
 
 - Text and attribute values MUST be escaped (`& < > " '`) via `esc`, `text` or
@@ -677,12 +697,14 @@ functions; a colour is a token name (G4 applies).
   a step button and Slidev show.
 - Step frames MUST be settled: nothing moves at `at` [gate] G6. The step's
   own motion MAY end exactly at `at` but MUST be at rest there
-  (`frame(at − 1 ms) === frame(at)`), and nothing MAY change in the 50 ms
+  (`frame(at − 1 ms) === frame(at)`), and nothing MAY change at the probes
   after it (`frame(at + δ) === frame(at)` for δ = 1, 15, 30 and 45 ms, up to
-  the next step; `SETTLE_AFTER` in `lib/check.mjs`). The look-ahead is what
+  the next step; `SETTLE_AFTER` in `lib/check.mjs`). Every time is clamped to
+  `[0, duration]` as `renderSvg()` does, so the look-back at `at: 0` compares time 0 with itself (the forward probes still render later frames and can fail the step; §4.14)
+  and a probe past `duration` renders the final frame (G6 table). The look-ahead is what
   catches slow motion passing through `at`, which rounding hides over 1 ms.
-- Authoring rule: the next motion MUST NOT start earlier than 50 ms after
-  `at` (the "pause between beats" in
+- Authoring advice (not a hard requirement): the full 50 ms pause; the next motion should not start earlier than 50 ms after
+  `at`; G6 enforces only each step's own forward probes up to 45 ms (the next step's probes, including its 1 ms look-back, are separate), so a beat at 46 ms passes the gate but is still advice-level against A10 (the "pause between beats" in
   [`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)),
   and anything that fades out by a step (a travelling dot) MUST reach 0 by
   `at`. Scene types satisfy this by construction: `PERIOD = HOP + FILL + 0.05`
@@ -928,7 +950,7 @@ media freshness) plus the site build (`package.json` scripts `gate:core`, `gate`
 | G3 | hard | No number with ≥ 5 decimals in the full SVG (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Rounding (T4). |
 | G4 | hard | No colour literal in `frame()` markup: colour attributes and properties hold only tokens, `url(#…)` and the colourless keywords of §6; no hex or colour function (`rgb()`, `hsl()`, `oklch()`, …) in any attribute or `<style>`. Id references (`url(#…)`, `href="#…"`) are not colours; text content and `font-family` values (font names are data, so `"Mono #123"` is a name) are not checked. | `lib/check.mjs` (`findColourLiteral`) | Token-only colours: themes and brand styles must work everywhere. |
 | G5 | hard | No `NaN`, `undefined`, `Infinity` in `frame()` output (the code block's own text, `<title>`/`<desc>` text and `font-family` values excepted, §4.13; scanned only on a well-formed frame). | `lib/check.mjs` (`checkScene` rule 1, `numericText`) | Silent geometry bugs. |
-| G6 | hard | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step). | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
+| G6 | hard | For every step, `render(at)` equals `render(at − 1 ms)` and `render(at + δ)` for δ = 1, 15, 30, 45 ms (before the next step); each time is clamped to `[0, duration]` as `renderSvg()` does (`Math.max(0, at + d)` in the gate), so a step at `at: 0` compares time 0 with itself and a probe past `duration` compares with the final frame. | `lib/check.mjs` (rule 2, `SETTLE_AFTER`) | Settled step frames (§8); the 45 ms look-ahead sees slow motion that rounding hides over 1 ms. |
 | G7 | advice | `nothing-animates`: first frame ≠ last frame. | `lib/check.mjs` (rule 3) | Something should animate; a still mark acknowledges it. |
 | G8 | hard | The raw `frame(duration + 5)` equals `frame(duration)`: the gate calls the scene directly, because `renderSvg` clamps `t` to the duration before calling it (T3 requires a frame to hold past the end even though callers clamp). | `:65` | Holds the final frame. |
 | G9 | advice | `duration`: `duration ≤ 12` s. | `lib/check.mjs` (rule 4) | The canon's limit, authoring target ≤ 8 s; a narrated scene cued to a voice-over acknowledges it. |
