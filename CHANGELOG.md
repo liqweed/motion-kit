@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-25
+
+### Added
+
+- A custom scene can draw a tilted solid: `kit.rotateSolid(solid, { axis, deg, about })` turns a prism, box or rounded box (a solid with `top` content throws: content on a plane is horizontal) about an axis through a point, so a link, lever or ramp can lean. It is outlined and shaded under the same token rules as an upright solid, and `orderSolids` and `drawSolids` order it against upright prisms and other tilted solids, through a camera swivel, including solids that touch at a pivot. Scenes without a tilted solid draw byte for byte as before. **Consumer action:** none.
+
 ## [0.19.0] - 2026-11-25
 
 ### Added
@@ -234,7 +240,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Published to npm as `@liqweed/motion-kit`; run it with `npx @liqweed/motion-kit`.
 
-[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/liqweed/motion-kit/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/liqweed/motion-kit/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/liqweed/motion-kit/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/liqweed/motion-kit/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/liqweed/motion-kit/compare/v0.16.0...v0.17.0
