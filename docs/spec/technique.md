@@ -697,13 +697,13 @@ Pure functions; a colour is a token name (G4 applies).
   a step button and Slidev show.
 - Step frames MUST be settled: nothing moves at `at` [gate] G6. The step's
   own motion MAY end exactly at `at` but MUST be at rest there
-  (`frame(at − 1 ms) === frame(at)`), and nothing MAY change in the 50 ms
+  (`frame(at − 1 ms) === frame(at)`), and nothing MAY change at the probes
   after it (`frame(at + δ) === frame(at)` for δ = 1, 15, 30 and 45 ms, up to
   the next step; `SETTLE_AFTER` in `lib/check.mjs`). Every time is clamped to
   `[0, duration]` as `renderSvg()` does, so the look-back at `at: 0` compares time 0 with itself (the forward probes still render later frames and can fail the step; §4.14)
   and a probe past `duration` renders the final frame (G6 table). The look-ahead is what
   catches slow motion passing through `at`, which rounding hides over 1 ms.
-- Authoring rule: the next motion should not start earlier than 50 ms after
+- Authoring advice (not a hard requirement): the full 50 ms pause; the next motion should not start earlier than 50 ms after
   `at`; G6 enforces only the probes up to 45 ms, so a beat at 46 ms passes the gate but is still advice-level against A10 (the "pause between beats" in
   [`motion-vocabulary.md`](../../skills/animated-diagram/references/motion-vocabulary.md)),
   and anything that fades out by a step (a travelling dot) MUST reach 0 by

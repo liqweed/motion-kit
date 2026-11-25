@@ -88,10 +88,13 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 
 	const one = cellLighting(grid, { ...ONE, order: "cells", field: (row, col) => coverage(ellipse(row, col)) });
 	const all = cellLighting(grid, { ...ALL, order: "all" });
-	const edge = (/** @type {number} */ row, /** @type {number} */ col) => {
-		const v = coverage(ellipse(row, col));
-		return v > 0 && v < 1;
-	};
+	// The edge cells (partly covered by the ellipse), found once: the outline callback runs for every cell on every frame.
+	const edgeCells = new Set();
+	for (let r = 0; r < grid.rows; r++) for (let c = 0; c < grid.cols; c++) {
+		const v = coverage(ellipse(r, c));
+		if (v > 0 && v < 1) edgeCells.add(grid.cols * r + c);
+	}
+	const edge = (/** @type {number} */ row, /** @type {number} */ col) => edgeCells.has(grid.cols * row + col);
 	const ringAt = cellLighting(atlas, { ...RING, order: "all" }); // the outline's own beat
 	const isFlyer = (/** @type {number} */ row, /** @type {number} */ col) => FLYERS.findIndex(([r, c]) => r === row && c === col);
 	// Each letter's arc, from its atlas cell to its slot in the word: the control points swing sideways, to opposite sides in turn.
@@ -121,7 +124,8 @@ export default function make({ format = "16:9", locale = "en" } = {}) {
 				name: "pixels",
 				opacity: (row, col) => Math.max(one.level(t, row, col), all.level(t, row, col)),
 				// A cue beside the partial alpha: the cells on the ellipse's edge get an outline, which the second beat takes away again.
-				outline: (row, col) => (edge(row, col) ? one.level(t, row, col) * (1 - all.level(t, row, col)) : 0),
+				// Full opacity once lit (not the cell's partial alpha), so the cue keeps its contrast over the blended fill.
+				outline: (row, col) => (edge(row, col) ? Math.min(1, one.level(t, row, col) * 8) * (1 - all.level(t, row, col)) : 0),
 				outlineFill: "ink",
 			}),
 			drawCells(word, { idPrefix, name: "word", opacity: () => 0 }),

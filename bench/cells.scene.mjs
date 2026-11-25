@@ -2,7 +2,7 @@
  * Benchmark scene for the cell-grid part: a grid of `rows` × `cols` cells that
  * a ripple lights out of the centre towards a disc (edge cells partly lit), then
  * all at once. The ripple changes a subset of the cells in each sample (at most
- * 31 to 40% of them at 60 Hz) and the shared fill changes up to most of them,
+ * 44% of the 100-cell grid, 40% of the 600-cell one and about 31% of the 2,400-cell one at 60 Hz) and the shared fill changes up to most of them,
  * which is the costly case. `npm run bench:player` draws it at about 100, 600 and 2,400 cells;
  * `motion-kit bake` and `video` take it with `--options '{"rows":40,"cols":60}'`.
  * Not a gallery example: it exists to be heavy.

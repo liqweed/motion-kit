@@ -100,9 +100,18 @@ export function cellGrid({ rows, cols, x = 0, y = 0, width, height, size, gap = 
 	let lay = layout(s);
 	if (boxed) {
 		// The origin is rounded to the markup's hundredth after the size was fitted; step the size down until the rounded grid still lies inside the requested box.
-		const inside = (/** @type {NonNullable<ReturnType<typeof layout>>} */ l) => l.gx >= x - 1e-9 && l.gy >= y - 1e-9 && l.gx + l.gw <= x + /** @type {number} */ (width) + 1e-9 && l.gy + l.gh <= y + /** @type {number} */ (height) + 1e-9;
+		// Tolerance is floating-point noise only (a few ulps of the coordinates involved), never a real offset.
+		const tol = (/** @type {number} */ a, /** @type {number} */ b) => 4 * Number.EPSILON * Math.max(1, Math.abs(a), Math.abs(b));
+		const inside = (/** @type {NonNullable<ReturnType<typeof layout>>} */ l) => {
+			const w = /** @type {number} */ (width);
+			const h = /** @type {number} */ (height);
+			return l.gx >= x - tol(x, l.gx) && l.gy >= y - tol(y, l.gy) && l.gx + l.gw <= x + w + tol(x + w, l.gx + l.gw) && l.gy + l.gh <= y + h + tol(y + h, l.gy + l.gh);
+		};
 		while (lay && !inside(lay) && s > 0.01) {
-			s = Math.round(s * 100 - 1) / 100;
+			const next = Math.round(s * 100 - 1) / 100;
+			// At huge magnitudes the step no longer changes the size: it can never fit, so stop instead of retrying forever.
+			if (!(next < s)) throw new Error("cellGrid: the box is too small for its cells and gaps after SVG rounding");
+			s = next;
 			lay = layout(s);
 		}
 		if (lay && !inside(lay)) throw new Error("cellGrid: the box is too small for its cells and gaps after SVG rounding");

@@ -404,6 +404,21 @@ describe("cellGrid box fit after origin rounding", () => {
 		const g = cellGrid({ rows: 1, cols: 1, x: 0.006, y: 0.006, width: 1, height: 1, gap: 0 });
 		assert.ok(g.x >= 0.006 - 1e-9 && g.x + g.width <= 1.006 + 1e-9);
 		assert.ok(g.y >= 0.006 - 1e-9 && g.y + g.height <= 1.006 + 1e-9);
+		// The largest hundredth-sized square that fits with a serialized origin, not an over-shrunk one.
+		assert.equal(g.size, 0.99);
+		assert.equal(g.x, 0.01);
+		assert.equal(g.y, 0.01);
+	});
+	it("refuses a box with no fitting origin on the hundredth grid", () => {
+		assert.throws(() => cellGrid({ rows: 1, cols: 1, x: 0.0100000005, width: 0.01, height: 0.01, gap: 0 }), /too small/);
+	});
+	it("terminates when the size step cannot advance at huge magnitudes", () => {
+		// Either a fitted grid or a refusal is fine; hanging is not.
+		try {
+			cellGrid({ rows: 1, cols: 1, gap: 0, x: 1000000000000002, width: 125000000000000, height: 125000000000000 });
+		} catch (e) {
+			assert.match(String(e instanceof Error ? e.message : e), /too small|not finite/);
+		}
 	});
 	it("refuses a centred origin that overflows num()", () => {
 		assert.throws(() => cellGrid({ rows: 1, cols: 1, width: 1e308, height: 1, gap: 0 }), /not finite/);
